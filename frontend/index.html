@@ -39,6 +39,7 @@
         <div class="menu-item">Gastos</div>
         <div class="menu-item">Ingresos</div>
         <div class="menu-item">Resúmenes</div>
+        <div class="menu-item">Configuración</div>
     </aside>
 
     <main class="main-content">
@@ -414,6 +415,65 @@
 
             </div>
         </div>
+
+        <!-- ======================================================================= -->
+        <!-- SECCIÓN: CONFIGURACIÓN -->
+        <!-- ======================================================================= -->
+        <section id="seccionConfiguracion" style="display: none; padding: 2rem;">
+            
+            <!-- PESTAÑAS DE NAVEGACIÓN INTERNA -->
+            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+                <button id="btnVistaConfigGastos" class="btn-tab active" onclick="cambiarVistaConfig('gastos')">Gastos</button>
+                <button id="btnVistaConfigServicios" class="btn-tab" onclick="cambiarVistaConfig('servicios')">Servicios</button>
+                <button id="btnVistaConfigHorarios" class="btn-tab" onclick="cambiarVistaConfig('horarios')">Horario de Atención</button>
+            </div>
+
+            <!-- SUB-SECCIÓN 1: GASTOS (Categorías) -->
+            <div id="vistaConfigGastos" style="display: block;">
+                <div style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.02); width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <div>
+                            <h2 style="font-weight: 500; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; color: var(--texto-oscuro);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Lista de Categorías de Gastos
+                            </h2>
+                            <p style="color: var(--texto-claro); font-size: 0.9rem; margin-top: 5px;">Crea, edita y gestiona las categorías para clasificar los movimientos de dinero.</p>
+                        </div>
+                        <button class="btn-primary" onclick="abrirModalNuevaCategoria()">+ Nueva Categoría</button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+                            <thead>
+                                <tr style="background-color: #1a252f; color: white;">
+                                    <th style="padding: 12px 15px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
+                                    <th style="padding: 12px 15px; font-weight: 500;">Nombre de la Categoría</th>
+                                    <th style="padding: 12px 15px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaConfigCategoriasBody">
+                                <tr><td colspan="3" style="text-align:center; padding:20px; color:var(--texto-claro);">Cargando categorías...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-SECCIÓN 2: SERVICIOS (Vacía por ahora) -->
+            <div id="vistaConfigServicios" style="display: none;">
+                <div style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.02); width: 100%; text-align: center; color: var(--texto-claro);">
+                    <p>Próximamente: Panel para editar Servicios y Precios... 🛠️</p>
+                </div>
+            </div>
+
+            <!-- SUB-SECCIÓN 3: HORARIOS (Vacía por ahora) -->
+            <div id="vistaConfigHorarios" style="display: none;">
+                <div style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.02); width: 100%; text-align: center; color: var(--texto-claro);">
+                    <p>Próximamente: Configuración de Horarios de Atención... ⏰</p>
+                </div>
+            </div>
+            
+        </section>
     </main>
 
     <!-- =========================================================================
@@ -696,6 +756,9 @@
             <div class="modal-header">
                 <h2>Nueva Categoría</h2>
             </div>
+        
+            <input type="hidden" id="idCategoriaOculto">
+            
             <div class="form-group">
                 <label>Nombre de la categoría</label>
                 <input type="text" id="nombreNuevaCategoriaInput" placeholder="Ej. Insumos, Limpieza...">

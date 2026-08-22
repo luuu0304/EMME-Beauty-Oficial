@@ -8,7 +8,8 @@
 // 6. MÓDULO DE GASTOS
 // 7. MÓDULO DE INGRESOS
 // 8. MÓDULO DE COBRO Y EXTRAS
-// 9 SECCIÓN: DASHBOARD Y MÉTRICAS
+// 9. MÓDULO CONFIGURACIÓN
+// 10. SECCIÓN: DASHBOARD Y MÉTRICAS
 // ==========================================================================
 
 
@@ -181,6 +182,7 @@ const seccionEmpleados = document.getElementById('seccionEmpleados');
 const seccionGastos = document.getElementById('seccionGastos');
 const seccionIngresos = document.getElementById('seccionIngresos');
 const seccionResumenes = document.getElementById('seccionResumenes');
+const seccionConfiguracion = document.getElementById('seccionConfiguracion');
 
 const tituloHeader = document.querySelector('.header h1');
 const btnNuevoTurno = document.getElementById('btnNuevoTurno');
@@ -190,6 +192,7 @@ const buscadorEmpleadas = document.getElementById('buscadorEmpleadas');
 const btnNuevaEmpleada = document.getElementById('btnNuevaEmpleada');
 const btnNuevoGasto = document.getElementById('btnNuevoGasto');
 const btnNuevoIngreso = document.getElementById('btnNuevoIngreso');
+const btnMenuConfig = document.getElementById('btnMenuConfig');
 
 // Función principal del menú
 botonesMenu.forEach(boton => {
@@ -203,6 +206,7 @@ botonesMenu.forEach(boton => {
         seccionGastos.style.display = 'none';
         if(seccionIngresos) seccionIngresos.style.display = 'none';
         if(seccionResumenes) seccionResumenes.style.display = 'none';
+        if(seccionConfiguracion) seccionConfiguracion.style.display = 'none';
 
         btnNuevoTurno.style.display = 'none';
         btnNuevaClienta.style.display = 'none';
@@ -252,6 +256,10 @@ botonesMenu.forEach(boton => {
         } else if (opcionSeleccionada === 'Resúmenes') {
             if(seccionResumenes) seccionResumenes.style.display = 'block';
             tituloHeader.textContent = 'Panel de Control';
+        } else if (opcionSeleccionada === 'Configuración') {
+            if(seccionConfiguracion) seccionConfiguracion.style.display = 'block';
+            tituloHeader.textContent = 'Configuración General';
+            cargarTablaConfigCategorias(); // Llamamos a la función que vamos a crear en el próximo paso
         }
     });
 });
@@ -1889,10 +1897,20 @@ async function eliminarGasto(id) {
     }
 }
 
+// --- MODAL DE CATEGORÍAS ---
 const modalCategoria = document.getElementById('modalNuevaCategoria');
 
 function abrirModalNuevaCategoria() {
+    document.getElementById('idCategoriaOculto').value = '';
     document.getElementById('nombreNuevaCategoriaInput').value = '';
+    // Si tenés un título en el modal, podés cambiarlo a "Nueva Categoría" acá
+    if (modalCategoria) modalCategoria.classList.add('active');
+}
+
+function editarCategoriaGasto(id, nombre) {
+    document.getElementById('idCategoriaOculto').value = id;
+    document.getElementById('nombreNuevaCategoriaInput').value = nombre;
+    // Podrías cambiar el título a "Editar Categoría" acá
     if (modalCategoria) modalCategoria.classList.add('active');
 }
 
@@ -1901,6 +1919,7 @@ function cerrarModalNuevaCategoria() {
 }
 
 async function guardarNuevaCategoria() {
+    const idOculto = document.getElementById('idCategoriaOculto').value;
     const nombre = document.getElementById('nombreNuevaCategoriaInput').value.trim();
     
     if (!nombre) {
@@ -1908,22 +1927,47 @@ async function guardarNuevaCategoria() {
         return;
     }
 
+    // Si hay un ID, editamos (PUT). Si no hay ID, creamos (POST).
+    const url = idOculto 
+        ? `http://localhost:3000/api/categorias-gastos/${idOculto}` 
+        : 'http://localhost:3000/api/categorias-gastos';
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
     try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos', {
-            method: 'POST',
+        const respuesta = await fetch(url, {
+            method: metodoElegido,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ Nombre: nombre })
         });
 
         if (respuesta.ok) {
-            mostrarNotificacion("¡Categoría creada con éxito!", "success");
+            mostrarNotificacion(idOculto ? "Categoría actualizada." : "¡Categoría creada!", "success");
             cerrarModalNuevaCategoria();
-            await cargarCategoriasGasto(); 
+            cargarTablaConfigCategorias(); // Recargamos la tabla de config
+            cargarCategoriasGasto();       // Recargamos el desplegable de gastos
         } else {
             mostrarNotificacion("Hubo un error al guardar la categoría.", "error");
         }
     } catch (error) {
-        console.error("Error conectando con el servidor:", error);
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+async function eliminarCategoriaGasto(id) {
+    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés borrar esta categoría? Si hay gastos registrados con ella, podrían quedar sin tipo.");
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/categorias-gastos/${id}`, { method: 'DELETE' });
+        if (respuesta.ok) {
+            mostrarNotificacion("Categoría eliminada con éxito.", "success");
+            cargarTablaConfigCategorias();
+            cargarCategoriasGasto();
+        } else {
+            mostrarNotificacion("No se pudo eliminar la categoría.", "error");
+        }
+    } catch (error) {
         mostrarNotificacion("Error de conexión.", "error");
     }
 }
@@ -2370,7 +2414,83 @@ async function guardarIngresoManual() {
 }
 
 // ==========================================================================
-// 9 SECCIÓN: DASHBOARD Y MÉTRICAS
+// 9. MÓDULO DE CONFIGURACIÓN
+// ==========================================================================
+async function cargarTablaConfigCategorias() {
+    const tbody = document.getElementById('tablaConfigCategoriasBody');
+    if (!tbody) return;
+    
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const categorias = await respuesta.json();
+        
+        tbody.innerHTML = '';
+        
+        if (categorias.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--texto-claro);">No hay categorías registradas.</td></tr>';
+            return;
+        }
+        
+        categorias.forEach(cat => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--borde)';
+            tr.innerHTML = `
+                <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${cat.Id_Categoria}</td>
+                <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${cat.Nombre}</td>
+                <td style="padding: 15px; text-align: center;">
+                    <!-- Botón Editar -->
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarCategoriaGasto(${cat.Id_Categoria}, '${cat.Nombre}')" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <!-- Botón Borrar -->
+                    <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarCategoriaGasto(${cat.Id_Categoria})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#d9534f;">Error al cargar la tabla.</td></tr>';
+    }
+}
+
+// --- NAVEGACIÓN INTERNA DE CONFIGURACIÓN ---
+function cambiarVistaConfig(vista) {
+    const vistaGastos = document.getElementById('vistaConfigGastos');
+    const vistaServicios = document.getElementById('vistaConfigServicios');
+    const vistaHorarios = document.getElementById('vistaConfigHorarios');
+    
+    const btnGastos = document.getElementById('btnVistaConfigGastos');
+    const btnServicios = document.getElementById('btnVistaConfigServicios');
+    const btnHorarios = document.getElementById('btnVistaConfigHorarios');
+
+    // Apagamos todas las vistas
+    vistaGastos.style.display = 'none';
+    vistaServicios.style.display = 'none';
+    vistaHorarios.style.display = 'none';
+    
+    // Le sacamos el color activo a todos los botones
+    btnGastos.classList.remove('active');
+    btnServicios.classList.remove('active');
+    btnHorarios.classList.remove('active');
+
+    // Prendemos solo la que nos interesa
+    if (vista === 'gastos') {
+        vistaGastos.style.display = 'block';
+        btnGastos.classList.add('active');
+    } else if (vista === 'servicios') {
+        vistaServicios.style.display = 'block';
+        btnServicios.classList.add('active');
+    } else if (vista === 'horarios') {
+        vistaHorarios.style.display = 'block';
+        btnHorarios.classList.add('active');
+    }
+}
+
+// ==========================================================================
+// 10. SECCIÓN: DASHBOARD Y MÉTRICAS
 // ==========================================================================
 
 // Helper: Formatea una fecha de JS a 'YYYY-MM-DD'
