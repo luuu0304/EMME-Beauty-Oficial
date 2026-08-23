@@ -104,3 +104,4 @@ CREATE TABLE Liquidacion_Sueldo (
     Detalle_JSON NVARCHAR(MAX) NULL
 );
 GO
+

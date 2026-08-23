@@ -56,7 +56,7 @@ window.addEventListener('DOMContentLoaded', () => {
             botonSeleccionado.click();
         }
     }
-    // 📅 Inicializar el calendario de rango (Flatpickr)
+    //  Inicializar el calendario de rango (Flatpickr)
     const inputRango = document.getElementById('rangoFechasCustomDash');
     if (inputRango) {
         flatpickr(inputRango, {
@@ -112,64 +112,64 @@ function pedirConfirmacion(mensaje) {
 }
 
 // ---------------------------------------------------------
-    // LÓGICA DE FILTROS ESTANDARIZADOS (Gastos e Ingresos)
-    // ---------------------------------------------------------
+// LÓGICA DE FILTROS ESTANDARIZADOS (Gastos e Ingresos)
+// ---------------------------------------------------------
 
-    // Inicializar Flatpickr para Gastos
-    const inputRangoGastos = document.getElementById('rangoFechaGastos');
-    if (inputRangoGastos) {
-        flatpickr(inputRangoGastos, {
-            mode: "range",
-            locale: "es",
-            dateFormat: "Y-m-d",
-            onChange: function(selectedDates) {
-                if (selectedDates.length === 2) aplicarFiltrosGastos(); // Llama a tu función de filtrado
-            }
-        });
-    }
+// Inicializar Flatpickr para Gastos
+const inputRangoGastos = document.getElementById('rangoFechaGastos');
+if (inputRangoGastos) {
+    flatpickr(inputRangoGastos, {
+        mode: "range",
+        locale: "es",
+        dateFormat: "Y-m-d",
+        onChange: function(selectedDates) {
+            if (selectedDates.length === 2) aplicarFiltrosGastos(); // Llama a tu función de filtrado
+        }
+    });
+}
 
-    // Alternar vista de filtros en Gastos
-    const modoGastos = document.getElementById('modoFechaGastos');
-    if (modoGastos) {
-        modoGastos.addEventListener('change', (e) => {
-            if (e.target.value === 'rango') {
-                document.getElementById('contenedorMesGastos').style.display = 'none';
-                inputRangoGastos.style.display = 'block';
-            } else {
-                document.getElementById('contenedorMesGastos').style.display = 'flex';
-                inputRangoGastos.style.display = 'none';
-                aplicarFiltrosGastos(); // Recalcula si volvemos a "Mes"
-            }
-        });
-    }
+// Alternar vista de filtros en Gastos
+const modoGastos = document.getElementById('modoFechaGastos');
+if (modoGastos) {
+    modoGastos.addEventListener('change', (e) => {
+        if (e.target.value === 'rango') {
+            document.getElementById('contenedorMesGastos').style.display = 'none';
+            inputRangoGastos.style.display = 'block';
+        } else {
+            document.getElementById('contenedorMesGastos').style.display = 'flex';
+            inputRangoGastos.style.display = 'none';
+            aplicarFiltrosGastos(); // Recalcula si volvemos a "Mes"
+        }
+    });
+}
 
-    // Inicializar Flatpickr para Ingresos
-    const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
-    if (inputRangoIngresos) {
-        flatpickr(inputRangoIngresos, {
-            mode: "range",
-            locale: "es",
-            dateFormat: "Y-m-d",
-            onChange: function(selectedDates) {
-                if (selectedDates.length === 2) filtrarIngresos(); // Llama a tu función de filtrado
-            }
-        });
-    }
+// Inicializar Flatpickr para Ingresos
+const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
+if (inputRangoIngresos) {
+    flatpickr(inputRangoIngresos, {
+        mode: "range",
+        locale: "es",
+        dateFormat: "Y-m-d",
+        onChange: function(selectedDates) {
+            if (selectedDates.length === 2) filtrarIngresos(); // Llama a tu función de filtrado
+        }
+    });
+}
 
-    // Alternar vista de filtros en Ingresos
-    const modoIngresos = document.getElementById('modoFechaIngresos');
-    if (modoIngresos) {
-        modoIngresos.addEventListener('change', (e) => {
-            if (e.target.value === 'rango') {
-                document.getElementById('contenedorMesIngresos').style.display = 'none';
-                inputRangoIngresos.style.display = 'block';
-            } else {
-                document.getElementById('contenedorMesIngresos').style.display = 'flex';
-                inputRangoIngresos.style.display = 'none';
-                filtrarIngresos(); // Recalcula si volvemos a "Mes"
-            }
-        });
-    }
+// Alternar vista de filtros en Ingresos
+const modoIngresos = document.getElementById('modoFechaIngresos');
+if (modoIngresos) {
+    modoIngresos.addEventListener('change', (e) => {
+        if (e.target.value === 'rango') {
+            document.getElementById('contenedorMesIngresos').style.display = 'none';
+            inputRangoIngresos.style.display = 'block';
+        } else {
+            document.getElementById('contenedorMesIngresos').style.display = 'flex';
+            inputRangoIngresos.style.display = 'none';
+            filtrarIngresos(); // Recalcula si volvemos a "Mes"
+        }
+    });
+}
 
 // ==========================================================================
 // 2. NAVEGACIÓN, MENÚ LATERAL Y PERSISTENCIA DE ESTADO
@@ -215,12 +215,11 @@ botonesMenu.forEach(boton => {
         buscadorClientas.style.display = 'none';
         if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'none';
         
-        // CORRECCIÓN: Ahora sí se oculta al cambiar de sección
         if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'none'; 
 
         const opcionSeleccionada = boton.textContent.trim();
 
-        // 🧠 MAGIA DE LA MASTER CLASS: Guardamos dónde hizo clic el usuario
+        // Guardamos dónde hizo clic el usuario
         localStorage.setItem('emme_seccion_activa', opcionSeleccionada);
 
         if (opcionSeleccionada === 'Turnos') {
@@ -251,7 +250,7 @@ botonesMenu.forEach(boton => {
         } else if (opcionSeleccionada === 'Ingresos') {
             if(seccionIngresos) seccionIngresos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Ingresos';
-            if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'block'; // <-- AGREGAR ESTO
+            if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'block'; 
             cargarIngresos();
         } else if (opcionSeleccionada === 'Resúmenes') {
             if(seccionResumenes) seccionResumenes.style.display = 'block';
@@ -259,7 +258,7 @@ botonesMenu.forEach(boton => {
         } else if (opcionSeleccionada === 'Configuración') {
             if(seccionConfiguracion) seccionConfiguracion.style.display = 'block';
             tituloHeader.textContent = 'Configuración General';
-            cargarTablaConfigCategorias(); // Llamamos a la función que vamos a crear en el próximo paso
+            cargarTablaConfigCategorias();
         }
     });
 });
@@ -470,7 +469,7 @@ async function guardarTurno() {
         });
 
         if (respuesta.ok) {
-            mostrarNotificacion("¡Turno agendado con éxito!", "success");
+            mostrarNotificacion("Turno agendado con éxito.", "success");
             cerrarModalTurno();
             setTimeout(() => { location.reload(); }, 1200);
         } else {
@@ -552,7 +551,6 @@ async function inicializarAgendaDiaria() {
             let htmlFilaEnPunto = `<div class="hora-col">${stringHoraEnPunto}</div>`;
             
             empleadas.forEach(emp => {
-                // CAMBIO ACÁ: Agregamos la clase col-emp-${emp.Id_Empleada}
                 htmlFilaEnPunto += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
             });
             
@@ -617,9 +615,8 @@ async function inicializarAgendaDiaria() {
     }
 }
 
-// NUEVA FUNCIÓN: Filtrar agenda al tocar los botones
+// Filtrar agenda al tocar los botones
 function filtrarAgendaPorArea(areaSeleccionada, botonClickeado) {
-    // 1. Efecto visual: despintar todos y pintar el seleccionado
     document.querySelectorAll('.filtro-btn').forEach(btn => {
         btn.style.background = 'white';
         btn.style.border = '1px solid #ccc';
@@ -627,17 +624,14 @@ function filtrarAgendaPorArea(areaSeleccionada, botonClickeado) {
     botonClickeado.style.background = '#e2e3e5';
     botonClickeado.style.border = 'none';
 
-    // 2. Buscar todas las columnas del encabezado
     const headers = document.querySelectorAll('#agendaHeader > div:not(.hora-col)');
 
     headers.forEach(header => {
         const areasDeLaChica = header.getAttribute('data-areas');
         
-        // Averiguar la clase que identifica a esta chica (ej. "col-emp-2")
         const claseColumna = Array.from(header.classList).find(c => c.startsWith('col-emp-'));
         const celdasDeLaChica = document.querySelectorAll(`.${claseColumna}`);
 
-        // 3. Mostrar u ocultar dependiendo de si hace el servicio
         if (areaSeleccionada === 'Todo' || (areasDeLaChica && areasDeLaChica.includes(areaSeleccionada))) {
             header.style.display = ''; 
             celdasDeLaChica.forEach(celda => celda.style.display = ''); 
@@ -678,7 +672,7 @@ function cambiarVistaAgenda(vista) {
         btnDiaria.classList.remove('active');
         
         inicializarAgendaSemanal();
-        cargarTurnosSemana(); // ¡Ahora sí está encendida!
+        cargarTurnosSemana(); 
     }
 }
 
@@ -688,7 +682,6 @@ async function cargarTurnosSemana() {
     if (!inputFecha || !inputFecha.value) return;
 
     try {
-        // 1. Calculamos cuál es el Lunes de esta semana
         const [año, mes, dia] = inputFecha.value.split('-');
         const fechaElegida = new Date(año, mes - 1, dia);
         
@@ -696,15 +689,13 @@ async function cargarTurnosSemana() {
         const fechaLunes = new Date(fechaElegida);
         fechaLunes.setDate(fechaElegida.getDate() - diaSemanaActual + 1);
 
-        // Limpiamos las celdas
         document.querySelectorAll('.celda-semanal').forEach(celda => {
             celda.innerHTML = '';
             celda.turnosAgrupados = []; 
         });
 
-        // 2. Buscamos los turnos día por día usando el endpoint que YA sabemos que funciona
         const todosLosTurnos = [];
-        for (let i = 0; i < 6; i++) { // De Lunes a Sábado
+        for (let i = 0; i < 6; i++) { 
             const fechaDia = new Date(fechaLunes);
             fechaDia.setDate(fechaLunes.getDate() + i);
             
@@ -716,11 +707,10 @@ async function cargarTurnosSemana() {
             const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${fechaStr}`);
             if (respuesta.ok) {
                 const turnosDia = await respuesta.json();
-                todosLosTurnos.push(...turnosDia); // Juntamos todo en una sola lista
+                todosLosTurnos.push(...turnosDia); 
             }
         }
 
-        // 3. Acomodamos cada turno en su celda
         todosLosTurnos.forEach(turno => {
             const fechaObj = new Date(turno.Fecha_Hora);
             const diaSemana = fechaObj.getDay(); 
@@ -737,7 +727,6 @@ async function cargarTurnosSemana() {
             }
         });
 
-        // 4. Dibujamos los botones
         document.querySelectorAll('.celda-semanal').forEach(celda => {
             const cantidad = celda.turnosAgrupados ? celda.turnosAgrupados.length : 0;
             
@@ -754,7 +743,6 @@ async function cargarTurnosSemana() {
                 boton.style.fontSize = '12px';
                 boton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
                 
-                // Usamos innerHTML en vez de textContent para poder inyectar el ícono SVG
                 boton.innerHTML = `
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;">
                         <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/>
@@ -772,21 +760,18 @@ async function cargarTurnosSemana() {
     }
 }
 
-// Función para abrir la ventanita con el detalle y habilitar el cobro
 function abrirModalTurnosAgrupados(turnos) {
     const modal = document.getElementById('modalTurnos');
     const contenido = document.getElementById('contenidoModalTurnos');
     const titulo = document.getElementById('tituloModalTurnos');
     
-    contenido.innerHTML = ''; // Limpiamos el modal anterior
+    contenido.innerHTML = ''; 
     
-    // Armamos el título con la hora exacta
     const fechaObj = new Date(turnos[0].Fecha_Hora);
     const horas = fechaObj.getHours().toString().padStart(2, '0');
     const minutos = fechaObj.getMinutes() < 30 ? '00' : '30';
     titulo.textContent = `Turnos de las ${horas}:${minutos} hs`;
 
-    // Armamos una tarjetita bonita por cada turno agendado
     turnos.forEach(turno => {
         const tarjeta = document.createElement('div');
         tarjeta.style.padding = '15px';
@@ -794,18 +779,14 @@ function abrirModalTurnosAgrupados(turnos) {
         tarjeta.style.borderRadius = '8px';
         tarjeta.style.borderLeft = `4px solid ${turno.Color || '#f6c23e'}`;
         tarjeta.style.backgroundColor = '#fafafa';
-        
-        // 1. NUEVO: Le ponemos el cursor de manito para que sea clickeable
         tarjeta.style.cursor = 'pointer'; 
 
-        // 2. NUEVO: Agregamos el evento click que abre el cobro
         tarjeta.onclick = () => {
-            modal.style.display = 'none'; // Cerramos esta lista primero
+            modal.style.display = 'none'; 
             
             const precioServicio = turno.Precio_Base || 0; 
             const senaPagada = turno.Sena_Monto || 0;
             
-            // Llamamos a la función que ya tenías hecha
             abrirModalDetalleTurno(
                 turno.Id_Turno, 
                 turno.Nombre_Clienta, 
@@ -844,17 +825,15 @@ function abrirModalTurnosAgrupados(turnos) {
     modal.style.display = 'flex';
 }
 
-// AGENDA SEMANAL: Dibujar grilla y Modal
 function inicializarAgendaSemanal() {
     const agendaBody = document.getElementById('agendaSemanalBody');
     if (!agendaBody) return;
     
-    agendaBody.innerHTML = ''; // Limpiamos por si había algo antes
+    agendaBody.innerHTML = ''; 
 
     const horaInicio = 9; 
     const horaFin = 20;   
 
-    // Recorremos desde las 9 hasta las 20 hs
     for (let hora = horaInicio; hora <= horaFin; hora++) {
         let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
         agendaBody.appendChild(crearFilaSemanal(stringHoraEnPunto));
@@ -869,15 +848,12 @@ function inicializarAgendaSemanal() {
 function crearFilaSemanal(hora) {
     let fila = document.createElement('div');
     fila.style.display = 'grid';
-    fila.style.gridTemplateColumns = '80px repeat(6, 1fr)'; // Igual que el header
+    fila.style.gridTemplateColumns = '80px repeat(6, 1fr)'; 
     fila.style.borderBottom = '1px solid #f0f0f0';
 
-    // 1. Columna de la hora
     let htmlFila = `<div class="hora-col" style="padding: 10px; color: #666; text-align: center; border-right: 1px solid #eee;">${hora}</div>`;
 
-    // 2. Columnas de los 6 días (Lunes a Sábado)
     for (let dia = 1; dia <= 6; dia++) {
-        // Le ponemos un id único a cada celda para encontrarla fácil después (ej: celda-sem-1-09:00)
         htmlFila += `<div id="celda-sem-${dia}-${hora}" class="celda-semanal" style="padding: 5px; border-right: 1px solid #eee; min-height: 40px; display: flex; justify-content: center; align-items: center;"></div>`;
     }
     
@@ -916,7 +892,7 @@ async function cargarTurnosAgenda() {
 
                 tarjeta.onclick = () => {
                     const precioServicio = turno.Precio_Base || 0; 
-                    const senaPagada = turno.Sena_Monto || 0; // <--- Agregamos esto
+                    const senaPagada = turno.Sena_Monto || 0; 
                     abrirModalDetalleTurno(
                         turno.Id_Turno, 
                         turno.Nombre_Clienta, 
@@ -940,13 +916,11 @@ async function cargarTurnosAgenda() {
     }
 }
 
-// Guarda la seña desde el detalle del turno sin tener que cobrar todo el servicio
 async function guardarSenaIndependiente() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const inputSena = document.getElementById('senaDetalleInput');
     const nuevaSena = parseFloat(inputSena.value) || 0;
     
-    // Sacamos el nombre de la clienta del texto para usarlo en el concepto del Ingreso
     let nombreClienta = document.getElementById('nombreClientaCobro').textContent;
     nombreClienta = nombreClienta.replace('Clienta: ', '').trim();
 
@@ -957,7 +931,7 @@ async function guardarSenaIndependiente() {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                Sena_Monto: nuevaSena, // <--- AHORA SÍ, CON EL NOMBRE CORRECTO
+                Sena_Monto: nuevaSena, 
                 Nombre_Clienta: nombreClienta 
             })
         });
@@ -1030,7 +1004,6 @@ function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
     
     abrirModal();
 }
-
 
 // --- Lógica del Historial Estético (Modal Perfil) ---
 function cerrarModalPerfil() {
@@ -1127,7 +1100,6 @@ async function cargarClientas() {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
         const clientas = await respuesta.json();
 
-        // Guardamos las clientas en memoria para que el buscador rápido funcione
         listaGlobalClientas = clientas;
 
         const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
@@ -1143,7 +1115,6 @@ async function cargarClientas() {
             }
             const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
 
-            // 1. Armamos la tarjeta para la vista de cuadrícula
             const tarjetaHTML = `
                 <div class="card item-clienta-busqueda"> 
                     <div class="card-header">
@@ -1158,20 +1129,14 @@ async function cargarClientas() {
                         <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                     </div>
                    <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
-                        <!-- Principal: Agendar Turno -->
                         <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
-                        
-                        <!-- Secundario: Ver ficha -->
                         <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
-                        
-                        <!-- Terciario: Editar -->
                         <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
                     </div>
                 </div>
             `;
             if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
 
-            // 2. Armamos la fila para la vista de listado
             const filaHTML = `
                 <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
                     <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
@@ -1227,7 +1192,7 @@ async function guardarClienta() {
         });
 
         if (respuesta.ok) {
-            const mensajeExito = idOculto ? "¡Datos actualizados con éxito!" : "¡Clienta registrada con éxito!";
+            const mensajeExito = idOculto ? "¡Datos actualizados con éxito!" : "Clienta registrada con éxito.";
             mostrarNotificacion(mensajeExito, "success");
             cerrarModal(); 
             cargarClientas(); 
@@ -1258,9 +1223,8 @@ if (inputBuscador) {
     });
 }
 
-let listaGlobalClientas = []; // Guarda las clientas para buscar rápido
+let listaGlobalClientas = []; 
 
-// Lógica del buscador desplegable inteligente
 document.addEventListener('DOMContentLoaded', () => {
     const inputBuscarClienta = document.getElementById('inputBuscarClientaTurno');
     const dropdownClientas = document.getElementById('dropdownClientas');
@@ -1271,7 +1235,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const texto = e.target.value.toLowerCase();
             dropdownClientas.innerHTML = '';
             
-            // Solo busca si escribiste 2 o más letras
             if (texto.length < 2) {
                 dropdownClientas.style.display = 'none';
                 inputClientaOculto.value = ''; 
@@ -1309,7 +1272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdownClientas.style.display = 'block';
         });
 
-        // Oculta la lista si hacen clic en otro lado
         document.addEventListener('click', (e) => {
             if(e.target !== inputBuscarClienta && e.target !== dropdownClientas) {
                 dropdownClientas.style.display = 'none';
@@ -1392,7 +1354,7 @@ async function guardarEmpleada() {
         });
 
         if (response.ok) {
-            const mensajeExito = idOculto ? "¡Datos actualizados con éxito!" : "¡Profesional registrada con éxito!";
+            const mensajeExito = idOculto ? "¡Datos actualizados con éxito!" : "Profesional registrada con éxito.";
             mostrarNotificacion(mensajeExito, "success");
             
             cerrarModalEmpleada();
@@ -1428,11 +1390,9 @@ async function cargarEmpleadas() {
         contenedor.innerHTML = '';
         
         empleadas.forEach(empleada => {
-            // Definimos las iniciales y el DNI
             const inicial = empleada.Nombre_Ap[0].toUpperCase();
             const dniText = empleada.DNI || empleada.dni || '-';
 
-            // Armamos el textito de la última liquidación
             let infoUltimaLiq = '<span style="font-size: 12px; color: #aaa; font-style: italic;">Sin pagos previos registrados</span>';
             
             if (empleada.Ultima_Fecha_Liq) {
@@ -1443,7 +1403,6 @@ async function cargarEmpleadas() {
                 infoUltimaLiq = `<span style="font-size: 12px; color: #666; font-weight: 500;">Última liq: <strong>$${montoLimpio}</strong> el ${fechaLimpia}</span>`;
             }
 
-            // Armamos la tarjeta integrando el nuevo dato
             const tarjetaHTML = `
                 <div class="card">
                     <div class="card-header">
@@ -1461,7 +1420,6 @@ async function cargarEmpleadas() {
                             $${empleada.Saldo_Acumulado.toLocaleString('es-AR')}
                         </strong>
                         
-                        <!-- ACÁ APARECE LA INFO DE LA ÚLTIMA LIQUIDACIÓN -->
                         <div style="margin-bottom: 15px; border-top: 1px dashed #ddd; padding-top: 8px;">
                             ${infoUltimaLiq}
                         </div>
@@ -1514,7 +1472,6 @@ function cerrarModalDetalleSueldo() {
     if (modal) modal.classList.remove('active');
 }
 
-// Visualizar qué compone el saldo a favor
 async function verDetalleSueldo(idEmpleada, nombre) {
     document.getElementById('tituloModalDetalleSueldo').textContent = `Detalle de ${nombre}`;
     const tbody = document.getElementById('tablaDetalleSueldoBody');
@@ -1555,7 +1512,6 @@ async function verDetalleSueldo(idEmpleada, nombre) {
     }
 }
 
-// Vaciar la caja y registrar el pago
 async function liquidarSueldo(idEmpleada, nombre) {
     const confirmacion = await pedirConfirmacion(`¿Confirmás la liquidación del sueldo pendiente para ${nombre}? Esta acción dejará su caja en cero.`);
     if (!confirmacion) return;
@@ -1634,7 +1590,6 @@ async function abrirModalEspecialidades(idEmpleada, nombre) {
             contenedor.appendChild(div);
         });
 
-        // Activar o desactivar el porcentaje si tildan la casilla
         const checkboxes = contenedor.querySelectorAll('.check-area');
         checkboxes.forEach(chk => {
             chk.addEventListener('change', function() {
@@ -1761,16 +1716,13 @@ function aplicarFiltrosGastos() {
     const catSeleccionada = document.getElementById('filtroCategoriaGasto').value;
     const modoFecha = document.getElementById('modoFechaGastos').value;
 
-    // Variables para el modo 'Mes y Año'
     const mesSeleccionado = document.getElementById('filtroMesGasto').value;
     const anioSeleccionado = document.getElementById('filtroAnioGasto').value;
 
-    // Variables para el modo 'Rango Personalizado'
     const rangoValor = document.getElementById('rangoFechaGastos').value;
     let fechaDesde = null, fechaHasta = null;
 
     if (modoFecha === 'rango' && rangoValor) {
-        // Flatpickr separa el rango con " a " o " to "
         if (rangoValor.includes(' a ')) {
             [fechaDesde, fechaHasta] = rangoValor.split(' a ');
         } else if (rangoValor.includes(' to ')) {
@@ -1782,14 +1734,11 @@ function aplicarFiltrosGastos() {
     }
 
     const gastosFiltrados = memoriaGastos.filter(gasto => {
-        // 1. Validar Filtro de Categoría
         const categoriaGasto = gasto.Nombre_Categoria || 'Sin tipo';
         const pasaFiltroCat = (catSeleccionada === 'todas') || (categoriaGasto === catSeleccionada);
 
-        // 2. Validar Filtro de Fecha
         let pasaFiltroFecha = true;
         
-        // Formateamos la fecha del gasto para que sea fácil de comparar (YYYY-MM-DD)
         const fechaObj = new Date(gasto.Fecha);
         const anioGasto = fechaObj.getUTCFullYear().toString();
         const mesGasto = fechaObj.getUTCMonth().toString();
@@ -1899,81 +1848,6 @@ async function eliminarGasto(id) {
     }
 }
 
-// --- MODAL DE CATEGORÍAS ---
-const modalCategoria = document.getElementById('modalNuevaCategoria');
-
-function abrirModalNuevaCategoria() {
-    document.getElementById('idCategoriaOculto').value = '';
-    document.getElementById('nombreNuevaCategoriaInput').value = '';
-    // Si tenés un título en el modal, podés cambiarlo a "Nueva Categoría" acá
-    if (modalCategoria) modalCategoria.classList.add('active');
-}
-
-function editarCategoriaGasto(id, nombre) {
-    document.getElementById('idCategoriaOculto').value = id;
-    document.getElementById('nombreNuevaCategoriaInput').value = nombre;
-    // Podrías cambiar el título a "Editar Categoría" acá
-    if (modalCategoria) modalCategoria.classList.add('active');
-}
-
-function cerrarModalNuevaCategoria() {
-    if (modalCategoria) modalCategoria.classList.remove('active');
-}
-
-async function guardarNuevaCategoria() {
-    const idOculto = document.getElementById('idCategoriaOculto').value;
-    const nombre = document.getElementById('nombreNuevaCategoriaInput').value.trim();
-    
-    if (!nombre) {
-        mostrarNotificacion("Por favor, escribí un nombre para la categoría.", "warning");
-        return;
-    }
-
-    // Si hay un ID, editamos (PUT). Si no hay ID, creamos (POST).
-    const url = idOculto 
-        ? `http://localhost:3000/api/categorias-gastos/${idOculto}` 
-        : 'http://localhost:3000/api/categorias-gastos';
-    const metodoElegido = idOculto ? 'PUT' : 'POST';
-
-    try {
-        const respuesta = await fetch(url, {
-            method: metodoElegido,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Nombre: nombre })
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion(idOculto ? "Categoría actualizada." : "¡Categoría creada!", "success");
-            cerrarModalNuevaCategoria();
-            cargarTablaConfigCategorias(); // Recargamos la tabla de config
-            cargarCategoriasGasto();       // Recargamos el desplegable de gastos
-        } else {
-            mostrarNotificacion("Hubo un error al guardar la categoría.", "error");
-        }
-    } catch (error) {
-        console.error(error);
-        mostrarNotificacion("Error de conexión.", "error");
-    }
-}
-
-async function eliminarCategoriaGasto(id) {
-    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés borrar esta categoría? Si hay gastos registrados con ella, podrían quedar sin tipo.");
-    if (!confirmacion) return;
-
-    try {
-        const respuesta = await fetch(`http://localhost:3000/api/categorias-gastos/${id}`, { method: 'DELETE' });
-        if (respuesta.ok) {
-            mostrarNotificacion("Categoría eliminada con éxito.", "success");
-            cargarTablaConfigCategorias();
-            cargarCategoriasGasto();
-        } else {
-            mostrarNotificacion("No se pudo eliminar la categoría.", "error");
-        }
-    } catch (error) {
-        mostrarNotificacion("Error de conexión.", "error");
-    }
-}
-
 
 // ==========================================================================
 // 7. MÓDULO DE INGRESOS
@@ -2027,7 +1901,6 @@ async function cargarIngresos() {
 }
 
 function filtrarIngresos() {
-    // Actualizado al nuevo ID del HTML
     const inputBuscador = document.getElementById('buscadorIngresosTexto');
     const textoBuscado = inputBuscador ? inputBuscador.value.toLowerCase() : '';
     
@@ -2053,20 +1926,18 @@ function filtrarIngresos() {
     let sumaTotal = 0; 
 
     filas.forEach(fila => {
-        if (fila.cells.length === 1) return; // Ignora la fila de "Cargando..."
+        if (fila.cells.length === 1) return;
 
         const contenidoFila = fila.textContent.toLowerCase();
-        const fechaFila = fila.getAttribute('data-fecha'); // Lee la fecha oculta en el HTML (YYYY-MM-DD)
+        const fechaFila = fila.getAttribute('data-fecha'); 
 
-        // 1. Filtro de Texto (Clienta, servicio, etc.)
         const cumpleTexto = contenidoFila.includes(textoBuscado);
 
-        // 2. Filtro de Fecha
         let cumpleFecha = true;
         if (fechaFila) {
             if (modoFecha === 'mes') {
                 const anioFila = fechaFila.substring(0, 4);
-                const mesFila = (parseInt(fechaFila.substring(5, 7)) - 1).toString(); // De 01-12 a 0-11
+                const mesFila = (parseInt(fechaFila.substring(5, 7)) - 1).toString(); 
                 
                 const pasaMes = (mesSeleccionado === 'todos') || (mesFila === mesSeleccionado);
                 const pasaAnio = (anioSeleccionado === 'todos') || (anioFila === anioSeleccionado);
@@ -2076,7 +1947,6 @@ function filtrarIngresos() {
             }
         }
 
-        // Aplicamos el resultado y sumamos la plata
         if (cumpleTexto && cumpleFecha) {
             fila.style.display = '';
             
@@ -2104,7 +1974,6 @@ function filtrarIngresos() {
 
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 let precioBaseActual = 0;
-const SENA_ABONADA = 8000; 
 
 function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0) {
     precioBaseActual = parseFloat(precioBase) || 0;
@@ -2113,11 +1982,9 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     document.getElementById('idTurnoCobroOculto').value = idTurno;
     document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
     
-    // Corregido: el parámetro se llama nombreServicio
     document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${nombreServicio}`;
     document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
     
-    // --- NUEVO: Mostrar la seña en los campos ---
     const inputSena = document.getElementById('senaDetalleInput');
     if (inputSena) inputSena.value = senaActual;
     
@@ -2125,7 +1992,6 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     if (textoDetalleSena) {
         textoDetalleSena.textContent = `Seña abonada: -$${senaActual.toLocaleString('es-AR')}`;
     }
-    // ------------------------------------------
 
     document.getElementById('colorTurnoInput').value = '';
     
@@ -2147,7 +2013,6 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     const inputDescuento = document.getElementById('descuentoCobroInput');
     const checkboxes = document.querySelectorAll('.check-extra');
     
-    // Capturamos el botón de actualizar seña para poder bloquearlo si es necesario
     const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
     
     if (estado === 'Pagado') {
@@ -2185,7 +2050,6 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     document.getElementById('descuentoCobroInput').value = 0;
     checkboxes.forEach(chk => chk.checked = false);
     
-    // Si la tenés definida, esto recalcula la matemática final
     if (typeof recalcularTotalCobro === 'function') {
         recalcularTotalCobro();
     }
@@ -2277,7 +2141,6 @@ function recalcularTotalCobro() {
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
 
-    // LEEMOS EL VALOR REAL DE LA SEÑA DESDE EL INPUT
     const senaInput = document.getElementById('senaDetalleInput').value;
     const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
 
@@ -2288,13 +2151,11 @@ function recalcularTotalCobro() {
     document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
 }
 
-// Escuchamos cambios en Descuento
 const inputDescuento = document.getElementById('descuentoCobroInput');
 if (inputDescuento) {
     inputDescuento.addEventListener('input', recalcularTotalCobro);
 }
 
-// Escuchamos cambios en Seña para actualizar en tiempo real
 const inputSenaDetalle = document.getElementById('senaDetalleInput');
 if (inputSenaDetalle) {
     inputSenaDetalle.addEventListener('input', recalcularTotalCobro);
@@ -2307,7 +2168,6 @@ async function confirmarCobroTurno() {
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
     
-    // LEEMOS LA SEÑA ACÁ TAMBIÉN
     const senaInput = document.getElementById('senaDetalleInput').value;
     const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
     
@@ -2359,14 +2219,11 @@ async function confirmarCobroTurno() {
 const modalNuevoIngreso = document.getElementById('modalNuevoIngreso');
 
 function abrirModalNuevoIngreso() {
-    // 1. Limpiamos los campos
     document.getElementById('conceptoIngresoManual').value = '';
     document.getElementById('montoIngresoManual').value = '';
     
-    // 2. Buscamos el modal en el HTML (asegurate de que el ID sea correcto)
     const modal = document.getElementById('modalNuevoIngreso');
     
-    // 3. Lo abrimos
     if (modal) {
         modal.classList.add('active');
     } else {
@@ -2418,6 +2275,44 @@ async function guardarIngresoManual() {
 // ==========================================================================
 // 9. MÓDULO DE CONFIGURACIÓN
 // ==========================================================================
+
+// --- NAVEGACIÓN INTERNA DE CONFIGURACIÓN ---
+function cambiarVistaConfig(vista) {
+    const vistaGastos = document.getElementById('vistaConfigGastos');
+    const vistaServicios = document.getElementById('vistaConfigServicios');
+    const vistaHorarios = document.getElementById('vistaConfigHorarios');
+    
+    const btnGastos = document.getElementById('btnVistaConfigGastos');
+    const btnServicios = document.getElementById('btnVistaConfigServicios');
+    const btnHorarios = document.getElementById('btnVistaConfigHorarios');
+
+    vistaGastos.style.display = 'none';
+    vistaServicios.style.display = 'none';
+    vistaHorarios.style.display = 'none';
+    
+    btnGastos.classList.remove('active');
+    btnServicios.classList.remove('active');
+    btnHorarios.classList.remove('active');
+
+    if (vista === 'gastos') {
+        vistaGastos.style.display = 'block';
+        btnGastos.classList.add('active');
+    } else if (vista === 'servicios') {
+        vistaServicios.style.display = 'block';
+        btnServicios.classList.add('active');
+        cargarTablaConfigServicios();
+        cargarTablaConfigAreas();
+    } else if (vista === 'horarios') {
+        vistaHorarios.style.display = 'block';
+        btnHorarios.classList.add('active');
+    }
+}
+
+// ==========================================
+// CONFIGURACIÓN DE GASTOS (CATEGORÍAS)
+// ==========================================
+const modalCategoria = document.getElementById('modalNuevaCategoria');
+
 async function cargarTablaConfigCategorias() {
     const tbody = document.getElementById('tablaConfigCategoriasBody');
     if (!tbody) return;
@@ -2440,11 +2335,9 @@ async function cargarTablaConfigCategorias() {
                 <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${cat.Id_Categoria}</td>
                 <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${cat.Nombre}</td>
                 <td style="padding: 15px; text-align: center;">
-                    <!-- Botón Editar -->
                     <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarCategoriaGasto(${cat.Id_Categoria}, '${cat.Nombre}')" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
-                    <!-- Botón Borrar -->
                     <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarCategoriaGasto(${cat.Id_Categoria})" title="Eliminar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
@@ -2458,36 +2351,325 @@ async function cargarTablaConfigCategorias() {
     }
 }
 
-// --- NAVEGACIÓN INTERNA DE CONFIGURACIÓN ---
-function cambiarVistaConfig(vista) {
-    const vistaGastos = document.getElementById('vistaConfigGastos');
-    const vistaServicios = document.getElementById('vistaConfigServicios');
-    const vistaHorarios = document.getElementById('vistaConfigHorarios');
-    
-    const btnGastos = document.getElementById('btnVistaConfigGastos');
-    const btnServicios = document.getElementById('btnVistaConfigServicios');
-    const btnHorarios = document.getElementById('btnVistaConfigHorarios');
+function abrirModalNuevaCategoria() {
+    document.getElementById('idCategoriaOculto').value = '';
+    document.getElementById('nombreNuevaCategoriaInput').value = '';
+    if (modalCategoria) modalCategoria.classList.add('active');
+}
 
-    // Apagamos todas las vistas
-    vistaGastos.style.display = 'none';
-    vistaServicios.style.display = 'none';
-    vistaHorarios.style.display = 'none';
-    
-    // Le sacamos el color activo a todos los botones
-    btnGastos.classList.remove('active');
-    btnServicios.classList.remove('active');
-    btnHorarios.classList.remove('active');
+function editarCategoriaGasto(id, nombre) {
+    document.getElementById('idCategoriaOculto').value = id;
+    document.getElementById('nombreNuevaCategoriaInput').value = nombre;
+    if (modalCategoria) modalCategoria.classList.add('active');
+}
 
-    // Prendemos solo la que nos interesa
-    if (vista === 'gastos') {
-        vistaGastos.style.display = 'block';
-        btnGastos.classList.add('active');
-    } else if (vista === 'servicios') {
-        vistaServicios.style.display = 'block';
-        btnServicios.classList.add('active');
-    } else if (vista === 'horarios') {
-        vistaHorarios.style.display = 'block';
-        btnHorarios.classList.add('active');
+function cerrarModalNuevaCategoria() {
+    if (modalCategoria) modalCategoria.classList.remove('active');
+}
+
+async function guardarNuevaCategoria() {
+    const idOculto = document.getElementById('idCategoriaOculto').value;
+    const nombre = document.getElementById('nombreNuevaCategoriaInput').value.trim();
+    
+    if (!nombre) {
+        mostrarNotificacion("Por favor, escribí un nombre para la categoría.", "warning");
+        return;
+    }
+
+    const url = idOculto 
+        ? `http://localhost:3000/api/categorias-gastos/${idOculto}` 
+        : 'http://localhost:3000/api/categorias-gastos';
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
+    try {
+        const respuesta = await fetch(url, {
+            method: metodoElegido,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Nombre: nombre })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion(idOculto ? "Categoría actualizada." : "¡Categoría creada!", "success");
+            cerrarModalNuevaCategoria();
+            cargarTablaConfigCategorias(); 
+            cargarCategoriasGasto();       
+        } else {
+            mostrarNotificacion("Hubo un error al guardar la categoría.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+async function eliminarCategoriaGasto(id) {
+    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés borrar esta categoría? Si hay gastos registrados con ella, podrían quedar sin tipo.");
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/categorias-gastos/${id}`, { method: 'DELETE' });
+        if (respuesta.ok) {
+            mostrarNotificacion("Categoría eliminada con éxito.", "success");
+            cargarTablaConfigCategorias();
+            cargarCategoriasGasto();
+        } else {
+            mostrarNotificacion("No se pudo eliminar la categoría.", "error");
+        }
+    } catch (error) {
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+
+// ==========================================
+// CONFIGURACIÓN DE SERVICIOS
+// ==========================================
+const modalServicio = document.getElementById('modalNuevoServicio');
+
+async function cargarTablaConfigServicios() {
+    const tbody = document.getElementById('tablaConfigServiciosBody');
+    if (!tbody) return;
+    
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/servicios');
+        const servicios = await respuesta.json();
+        
+        tbody.innerHTML = '';
+        
+        if (servicios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--texto-claro);">No hay servicios registrados.</td></tr>';
+            return;
+        }
+        
+        servicios.forEach(srv => {
+            const precioSeguro = Number(srv.Precio_Base || srv.precio_base || srv.precioBase || srv.Precio || srv.precio || 0);
+            const areaSegura = srv.Area || srv.area || srv.Id_Area || srv.id_area || 'Sin área';
+
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--borde)';
+            tr.innerHTML = `
+                <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${srv.Id_Servicio || srv.id_servicio}</td>
+                <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${srv.Nombre || srv.nombre}</td>
+                <td style="padding: 15px; color: var(--texto-claro);"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${areaSegura}</span></td>
+                <td style="padding: 15px; font-weight: 600; color: #28a745;">$${precioSeguro.toLocaleString('es-AR')}</td>
+                <td style="padding: 15px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarServicio(${srv.Id_Servicio || srv.id_servicio}, '${srv.Nombre || srv.nombre}', '${srv.Id_Area || srv.id_area || ''}', ${precioSeguro})" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarServicio(${srv.Id_Servicio || srv.id_servicio})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#d9534f;">Error al cargar la tabla.</td></tr>';
+    }
+}
+
+async function cargarAreasEnModal() {
+    try {
+        const res = await fetch('http://localhost:3000/api/areas'); 
+        const areas = await res.json();
+        const select = document.getElementById('areaNuevoServicioInput');
+        select.innerHTML = '<option value="">Seleccionar área...</option>';
+        areas.forEach(a => {
+            select.innerHTML += `<option value="${a.Id_Area || a.id_area}">${a.Area || a.area}</option>`; 
+        });
+    } catch(error) {
+        console.error("Error al cargar las áreas:", error);
+    }
+}
+
+async function abrirModalNuevoServicio() {
+    document.getElementById('tituloModalServicio').textContent = 'Nuevo Servicio';
+    document.getElementById('idServicioOculto').value = '';
+    document.getElementById('nombreNuevoServicioInput').value = '';
+    document.getElementById('precioNuevoServicioInput').value = '';
+    await cargarAreasEnModal();
+    if (modalServicio) modalServicio.classList.add('active');
+}
+
+async function editarServicio(id, nombre, area, precio) {
+    document.getElementById('tituloModalServicio').textContent = 'Editar Servicio';
+    document.getElementById('idServicioOculto').value = id;
+    document.getElementById('nombreNuevoServicioInput').value = nombre;
+    document.getElementById('precioNuevoServicioInput').value = precio;
+    await cargarAreasEnModal();
+    document.getElementById('areaNuevoServicioInput').value = area;
+    if (modalServicio) modalServicio.classList.add('active');
+}
+
+function cerrarModalNuevoServicio() {
+    if (modalServicio) modalServicio.classList.remove('active');
+}
+
+async function guardarNuevoServicio() {
+    const idOculto = document.getElementById('idServicioOculto').value;
+    const nombre = document.getElementById('nombreNuevoServicioInput').value.trim();
+    const area = document.getElementById('areaNuevoServicioInput').value;
+    const precio = document.getElementById('precioNuevoServicioInput').value;
+    
+    if (!nombre || !area || !precio) {
+        mostrarNotificacion("Por favor completá todos los campos.", "warning");
+        return;
+    }
+
+    const url = idOculto 
+        ? `http://localhost:3000/api/servicios/${idOculto}` 
+        : 'http://localhost:3000/api/servicios';
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
+    try {
+        const respuesta = await fetch(url, {
+            method: metodoElegido,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Nombre: nombre, Id_Area: area, Precio_Base: parseFloat(precio) })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion(idOculto ? "Servicio actualizado con éxito." : "¡Servicio creado!", "success");
+            cerrarModalNuevoServicio();
+            cargarTablaConfigServicios(); 
+        } else {
+            mostrarNotificacion("Hubo un error al guardar.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+async function eliminarServicio(id) {
+    const confirmacion = await pedirConfirmacion("¿Atención: estás segura de que querés borrar este servicio? Esto podría afectar turnos e ingresos pasados vinculados.");
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/servicios/${id}`, { method: 'DELETE' });
+        if (respuesta.ok) {
+            mostrarNotificacion("Servicio eliminado con éxito.", "success");
+            cargarTablaConfigServicios();
+        } else {
+            mostrarNotificacion("No se pudo eliminar el servicio.", "error");
+        }
+    } catch (error) {
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+// ==========================================
+// CONFIGURACIÓN DE ÁREAS (CATEGORÍAS)
+// ==========================================
+const modalArea = document.getElementById('modalNuevaArea');
+
+async function cargarTablaConfigAreas() {
+    const tbody = document.getElementById('tablaConfigAreasBody');
+    if (!tbody) return;
+    
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const areas = await respuesta.json();
+        
+        tbody.innerHTML = '';
+        
+        if (areas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--texto-claro);">No hay áreas registradas.</td></tr>';
+            return;
+        }
+        
+        areas.forEach(a => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--borde)';
+            tr.innerHTML = `
+                <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${a.Id_Area || a.id_area}</td>
+                <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${a.Area || a.area}</td>
+                <td style="padding: 15px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarArea(${a.Id_Area || a.id_area}, '${a.Area || a.area}')" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarArea(${a.Id_Area || a.id_area})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#d9534f;">Error al cargar la tabla de áreas.</td></tr>';
+    }
+}
+
+function abrirModalNuevaArea() {
+    document.getElementById('tituloModalArea').textContent = 'Nueva Área';
+    document.getElementById('idAreaOculto').value = '';
+    document.getElementById('nombreNuevaAreaInput').value = '';
+    if (modalArea) modalArea.classList.add('active');
+}
+
+function editarArea(id, nombre) {
+    document.getElementById('tituloModalArea').textContent = 'Editar Área';
+    document.getElementById('idAreaOculto').value = id;
+    document.getElementById('nombreNuevaAreaInput').value = nombre;
+    if (modalArea) modalArea.classList.add('active');
+}
+
+function cerrarModalArea() {
+    if (modalArea) modalArea.classList.remove('active');
+}
+
+async function guardarArea() {
+    const idOculto = document.getElementById('idAreaOculto').value;
+    const nombre = document.getElementById('nombreNuevaAreaInput').value.trim();
+    
+    if (!nombre) {
+        mostrarNotificacion("Por favor ingresá un nombre para el área.", "warning");
+        return;
+    }
+
+    const url = idOculto 
+        ? `http://localhost:3000/api/areas/${idOculto}` 
+        : 'http://localhost:3000/api/areas';
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
+    try {
+        const respuesta = await fetch(url, {
+            method: metodoElegido,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Area: nombre })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion(idOculto ? "Área actualizada." : "Área creada.", "success");
+            cerrarModalArea();
+            cargarTablaConfigAreas(); 
+            if (typeof cargarAreasEnModal === 'function') cargarAreasEnModal();
+        } else {
+            mostrarNotificacion("Hubo un error al guardar el área.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+async function eliminarArea(id) {
+    const confirmacion = await pedirConfirmacion("¿Atención: borrar esta área podría dejar a los servicios asociados sin categoría. ¿Confirmás?");
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/areas/${id}`, { method: 'DELETE' });
+        if (respuesta.ok) {
+            mostrarNotificacion("Área eliminada.", "success");
+            cargarTablaConfigAreas();
+            if (typeof cargarAreasEnModal === 'function') cargarAreasEnModal();
+        } else {
+            mostrarNotificacion("No se pudo eliminar el área.", "error");
+        }
+    } catch (error) {
+        mostrarNotificacion("Error de conexión.", "error");
     }
 }
 
@@ -2655,7 +2837,7 @@ async function cargarGraficoDashboard(desde, hasta) {
                 datasets: [{
                     label: 'Cantidad de Turnos',
                     data: valoresTurnos, 
-                    backgroundColor: '#daab53', // ¡ACÁ ESTÁ EL COLOR ARENA/NUDE!
+                    backgroundColor: '#daab53', 
                     borderRadius: 6 
                 }]
             },
@@ -2694,12 +2876,12 @@ async function cargarGraficoDashboard(desde, hasta) {
                     datasets: [{
                         label: 'Veces realizado',
                         data: valoresCantidades,
-                        backgroundColor: 'rgba(40, 167, 69, 0.7)', // El verde de la "Ganancia Neta"
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)', 
                         borderRadius: 4
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // ESTO ES LA MAGIA QUE LO HACE HORIZONTAL
+                    indexAxis: 'y', 
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },

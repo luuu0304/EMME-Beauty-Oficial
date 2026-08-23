@@ -10,7 +10,7 @@ const port = 3000;
 // 1. MIDDLEWARES & CONFIGURACIÓN
 // 2. RUTAS: CLIENTAS
 // 3. RUTAS: EMPLEADAS
-// 4. RUTAS: SERVICIOS & EXTRAS
+// 4. RUTAS: SERVICIOS, ÁREAS & EXTRAS
 // 5. RUTAS: TURNOS & AGENDA
 // 6. RUTAS: GASTOS & CATEGORÍAS
 // 7. RUTAS: INGRESOS & COBROS
@@ -32,14 +32,14 @@ const dbConfig = {
     database: 'EmmE_Beauty_V2',
     options: {
         encrypt: true,
-        trustServerCertificate: true, // Fundamental para Mac/Docker
-        useUTC: false // Fix de Zona Horaria
+        trustServerCertificate: true,
+        useUTC: false
     }
 };
 
 // Ruta base de testeo
 app.get('/', (req, res) => {
-    res.send('¡Hola! El backend de EMME Beauty está vivo 💅✨');
+    res.send('¡Hola! El backend de EMME Beauty está vivo ');
 });
 
 
@@ -59,7 +59,7 @@ app.get('/api/clientas', async (req, res) => {
     }
 });
 
-// Registrar una nueva clienta (Devuelve el ID generado)
+// Registrar una nueva clienta
 app.post('/api/clientas', async (req, res) => {
     try {
         const { Nombre, Apellido, Fecha_Nac, Telefono, Ig } = req.body;
@@ -161,17 +161,17 @@ app.get('/api/empleadas', async (req, res) => {
                 ISNULL(Saldo.Saldo_Acumulado, 0) AS Saldo_Acumulado,
                 UltimaLiq.Fecha AS Ultima_Fecha_Liq,
                 UltimaLiq.Monto_Total AS Ultimo_Monto_Liq,
-                AreasInfo.Areas -- NUEVO: Traemos el texto con las áreas
+                AreasInfo.Areas
             FROM Empleada e
             
-            -- 1. Subconsulta para el saldo acumulado actual
             LEFT JOIN (
                 SELECT 
                     t.Id_Empleada, 
                     SUM((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS Saldo_Acumulado
                 FROM Turno t
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND s.Area = ea.Area
+                LEFT JOIN Area a ON s.Id_Area = a.Id_Area 
+                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND a.Nombre = ea.Area 
                 LEFT JOIN (
                     SELECT Id_Turno, SUM(Precio) as Total_Extras
                     FROM Turno_Extra te
@@ -182,7 +182,6 @@ app.get('/api/empleadas', async (req, res) => {
                 GROUP BY t.Id_Empleada
             ) Saldo ON e.Id_Empleada = Saldo.Id_Empleada
             
-            -- 2. Subconsulta para buscar el último recibo emitido
             OUTER APPLY (
                 SELECT TOP 1 Fecha, Monto_Total
                 FROM Liquidacion_Sueldo ls
@@ -190,7 +189,6 @@ app.get('/api/empleadas', async (req, res) => {
                 ORDER BY Fecha DESC
             ) UltimaLiq
 
-            -- 3. NUEVO: Subconsulta para traer las áreas separadas por coma
             OUTER APPLY (
                 SELECT STRING_AGG(ea.Area, ',') AS Areas
                 FROM Empleada_Area ea
@@ -205,7 +203,7 @@ app.get('/api/empleadas', async (req, res) => {
     }
 });
 
-// Obtener empleadas habilitadas según el servicio (Filtro Inteligente)
+// Obtener empleadas habilitadas según el servicio
 app.get('/api/empleadas/servicio/:idServicio', async (req, res) => {
     try {
         const { idServicio } = req.params;
@@ -219,7 +217,8 @@ app.get('/api/empleadas/servicio/:idServicio', async (req, res) => {
                     '' AS Apellido 
                 FROM Empleada e
                 JOIN Empleada_Area ea ON e.Id_Empleada = ea.Id_Empleada
-                JOIN Servicio s ON ea.Area = s.Area
+                JOIN Area a ON ea.Area = a.Nombre
+                JOIN Servicio s ON a.Id_Area = s.Id_Area
                 WHERE s.Id_Servicio = @Id_Servicio
             `);
             
@@ -309,7 +308,8 @@ app.get('/api/empleadas/:id/sueldo-detalle', async (req, res) => {
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND s.Area = ea.Area
+                LEFT JOIN Area a ON s.Id_Area = a.Id_Area
+                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND a.Nombre = ea.Area
                 LEFT JOIN (
                     SELECT Id_Turno, SUM(Precio) as Total_Extras
                     FROM Turno_Extra te
@@ -339,7 +339,6 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
         await transaction.begin();
         
         try {
-            // 1. Calcular cuánto se le debe exactamente en este momento para evitar errores
             const requestCalc = new sql.Request(transaction);
             const resultCalc = await requestCalc
                 .input('Id_Empleada', sql.Int, id)
@@ -348,7 +347,8 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
                         ISNULL(SUM((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)), 0) AS Monto_A_Pagar
                     FROM Turno t
                     JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                    LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND s.Area = ea.Area
+                    LEFT JOIN Area a ON s.Id_Area = a.Id_Area
+                    LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND a.Nombre = ea.Area
                     LEFT JOIN (
                         SELECT Id_Turno, SUM(Precio) as Total_Extras
                         FROM Turno_Extra te
@@ -365,7 +365,6 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
                 return res.status(400).send("No hay saldo pendiente para liquidar.");
             }
 
-            // 2. Crear el recibo en Liquidacion_Sueldo
             const requestLiq = new sql.Request(transaction);
             const resultLiq = await requestLiq
                 .input('Id_Empleada', sql.Int, id)
@@ -378,7 +377,6 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
                 
             const idLiquidacion = resultLiq.recordset[0].Id_Liquidacion;
             
-            // 3. Marcar los turnos como liquidados
             const requestUpdate = new sql.Request(transaction);
             await requestUpdate
                 .input('Id_Empleada', sql.Int, id)
@@ -403,20 +401,6 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
     }
 });
 
-// Gestión de ÁREAS Y COMISONES
-
-// Obtener todas las áreas únicas que existen en la tabla Servicio
-app.get('/api/areas', async (req, res) => {
-    try {
-        let pool = await sql.connect(dbConfig);
-        let result = await pool.request().query("SELECT DISTINCT Area FROM Servicio WHERE Area IS NOT NULL");
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error obteniendo áreas:", err);
-        res.status(500).send("Error interno del servidor");
-    }
-});
-
 // Obtener las áreas y comisiones asignadas a una empleada específica
 app.get('/api/empleadas/:id/areas', async (req, res) => {
     try {
@@ -435,7 +419,7 @@ app.get('/api/empleadas/:id/areas', async (req, res) => {
 // Guardar la nueva configuración de áreas y comisiones
 app.post('/api/empleadas/:id/areas', async (req, res) => {
     const { id } = req.params;
-    const { areas } = req.body; // Recibe un array ej: [{ area: 'Manicura', comision: 0.50 }]
+    const { areas } = req.body; 
 
     try {
         let pool = await sql.connect(dbConfig);
@@ -443,12 +427,10 @@ app.post('/api/empleadas/:id/areas', async (req, res) => {
         await transaction.begin();
 
         try {
-            // 1. Limpiamos las áreas anteriores de esta empleada
             await new sql.Request(transaction)
                 .input('Id_Empleada', sql.Int, id)
                 .query("DELETE FROM Empleada_Area WHERE Id_Empleada = @Id_Empleada");
 
-            // 2. Insertamos las nuevas áreas con sus porcentajes
             if (areas && areas.length > 0) {
                 for (let item of areas) {
                     await new sql.Request(transaction)
@@ -473,22 +455,158 @@ app.post('/api/empleadas/:id/areas', async (req, res) => {
 
 
 // ==========================================================================
-// 4. RUTAS: SERVICIOS & EXTRAS
+// 4. RUTAS: SERVICIOS, ÁREAS & EXTRAS
 // ==========================================================================
+
+// ----------------------------------------------------
+// A. GESTIÓN DE ÁREAS
+// ----------------------------------------------------
+
+// Obtener todas las áreas
+app.get('/api/areas', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query('SELECT Id_Area, Nombre AS Area FROM Area ORDER BY Nombre');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Crear una nueva área
+app.post('/api/areas', async (req, res) => {
+    try {
+        const { Area } = req.body;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Nombre', sql.VarChar, Area)
+            .query(`INSERT INTO Area (Nombre) VALUES (@Nombre)`);
+        res.status(201).send("Área creada");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al crear área");
+    }
+});
+
+// Editar un área
+app.put('/api/areas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Area } = req.body;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Area', sql.Int, id)
+            .input('Nombre', sql.VarChar, Area)
+            .query(`UPDATE Area SET Nombre = @Nombre WHERE Id_Area = @Id_Area`);
+        res.status(200).send("Área actualizada");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al actualizar área");
+    }
+});
+
+// Eliminar un área
+app.delete('/api/areas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Area', sql.Int, id)
+            .query(`DELETE FROM Area WHERE Id_Area = @Id_Area`);
+        res.status(200).send("Área eliminada");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al eliminar área");
+    }
+});
+
+// ----------------------------------------------------
+// B. GESTIÓN DE SERVICIOS
+// ----------------------------------------------------
 
 // Obtener todos los servicios
 app.get('/api/servicios', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
-        let result = await pool.request().query('SELECT Id_Servicio, Nombre FROM Servicio');
+        let result = await pool.request().query(`
+            SELECT 
+                s.Id_Servicio, 
+                s.Nombre, 
+                s.Precio_Base, 
+                s.Id_Area, 
+                a.Nombre AS Area
+            FROM Servicio s
+            LEFT JOIN Area a ON s.Id_Area = a.Id_Area
+        `);
         res.json(result.recordset);
     } catch (err) {
-        console.error("Error obteniendo servicios:", err);
+        console.error(err);
         res.status(500).send("Error interno del servidor");
     }
 });
 
-// Obtener todos los extras disponibles
+// Crear un nuevo servicio
+app.post('/api/servicios', async (req, res) => {
+    try {
+        const { Nombre, Id_Area, Precio_Base } = req.body;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Nombre', sql.VarChar, Nombre)
+            .input('Id_Area', sql.Int, Id_Area)
+            .input('Precio_Base', sql.Decimal(10,2), Precio_Base)
+            .query(`
+                INSERT INTO Servicio (Nombre, Id_Area, Precio_Base, Duracion_Minutos)
+                VALUES (@Nombre, @Id_Area, @Precio_Base, 30)
+            `);
+        res.status(201).send("Servicio creado");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al crear servicio");
+    }
+});
+
+// Editar un servicio
+app.put('/api/servicios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre, Id_Area, Precio_Base } = req.body;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Servicio', sql.Int, id)
+            .input('Nombre', sql.VarChar, Nombre)
+            .input('Id_Area', sql.Int, Id_Area)
+            .input('Precio_Base', sql.Decimal(10,2), Precio_Base)
+            .query(`
+                UPDATE Servicio 
+                SET Nombre = @Nombre, Id_Area = @Id_Area, Precio_Base = @Precio_Base
+                WHERE Id_Servicio = @Id_Servicio
+            `);
+        res.status(200).send("Servicio actualizado");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al actualizar servicio");
+    }
+});
+
+// Eliminar un servicio
+app.delete('/api/servicios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Servicio', sql.Int, id)
+            .query(`DELETE FROM Servicio WHERE Id_Servicio = @Id_Servicio`);
+        res.status(200).send("Servicio eliminado");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al eliminar servicio");
+    }
+});
+
+// ----------------------------------------------------
+// C. EXTRAS
+// ----------------------------------------------------
 app.get('/api/extras', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
@@ -549,14 +667,14 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
                     s.Duracion_Minutos,
                     s.Precio_Base, 
                     t.Id_Empleada,
-                    e.Nombre_Ap, -- ¡Acá agregamos la columna que faltaba!
+                    e.Nombre_Ap, 
                     t.Estado,
                     t.Color,
                     t.Sena_Monto
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada -- ¡Y acá unimos la tabla!
+                JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada 
                 WHERE CAST(t.Fecha_Hora AS DATE) = @FechaBuscada
             `);
             
@@ -574,14 +692,12 @@ app.post('/api/turnos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
 
-        // 1. Primero averiguamos cuánto dura el servicio nuevo que queremos agendar
         const infoServicio = await pool.request()
             .input('Id_Servicio', sql.Int, Id_Servicio)
             .query(`SELECT Duracion_Minutos FROM Servicio WHERE Id_Servicio = @Id_Servicio`);
         
         const duracionNueva = infoServicio.recordset[0].Duracion_Minutos;
 
-        // 2. Validación de solapamiento (RANGOS DE TIEMPO)
         const chequeo = await pool.request()
             .input('Id_Empleada', sql.Int, Id_Empleada)
             .input('NuevaFechaInicio', sql.DateTime, Fecha_Hora)
@@ -592,9 +708,7 @@ app.post('/api/turnos', async (req, res) => {
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                 WHERE t.Id_Empleada = @Id_Empleada
                 AND (
-                    -- El turno nuevo empieza ANTES de que termine el existente...
                     @NuevaFechaInicio < DATEADD(MINUTE, s.Duracion_Minutos, t.Fecha_Hora)
-                    -- ...Y el turno nuevo termina DESPUÉS de que empiece el existente
                     AND DATEADD(MINUTE, @DuracionNueva, @NuevaFechaInicio) > t.Fecha_Hora
                 )
             `);
@@ -603,7 +717,6 @@ app.post('/api/turnos', async (req, res) => {
             return res.status(400).send("La profesional ya tiene un turno que se superpone en ese horario.");
         }
 
-        // 3. Insertamos el turno normal
         await pool.request()
             .input('Id_Clienta', sql.Int, Id_Clienta)
             .input('Id_Empleada', sql.Int, Id_Empleada)
@@ -614,7 +727,6 @@ app.post('/api/turnos', async (req, res) => {
                 INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto) 
                 VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora, @Sena_Monto);
 
-                -- 4. SI HAY SEÑA, REGISTRAMOS EL INGRESO AUTOMÁTICAMENTE
                 IF (@Sena_Monto > 0)
                 BEGIN
                     DECLARE @NombreC VARCHAR(100);
@@ -632,7 +744,7 @@ app.post('/api/turnos', async (req, res) => {
     }
 });
 
-// Actualizar detalles del turno durante la sesión (Color/Extras estéticos)
+// Actualizar detalles del turno durante la sesión
 app.put('/api/turnos/:id/detalles', async (req, res) => {
     try {
         const { id } = req.params;
@@ -659,26 +771,24 @@ app.put('/api/turnos/:id/detalles', async (req, res) => {
     }
 });
 
-// ACTUALIZAR SEÑA DE UN TURNO (Y registrar el ingreso automáticamente)
+// ACTUALIZAR SEÑA DE UN TURNO
 app.put('/api/turnos/:id/sena', async (req, res) => {
     const { id } = req.params;
-    const { Sena_Monto, Nombre_Clienta } = req.body; // <-- Nombre corregido
+    const { Sena_Monto, Nombre_Clienta } = req.body; 
     
     try {
         let pool = await sql.connect(dbConfig);
         
-        // 1. Guardamos la seña en el turno
         await pool.request()
             .input('Id', sql.Int, id)
             .input('Monto', sql.Decimal(10,2), Sena_Monto)
-            .query('UPDATE Turno SET Sena_Monto = @Monto WHERE Id_Turno = @Id'); // <-- Columna correcta
+            .query('UPDATE Turno SET Sena_Monto = @Monto WHERE Id_Turno = @Id'); 
             
-        // 2. Si la seña es mayor a 0, la registramos como un Ingreso en la caja de hoy
         if (Sena_Monto > 0) {
             await pool.request()
                 .input('Concepto', sql.VarChar, `Seña abonada - ${Nombre_Clienta}`)
                 .input('Monto', sql.Decimal(10,2), Sena_Monto)
-                .input('Medio', sql.VarChar, 'Transferencia') // Asumimos transferencia
+                .input('Medio', sql.VarChar, 'Transferencia') 
                 .query(`INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Medio_Pago) 
                         VALUES (@Concepto, @Monto, GETDATE(), @Medio)`);
         }
@@ -720,6 +830,42 @@ app.post('/api/categorias-gastos', async (req, res) => {
         res.status(201).json({ message: "¡Categoría creada exitosamente!" });
     } catch (err) {
         console.error("Error creando categoría:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Editar categoría de gasto
+app.put('/api/categorias-gastos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre } = req.body;
+        if (!Nombre) return res.status(400).send("El nombre es obligatorio");
+
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Categoria', sql.Int, id)
+            .input('Nombre', sql.VarChar, Nombre)
+            .query(`UPDATE Categoria_Gasto SET Nombre = @Nombre WHERE Id_Categoria = @Id_Categoria`);
+            
+        res.status(200).json({ message: "Categoría actualizada exitosamente" });
+    } catch (err) {
+        console.error("Error actualizando categoría:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Eliminar categoría de gasto
+app.delete('/api/categorias-gastos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Categoria', sql.Int, id)
+            .query(`DELETE FROM Categoria_Gasto WHERE Id_Categoria = @Id_Categoria`);
+            
+        res.status(200).json({ message: "Categoría eliminada con éxito" });
+    } catch (err) {
+        console.error("Error eliminando categoría:", err);
         res.status(500).send("Error interno del servidor");
     }
 });
@@ -821,7 +967,7 @@ app.get('/api/ingresos', async (req, res) => {
     }
 });
 
-// Registrar un ingreso manual (Venta mostrador, extras sin turno)
+// Registrar un ingreso manual 
 app.post('/api/ingresos/manual', async (req, res) => {
     try {
         const { Concepto, Monto_Total, Medio_Pago } = req.body;
@@ -843,13 +989,12 @@ app.post('/api/ingresos/manual', async (req, res) => {
     }
 });
 
-// Cobrar un turno completo (El Patovica Financiero)
+// Cobrar un turno completo 
 app.post('/api/cobrar-turno', async (req, res) => {
     try {
         const { idTurno, montoTotal, medioPago, descuento, extras } = req.body;
         let pool = await sql.connect(dbConfig);
         
-        // 1. Verificación de seguridad
         const chequeo = await pool.request()
             .input('Id_Turno', sql.Int, idTurno)
             .query(`SELECT Estado FROM Turno WHERE Id_Turno = @Id_Turno`);
@@ -859,12 +1004,10 @@ app.post('/api/cobrar-turno', async (req, res) => {
             return res.status(400).send("¡Ojo! Este turno ya fue cobrado.");
         }
 
-        // Transacción para asegurar que todo se guarde junto
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         
         try {
-            // Guardar ingreso
             const requestIngreso = new sql.Request(transaction);
             await requestIngreso
                 .input('Id_Turno', sql.Int, idTurno)
@@ -876,7 +1019,6 @@ app.post('/api/cobrar-turno', async (req, res) => {
                     VALUES (@Id_Turno, GETDATE(), @Monto_Total, @Medio_Pago, @Descuento)
                 `);
             
-            // Guardar extras
             if (extras && extras.length > 0) {
                 for (let idExtra of extras) {
                     const requestExtra = new sql.Request(transaction);
@@ -887,7 +1029,6 @@ app.post('/api/cobrar-turno', async (req, res) => {
                 }
             }
             
-            // Actualizar estado del turno
             const requestEstado = new sql.Request(transaction);
             await requestEstado
                 .input('Id_Turno', sql.Int, idTurno)
@@ -914,30 +1055,25 @@ app.get('/api/dashboard/kpis', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
 
-        // Armamos los filtros de fecha. Agregamos la hora al 'hasta' para incluir todo ese día completo
         const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
         const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
 
         const query = `
-            -- 1. Total Ingresos
             DECLARE @TotalIngresos DECIMAL(12,2) = (
                 SELECT ISNULL(SUM(Monto_Total), 0) FROM Ingreso
                 WHERE Fecha >= @Desde AND Fecha <= @Hasta
             );
 
-            -- 2. Total Gastos
             DECLARE @TotalGastos DECIMAL(12,2) = (
                 SELECT ISNULL(SUM(Monto), 0) FROM Gasto
                 WHERE Fecha >= @Desde AND Fecha <= @Hasta
             );
 
-            -- 3. Total Sueldos (Comisiones liquidadas)
             DECLARE @TotalSueldos DECIMAL(12,2) = (
                 SELECT ISNULL(SUM(Monto_Total), 0) FROM Liquidacion_Sueldo
                 WHERE Fecha >= @Desde AND Fecha <= @Hasta
             );
 
-            -- Devolvemos las 4 métricas juntas
             SELECT 
                 @TotalIngresos AS Ingresos,
                 @TotalGastos AS Gastos,
@@ -957,7 +1093,6 @@ app.get('/api/dashboard/kpis', async (req, res) => {
     }
 });
 
-// Obtener ingresos y cantidad de turnos agrupados por día
 app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
     const { desde, hasta } = req.query;
     try {
@@ -981,7 +1116,7 @@ app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
             )
             SELECT 
                 CONVERT(VARCHAR(5), ISNULL(i.FechaDia, t.FechaDia), 103) as Dia,
-                CONVERT(VARCHAR(10), ISNULL(i.FechaDia, t.FechaDia), 23) as FechaCompleta, -- NUEVO: Fecha en formato YYYY-MM-DD
+                CONVERT(VARCHAR(10), ISNULL(i.FechaDia, t.FechaDia), 23) as FechaCompleta, 
                 ISNULL(i.Total, 0) as Total,
                 ISNULL(t.Cantidad, 0) as Turnos
             FROM IngresosDiarios i
@@ -1001,7 +1136,6 @@ app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
     }
 });
 
-// Obtener el Top 5 de servicios más realizados
 app.get('/api/dashboard/servicios-estrella', async (req, res) => {
     const { desde, hasta } = req.query;
     try {
@@ -1038,5 +1172,5 @@ app.get('/api/dashboard/servicios-estrella', async (req, res) => {
 // ==========================================================================
 
 app.listen(port, () => {
-    console.log(`Servidor corriendo impecable en http://localhost:${port} 🚀`);
+    console.log(`Servidor corriendo impecable en http://localhost:${port} `);
 });

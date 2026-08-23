@@ -1,0 +1,27 @@
+-- -- 1. Creamos la tabla maestra Area
+-- CREATE TABLE Area (
+--    Id_Area INT IDENTITY(1,1) PRIMARY KEY,
+--    Nombre VARCHAR(50) NOT NULL
+-- );
+
+-- 2. Insertamos las áreas únicas que ya existen en tu tabla Servicio
+-- INSERT INTO Area (Nombre)
+-- SELECT DISTINCT Area FROM Servicio WHERE Area IS NOT NULL AND Area != '';
+
+-- 3. Agregamos la nueva columna Id_Area a la tabla Servicio
+-- ALTER TABLE Servicio ADD Id_Area INT;
+
+-- 4. Actualizamos cada servicio vinculándolo con su nueva ID de Área
+-- UPDATE s
+-- SET s.Id_Area = a.Id_Area
+-- FROM Servicio s
+-- JOIN Area a ON s.Area = a.Nombre;
+
+-- 5. Eliminamos la vieja columna de texto
+-- ALTER TABLE Servicio DROP COLUMN Area;
+
+-- 6. Establecemos la relación de llave foránea (Foreign Key)
+-- ALTER TABLE Servicio
+-- ADD CONSTRAINT FK_Servicio_Area FOREIGN KEY (Id_Area) REFERENCES Area(Id_Area);
+
+-- SELECT * FROM Area;
