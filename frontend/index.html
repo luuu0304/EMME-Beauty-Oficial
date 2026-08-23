@@ -23,7 +23,7 @@
          ÍNDICE DEL DOCUMENTO HTML
          1. BARRA LATERAL (Sidebar)
          2. CABECERA PRINCIPAL (Header)
-         3. SECCIONES CENTRALES (Turnos, Clientas, Empleados, Gastos, Ingresos)
+         3. SECCIONES CENTRALES (Turnos, Clientas, Empleados, Gastos, Ingresos, Dashboard, Configuración)
          4. VENTANAS MODALES
          5. COMPONENTES GLOBALES (Toasts, Scripts)
          ========================================================================= -->
@@ -151,15 +151,19 @@
         <!-- 3.2. SECCIÓN: CLIENTAS -->
         <div id="seccionClientas" style="display: none;">
             <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                <button id="btnVistaTarjetas" class="btn-tab active" onclick="cambiarVistaClientas('tarjetas')">Vista Tarjetas</button>
-                <button id="btnVistaLista" class="btn-tab" onclick="cambiarVistaClientas('lista')">Vista Lista</button>
+                <!-- 1. Le sacamos el 'active' a este botón -->
+                <button id="btnVistaTarjetas" class="btn-tab" onclick="cambiarVistaClientas('tarjetas')">Vista Tarjetas</button>
+                <!-- 2. Se lo ponemos a este -->
+                <button id="btnVistaLista" class="btn-tab active" onclick="cambiarVistaClientas('lista')">Vista Lista</button>
             </div>
 
             <!-- VISTA TARJETAS -->
-            <div id="vistaClientasTarjetas" class="cards-grid"></div>
+            <!-- 3. Le agregamos el display: none; para que arranque oculto -->
+            <div id="vistaClientasTarjetas" class="cards-grid" style="display: none;"></div>
 
             <!-- VISTA LISTA -->
-            <div id="vistaClientasListado" style="display: none; overflow-x: auto;">
+            <!-- 4. Le cambiamos el display a 'block' para que arranque visible -->
+            <div id="vistaClientasListado" style="display: block; overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <thead style="background-color: #2c3e50; color: white;">
                         <tr>
@@ -417,7 +421,7 @@
         </div>
 
         <!-- ======================================================================= -->
-        <!-- SECCIÓN: CONFIGURACIÓN -->
+        <!-- 3.7 SECCIÓN: CONFIGURACIÓN -->
         <!-- ======================================================================= -->
         <section id="seccionConfiguracion" style="display: none; padding: 2rem;">
             
@@ -472,7 +476,7 @@
                     <p>Próximamente: Configuración de Horarios de Atención... ⏰</p>
                 </div>
             </div>
-            
+
         </section>
     </main>
 
