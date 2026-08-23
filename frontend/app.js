@@ -470,7 +470,7 @@ async function guardarTurno() {
         });
 
         if (respuesta.ok) {
-            mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
+            mostrarNotificacion("¡Turno agendado con éxito!", "success");
             cerrarModalTurno();
             setTimeout(() => { location.reload(); }, 1200);
         } else {
@@ -1227,7 +1227,7 @@ async function guardarClienta() {
         });
 
         if (respuesta.ok) {
-            const mensajeExito = idOculto ? "¡Datos actualizados con éxito! ✏️" : "¡Clienta registrada con éxito! 🎉";
+            const mensajeExito = idOculto ? "¡Datos actualizados con éxito!" : "¡Clienta registrada con éxito!";
             mostrarNotificacion(mensajeExito, "success");
             cerrarModal(); 
             cargarClientas(); 
@@ -1392,7 +1392,7 @@ async function guardarEmpleada() {
         });
 
         if (response.ok) {
-            const mensajeExito = idOculto ? "¡Datos actualizados con éxito! ✏️" : "¡Profesional registrada con éxito! ✨";
+            const mensajeExito = idOculto ? "¡Datos actualizados con éxito!" : "¡Profesional registrada con éxito!";
             mostrarNotificacion(mensajeExito, "success");
             
             cerrarModalEmpleada();
@@ -1835,7 +1835,9 @@ function dibujarTablaGastos(listaGastos) {
             <td style="padding: 12px;">${gasto.Descripcion}</td>
             <td style="padding: 12px; font-weight: bold; color: #d9534f;">$${gasto.Monto.toLocaleString('es-AR')}</td>
             <td style="padding: 12px; text-align: center;">
-                <button class="btn-icon" style="color: #d9534f;" onclick="eliminarGasto(${gasto.Id_Gasto})">🗑️</button>
+                <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarGasto(${gasto.Id_Gasto})" title="Eliminar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -1868,7 +1870,7 @@ async function guardarGasto() {
         });
 
         if (respuesta.ok) {
-            mostrarNotificacion("¡Gasto registrado con éxito! 💸", "success");
+            mostrarNotificacion("¡Gasto registrado con éxito!", "success");
             cerrarModalGasto();
             cargarGastos(); 
         } else {
