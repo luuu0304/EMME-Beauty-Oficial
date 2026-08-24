@@ -86,9 +86,15 @@
                     
                     <!-- Controles de Fecha (Izquierda) -->
                     <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <button class="btn-icon" id="btnDiaAnterior"></button>
+                        <button class="btn-icon" id="btnDiaAnterior" title="Día Anterior">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        
                         <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
-                        <button class="btn-icon" id="btnDiaSiguiente"></button>
+                        
+                        <button class="btn-icon" id="btnDiaSiguiente" title="Día Siguiente">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
                     </div>
                     
                     <!-- Filtros por Especialidad (Derecha) -->

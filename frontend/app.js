@@ -2331,11 +2331,12 @@ async function cargarTablaConfigCategorias() {
         categorias.forEach(cat => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--borde)';
+            const nombreCategoria = String(cat.Nombre ?? '').replace(/'/g, "\\'");
             tr.innerHTML = `
-                <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${cat.Id_Categoria}</td>
-                <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${cat.Nombre}</td>
-                <td style="padding: 15px; text-align: center;">
-                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarCategoriaGasto(${cat.Id_Categoria}, '${cat.Nombre}')" title="Editar">
+                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${cat.Id_Categoria}</td>
+                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${cat.Nombre}</td>
+                <td style="padding: 8px 15px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarCategoriaGasto(${cat.Id_Categoria}, '${nombreCategoria}')" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
                     <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarCategoriaGasto(${cat.Id_Categoria})" title="Eliminar">
@@ -2444,16 +2445,17 @@ async function cargarTablaConfigServicios() {
         servicios.forEach(srv => {
             const precioSeguro = Number(srv.Precio_Base || srv.precio_base || srv.precioBase || srv.Precio || srv.precio || 0);
             const areaSegura = srv.Area || srv.area || srv.Id_Area || srv.id_area || 'Sin área';
+            const nombreServicio = String(srv.Nombre || srv.nombre || '').replace(/'/g, "\\'");
 
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--borde)';
             tr.innerHTML = `
-                <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${srv.Id_Servicio || srv.id_servicio}</td>
-                <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${srv.Nombre || srv.nombre}</td>
-                <td style="padding: 15px; color: var(--texto-claro);"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${areaSegura}</span></td>
-                <td style="padding: 15px; font-weight: 600; color: #28a745;">$${precioSeguro.toLocaleString('es-AR')}</td>
-                <td style="padding: 15px; text-align: center;">
-                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarServicio(${srv.Id_Servicio || srv.id_servicio}, '${srv.Nombre || srv.nombre}', '${srv.Id_Area || srv.id_area || ''}', ${precioSeguro})" title="Editar">
+                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${srv.Id_Servicio || srv.id_servicio}</td>
+                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${srv.Nombre || srv.nombre}</td>
+                <td style="padding: 8px 15px; color: var(--texto-claro);"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${areaSegura}</span></td>
+                <td style="padding: 8px 15px; font-weight: 600; color: #28a745;">$${precioSeguro.toLocaleString('es-AR')}</td>
+                <td style="padding: 8px 15px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarServicio(${srv.Id_Servicio || srv.id_servicio}, '${nombreServicio}', '${srv.Id_Area || srv.id_area || ''}', ${precioSeguro})" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
                     <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarServicio(${srv.Id_Servicio || srv.id_servicio})" title="Eliminar">
@@ -2582,11 +2584,12 @@ async function cargarTablaConfigAreas() {
         areas.forEach(a => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--borde)';
+            const nombreArea = String(a.Area || a.area || '').replace(/'/g, "\\'");
             tr.innerHTML = `
-                <td style="padding: 15px; color: var(--texto-claro); font-weight: 500;">${a.Id_Area || a.id_area}</td>
-                <td style="padding: 15px; font-weight: 500; color: var(--texto-oscuro);">${a.Area || a.area}</td>
-                <td style="padding: 15px; text-align: center;">
-                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarArea(${a.Id_Area || a.id_area}, '${a.Area || a.area}')" title="Editar">
+                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${a.Id_Area || a.id_area}</td>
+                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${a.Area || a.area}</td>
+                <td style="padding: 8px 15px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarArea(${a.Id_Area || a.id_area}, '${nombreArea}')" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
                     <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarArea(${a.Id_Area || a.id_area})" title="Eliminar">
@@ -2630,7 +2633,7 @@ async function guardarArea() {
     }
 
     const url = idOculto 
-        ? `http://localhost:3000/api/areas/${idOculto}` 
+        ? `http://localhost:3000/api/areas/${idOculto}`
         : 'http://localhost:3000/api/areas';
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
