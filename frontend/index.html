@@ -104,15 +104,23 @@
                         <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Manicura', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Manicura</button>
                         <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Cejas y Pestañas', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Cejas y Pestañas</button>
                     </div>
-                    
                 </div>
 
-                <div class="agenda-container">
-                    <div class="agenda-header" id="agendaHeader">
-                        <div class="hora-col">Hora</div>
+                <!-- CONTENEDOR DE LA AGENDA (Scroll vertical y horizontal) -->
+                <div class="agenda-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; overflow-x: auto; max-height: 65vh; position: relative;">
+                    
+                    <!-- Envoltorio mágico: Evita que se aplasten las columnas si hay muchas empleadas -->
+                    <div style="min-width: max-content;">
+                        <!-- El header con position: sticky para que no se pierda al bajar -->
+                        <div class="agenda-header" id="agendaHeader" style="position: sticky; top: 0; z-index: 10; background: #f8f9fa; border-bottom: 1px solid #eee;">
+                            <div class="hora-col">Hora</div>
+                        </div>
+                        
+                        <div class="agenda-body" id="agendaBody">
+                            <!-- JS inyectará las filas acá -->
+                        </div>
                     </div>
-                    <div class="agenda-body" id="agendaBody">
-                    </div>
+                    
                 </div>
             </div>
             

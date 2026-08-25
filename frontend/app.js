@@ -662,6 +662,51 @@ async function inicializarAgendaDiaria() {
     }
 }
 
+// ==========================================
+// AUTO-SCROLL A LA HORA ACTUAL (V.2)
+// ==========================================
+function enfocarHoraActual() {
+    const ahora = new Date();
+    let hora = ahora.getHours();
+    let minutos = ahora.getMinutes();
+
+    const minStr = minutos < 30 ? '00' : '30';
+    const horaStr = `${String(hora).padStart(2, '0')}:${minStr}`;
+
+    // 1. Lógica para la Vista Diaria
+    const vistaDiaria = document.getElementById('vistaDiaria');
+    if (vistaDiaria && vistaDiaria.style.display !== 'none') {
+        const contenedorDiario = document.querySelector('#vistaDiaria .agenda-container');
+        const filasDiarias = document.querySelectorAll('#agendaBody .agenda-row');
+        
+        for (let fila of filasDiarias) {
+            const colHora = fila.querySelector('.hora-col');
+            if (colHora && colHora.textContent.trim() === horaStr) {
+                contenedorDiario.scrollTo({ top: fila.offsetTop - 50, behavior: 'smooth' });
+                fila.style.backgroundColor = '#fffaf0';
+                fila.style.borderLeft = '3px solid var(--mostaza)';
+                break;
+            }
+        }
+    }
+
+    // 2. Lógica para la Vista Semanal
+    const vistaSemanal = document.getElementById('vistaSemanal');
+    if (vistaSemanal && vistaSemanal.style.display !== 'none') {
+        const contenedorSemanal = document.querySelector('#vistaSemanal .agenda-container');
+        const filasSemanales = document.querySelectorAll('#agendaSemanalBody > div'); // Las filas de la semana
+        
+        for (let fila of filasSemanales) {
+            const colHora = fila.querySelector('.hora-col');
+            if (colHora && colHora.textContent.trim() === horaStr) {
+                contenedorSemanal.scrollTo({ top: fila.offsetTop - 50, behavior: 'smooth' });
+                fila.style.backgroundColor = '#fffaf0'; // Le damos un fondito cálido
+                break;
+            }
+        }
+    }
+}
+
 // LA MAGIA DE LA GRILLA DINÁMICA
 async function actualizarGrillaDiaria() {
     const inputFecha = document.getElementById('fechaAgendaInput');
@@ -742,6 +787,13 @@ async function actualizarGrillaDiaria() {
 
     // 5. Inyectamos los turnos sobre la nueva grilla flexible
     await cargarTurnosAgenda();
+
+    // 6. Si la fecha que estamos viendo es HOY, hacemos el auto-scroll
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    if (inputFecha.value === fechaHoy) {
+        // Le damos un respiro de 100ms para asegurar que el DOM terminó de pintar los turnos
+        setTimeout(enfocarHoraActual, 100); 
+    }
 }
 
 // Filtrar agenda al tocar los botones
@@ -801,7 +853,8 @@ function cambiarVistaAgenda(vista) {
         btnDiaria.classList.remove('active');
         
         inicializarAgendaSemanal();
-        cargarTurnosSemana(); 
+        cargarTurnosSemana();
+        setTimeout(enfocarHoraActual, 100);
     }
 }
 
