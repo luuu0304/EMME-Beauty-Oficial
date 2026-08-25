@@ -25,3 +25,23 @@
 -- ADD CONSTRAINT FK_Servicio_Area FOREIGN KEY (Id_Area) REFERENCES Area(Id_Area);
 
 -- SELECT * FROM Area;
+
+CREATE TABLE Horario_Atencion (
+    Id_Horario INT IDENTITY(1,1) PRIMARY KEY,
+    Dia_Semana VARCHAR(15) NOT NULL,
+    Hora_Apertura_1 TIME NULL,
+    Hora_Cierre_1 TIME NULL,
+    Hora_Apertura_2 TIME NULL,
+    Hora_Cierre_2 TIME NULL,
+    Laborable BIT DEFAULT 1
+);
+
+-- Insertamos los días por defecto con el corte al mediodía
+INSERT INTO Horario_Atencion (Dia_Semana, Hora_Apertura_1, Hora_Cierre_1, Hora_Apertura_2, Hora_Cierre_2, Laborable) VALUES
+('Lunes', '09:30', '15:00', '18:00', '21:30', 1),
+('Martes', '09:30', '15:00', '18:00', '21:30', 1),
+('Miércoles', '09:30', '15:00', '18:00', '21:30', 1),
+('Jueves', '09:30', '15:00', '18:00', '21:30', 1),
+('Viernes', '09:30', '15:00', '18:00', '21:30', 1),
+('Sábado', '09:30', '15:00', '18:00', '21:30', 1),
+('Domingo', '00:00', '00:00', '00:00', '00:00', 0);

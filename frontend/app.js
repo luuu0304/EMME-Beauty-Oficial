@@ -444,10 +444,50 @@ async function guardarTurno() {
         return;
     }
 
-    if (hora < "09:30" || hora > "21:30") {
-        mostrarNotificacion("Por favor, ingresá un horario dentro de la franja de atención (09:30 a 21:30 hs).", "warning");
-        return;
+    // --- NUEVA VALIDACIÓN DINÁMICA DE HORARIOS ---
+    try {
+        const resHorarios = await fetch('http://localhost:3000/api/horarios');
+        const horariosVal = await resHorarios.json();
+        
+        const idDia = obtenerIdDiaSemana(fecha);
+        const horarioDiaElegido = horariosVal.find(h => h.Id_Horario === idDia);
+
+        if (!horarioDiaElegido || !horarioDiaElegido.Laborable) {
+            mostrarNotificacion("El local se encuentra cerrado el día seleccionado.", "warning");
+            return; // Cortamos la ejecución acá, no se guarda el turno
+        }
+
+        const ap1 = limpiarHoraSQL(horarioDiaElegido.Hora_Apertura_1);
+        const ci1 = limpiarHoraSQL(horarioDiaElegido.Hora_Cierre_1);
+        const ap2 = limpiarHoraSQL(horarioDiaElegido.Hora_Apertura_2);
+        const ci2 = limpiarHoraSQL(horarioDiaElegido.Hora_Cierre_2);
+
+        const [hTurno, mTurno] = hora.split(':').map(Number);
+        const minTurno = hTurno * 60 + mTurno;
+
+        let enTurno1 = false;
+        let enTurno2 = false;
+
+        if (ap1 && ci1) {
+            const minAp1 = parseInt(ap1.split(':')[0]) * 60 + parseInt(ap1.split(':')[1]);
+            const minCi1 = parseInt(ci1.split(':')[0]) * 60 + parseInt(ci1.split(':')[1]);
+            if (minTurno >= minAp1 && minTurno < minCi1) enTurno1 = true;
+        }
+
+        if (ap2 && ci2) {
+            const minAp2 = parseInt(ap2.split(':')[0]) * 60 + parseInt(ap2.split(':')[1]);
+            const minCi2 = parseInt(ci2.split(':')[0]) * 60 + parseInt(ci2.split(':')[1]);
+            if (minTurno >= minAp2 && minTurno < minCi2) enTurno2 = true;
+        }
+
+        if (!enTurno1 && !enTurno2) {
+            mostrarNotificacion("El horario seleccionado está fuera de la franja de atención de este día.", "warning");
+            return; // Cortamos la ejecución acá, no se guarda el turno
+        }
+    } catch (err) {
+        console.error("Error al validar horarios dinámicos:", err);
     }
+    // ----------------------------------------------
 
     const inputSenaTurno = document.getElementById('senaTurnoInput');
     const montoSena = inputSenaTurno && inputSenaTurno.value ? parseFloat(inputSenaTurno.value) : 0;
@@ -522,97 +562,186 @@ async function cargarServicios() {
     }
 }
 
+// ==========================================================================
+// VARIABLES GLOBALES Y HELPERS DE LA NUEVA AGENDA DINÁMICA
+// ==========================================================================
+let empleadasAgendaGlobal = [];
+let horariosAgendaGlobal = [];
+
+// Helper para saber qué día de la semana es en la fecha seleccionada
+function obtenerIdDiaSemana(fechaStr) {
+    const [y, m, d] = fechaStr.split('-');
+    const fecha = new Date(y, m - 1, d);
+    let diaJS = fecha.getDay(); // JS nos dice: 0 = Domingo, 1 = Lunes
+    return diaJS === 0 ? 7 : diaJS; // Lo pasamos al formato de nuestra base (1 al 7)
+}
+
+// Helper para generar los intervalos de 30 minutos
+function generarBloques(apertura, cierre) {
+    if (!apertura || !cierre) return [];
+    let bloques = [];
+    let [hAp, mAp] = apertura.split(':').map(Number);
+    let [hCi, mCi] = cierre.split(':').map(Number);
+    
+    let minActual = hAp * 60 + mAp;
+    let minCierre = hCi * 60 + mCi;
+
+    while (minActual < minCierre) {
+        let h = Math.floor(minActual / 60).toString().padStart(2, '0');
+        let m = (minActual % 60).toString().padStart(2, '0');
+        bloques.push(`${h}:${m}`);
+        minActual += 30; // Saltos de a media hora
+    }
+    return bloques;
+}
+
+// ==========================================================================
+// INICIALIZACIÓN DE LA AGENDA
+// ==========================================================================
 async function inicializarAgendaDiaria() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/empleadas');
-        const empleadas = await respuesta.json();
+        // 1. Traemos las profesionales
+        const resEmp = await fetch('http://localhost:3000/api/empleadas');
+        empleadasAgendaGlobal = await resEmp.json();
 
+        // 2. Traemos la configuración de los horarios (El "Cerebro")
+        const resHor = await fetch('http://localhost:3000/api/horarios');
+        horariosAgendaGlobal = await resHor.json();
+
+        // 3. Dibujamos el encabezado de las profesionales
         const agendaHeader = document.getElementById('agendaHeader');
         if (agendaHeader) {
             agendaHeader.innerHTML = '<div class="hora-col">Hora</div>';
-            empleadas.forEach(emp => {
+            empleadasAgendaGlobal.forEach(emp => {
                 agendaHeader.innerHTML += `<div class="col-emp-${emp.Id_Empleada}" data-areas="${emp.Areas || ''}" style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
             });
         }
 
-        const agendaBody = document.getElementById('agendaBody');
-        if (!agendaBody) return;
-        
-        agendaBody.innerHTML = ''; 
-        
-        const horaInicio = 9; 
-        const horaFin = 20;   
-        
-        for (let hora = horaInicio; hora <= horaFin; hora++) {
-            let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
-            let filaEnPunto = document.createElement('div');
-            filaEnPunto.className = 'agenda-row hora-en-punto';
-            
-            let htmlFilaEnPunto = `<div class="hora-col">${stringHoraEnPunto}</div>`;
-            
-            empleadas.forEach(emp => {
-                htmlFilaEnPunto += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
-            });
-            
-            filaEnPunto.innerHTML = htmlFilaEnPunto;
-            agendaBody.appendChild(filaEnPunto);
-            
-            if (hora < horaFin) {
-                let stringHoraMedia = hora.toString().padStart(2, '0') + ':30';
-                let filaMediaHora = document.createElement('div');
-                filaMediaHora.className = 'agenda-row';
-                
-                let htmlFilaMedia = `<div class="hora-col">${stringHoraMedia}</div>`;
-                
-                empleadas.forEach(emp => {
-                    htmlFilaMedia += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
-                });
-                
-                filaMediaHora.innerHTML = htmlFilaMedia;
-                agendaBody.appendChild(filaMediaHora);
-            }
-        }
-        
+        // 4. Configuramos los botones de las fechas
         const inputFecha = document.getElementById('fechaAgendaInput');
         const btnAnterior = document.getElementById('btnDiaAnterior');
         const btnSiguiente = document.getElementById('btnDiaSiguiente');
 
         if (inputFecha) {
-            inputFecha.addEventListener('change', cargarTurnosAgenda);
+            inputFecha.addEventListener('change', actualizarGrillaDiaria);
             
             if (btnAnterior) {
-                btnAnterior.addEventListener('click', () => {
+                // Borramos eventos viejos clonando el botón para evitar que salte 2 días seguidos
+                const newBtnAnterior = btnAnterior.cloneNode(true);
+                btnAnterior.parentNode.replaceChild(newBtnAnterior, btnAnterior);
+                newBtnAnterior.addEventListener('click', () => {
                     const fechaActual = new Date(inputFecha.value + 'T00:00:00');
                     fechaActual.setDate(fechaActual.getDate() - 1);
-                    
                     const yyyy = fechaActual.getFullYear();
                     const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
                     const dd = String(fechaActual.getDate()).padStart(2, '0');
-                    
                     inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    cargarTurnosAgenda(); 
+                    actualizarGrillaDiaria(); 
                 });
             }
 
             if (btnSiguiente) {
-                btnSiguiente.addEventListener('click', () => {
+                const newBtnSiguiente = btnSiguiente.cloneNode(true);
+                btnSiguiente.parentNode.replaceChild(newBtnSiguiente, btnSiguiente);
+                newBtnSiguiente.addEventListener('click', () => {
                     const fechaActual = new Date(inputFecha.value + 'T00:00:00');
                     fechaActual.setDate(fechaActual.getDate() + 1);
-                    
                     const yyyy = fechaActual.getFullYear();
                     const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
                     const dd = String(fechaActual.getDate()).padStart(2, '0');
-                    
                     inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    cargarTurnosAgenda(); 
+                    actualizarGrillaDiaria(); 
                 });
             }
         }
 
-        cargarTurnosAgenda();
+        // 5. Arrancamos el dibujo del día de hoy
+        actualizarGrillaDiaria();
     } catch (error) {
         console.error("Error al cargar la agenda diaria:", error);
     }
+}
+
+// LA MAGIA DE LA GRILLA DINÁMICA
+async function actualizarGrillaDiaria() {
+    const inputFecha = document.getElementById('fechaAgendaInput');
+    if (!inputFecha || !inputFecha.value) return;
+
+    // Buscamos las reglas del día elegido
+    const idDia = obtenerIdDiaSemana(inputFecha.value);
+    const horarioHoy = horariosAgendaGlobal.find(h => h.Id_Horario === idDia);
+
+    const agendaBody = document.getElementById('agendaBody');
+    if (!agendaBody) return;
+    agendaBody.innerHTML = ''; 
+
+    // Regla 1: ¿Está cerrado?
+    if (!horarioHoy || !horarioHoy.Laborable) {
+        agendaBody.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: #dc3545; background: #fff8f8; border-radius: 8px; width: 100%; border: 1px dashed #f5c6cb;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span style="font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">LOCAL CERRADO ESTE DÍA</span>
+            </div>
+        `;
+        return;
+    }
+
+    // Regla 2: Extraemos y limpiamos las horas (usando tu función del Módulo 9)
+    let ap1 = limpiarHoraSQL(horarioHoy.Hora_Apertura_1);
+    let ci1 = limpiarHoraSQL(horarioHoy.Hora_Cierre_1);
+    let ap2 = limpiarHoraSQL(horarioHoy.Hora_Apertura_2);
+    let ci2 = limpiarHoraSQL(horarioHoy.Hora_Cierre_2);
+
+    // Regla 3: Generamos los bloques combinados
+    let bloques = [
+        ...generarBloques(ap1, ci1),
+        ...generarBloques(ap2, ci2)
+    ];
+
+    let ultimoMinuto = -1;
+
+    // Regla 4: Dibujamos las filas
+    bloques.forEach(horaStr => {
+        let [h, m] = horaStr.split(':').map(Number);
+        let minActual = h * 60 + m;
+
+        // ¡DETALLE PREMIUM! Si detectamos un salto mayor a 30 min, dibujamos la Siesta
+        if (ultimoMinuto !== -1 && (minActual - ultimoMinuto) > 30) {
+            let divSiesta = document.createElement('div');
+            divSiesta.style.padding = '20px';
+            divSiesta.style.backgroundColor = '#fcfcfc';
+            divSiesta.style.textAlign = 'center';
+            divSiesta.style.color = '#aaa';
+            divSiesta.style.fontSize = '12px';
+            divSiesta.style.fontStyle = 'italic';
+            divSiesta.style.borderBottom = '1px solid #eee';
+            divSiesta.style.width = '100%';
+            divSiesta.style.display = 'block'; 
+            divSiesta.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Horario de corte / Descanso</span>
+                </div>
+            `;
+            agendaBody.appendChild(divSiesta);
+        }
+        ultimoMinuto = minActual;
+
+        let fila = document.createElement('div');
+        fila.className = m === 0 ? 'agenda-row hora-en-punto' : 'agenda-row';
+        
+        let htmlFila = `<div class="hora-col">${horaStr}</div>`;
+        
+        empleadasAgendaGlobal.forEach(emp => {
+            htmlFila += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${horaStr}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+        });
+        
+        fila.innerHTML = htmlFila;
+        agendaBody.appendChild(fila);
+    });
+
+    // 5. Inyectamos los turnos sobre la nueva grilla flexible
+    await cargarTurnosAgenda();
 }
 
 // Filtrar agenda al tocar los botones
@@ -2297,14 +2426,17 @@ function cambiarVistaConfig(vista) {
     if (vista === 'gastos') {
         vistaGastos.style.display = 'block';
         btnGastos.classList.add('active');
+    
     } else if (vista === 'servicios') {
         vistaServicios.style.display = 'block';
         btnServicios.classList.add('active');
         cargarTablaConfigServicios();
         cargarTablaConfigAreas();
+    
     } else if (vista === 'horarios') {
         vistaHorarios.style.display = 'block';
         btnHorarios.classList.add('active');
+        cargarTablaConfigHorarios();
     }
 }
 
@@ -2672,6 +2804,130 @@ async function eliminarArea(id) {
             mostrarNotificacion("No se pudo eliminar el área.", "error");
         }
     } catch (error) {
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+// ==========================================
+// CONFIGURACIÓN DE HORARIOS DE ATENCIÓN
+// ==========================================
+
+function limpiarHoraSQL(valor) {
+    if (!valor) return '';
+    // La BD manda "1970-01-01T12:30:00.000Z" (que en Salta es 09:30 local).
+    // Al crear new Date(), JS aplica el offset de tu zona horaria y devuelve la hora correcta.
+    const fecha = new Date(valor);
+    if (!isNaN(fecha.getTime())) {
+        const horas = String(fecha.getHours()).padStart(2, '0');
+        const minutos = String(fecha.getMinutes()).padStart(2, '0');
+        return `${horas}:${minutos}`;
+    }
+    return '';
+}
+
+function cargarEventosBotonesDias() {
+    document.querySelectorAll('.btn-dia-horario').forEach(btn => {
+        btn.onclick = function() {
+            this.classList.toggle('active');
+        };
+    });
+}
+
+function toggleCerrado() {
+    const isCerrado = document.getElementById('checkCerrado').checked;
+    ['horarioAp1', 'horarioCi1', 'horarioAp2', 'horarioCi2'].forEach(id => {
+        document.getElementById(id).disabled = isCerrado;
+    });
+}
+
+async function cargarTablaConfigHorarios() {
+    const visor = document.getElementById('visorHorariosActuales');
+    if (!visor) return;
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/horarios');
+        const horarios = await respuesta.json();
+
+        visor.innerHTML = '';
+        horarios.forEach(dia => {
+            const esLaborable = dia.Laborable;
+            
+            let textoHorario = esLaborable 
+                ? `<span style="color:#28a745; font-weight:500;">${limpiarHoraSQL(dia.Hora_Apertura_1)} a ${limpiarHoraSQL(dia.Hora_Cierre_1)}</span>` 
+                : '<span style="color:#dc3545; font-weight:500;">Cerrado</span>';
+            
+            if (esLaborable && dia.Hora_Apertura_2 && dia.Hora_Cierre_2) {
+                textoHorario += `<br><span style="color:#17a2b8; font-weight:500;">${limpiarHoraSQL(dia.Hora_Apertura_2)} a ${limpiarHoraSQL(dia.Hora_Cierre_2)}</span>`;
+            }
+
+            visor.innerHTML += `
+                <div style="font-size: 13px; line-height: 1.5; padding: 10px; background: #fff; border: 1px solid #f0f0f0; border-radius: 6px;">
+                    <strong style="display:block; color:#333; margin-bottom: 4px;">${dia.Dia_Semana}</strong>
+                    ${textoHorario}
+                </div>
+            `;
+        });
+        
+        cargarEventosBotonesDias();
+
+    } catch (error) {
+        console.error("Error cargando horarios", error);
+    }
+}
+
+async function guardarHorarioEnLote() {
+    const botonesActivos = document.querySelectorAll('.btn-dia-horario.active');
+    const diasIds = Array.from(botonesActivos).map(b => parseInt(b.getAttribute('data-id')));
+
+    if (diasIds.length === 0) {
+        mostrarNotificacion("Seleccioná al menos un día para actualizar.", "warning");
+        return;
+    }
+
+    const esCerrado = document.getElementById('checkCerrado').checked;
+    const ap1 = document.getElementById('horarioAp1').value;
+    const ci1 = document.getElementById('horarioCi1').value;
+    const ap2 = document.getElementById('horarioAp2').value;
+    const ci2 = document.getElementById('horarioCi2').value;
+
+    if (!esCerrado && (!ap1 || !ci1)) {
+        mostrarNotificacion("Para días laborables, el Turno 1 (Mañana) es obligatorio.", "warning");
+        return;
+    }
+
+    const payload = {
+        diasIds: diasIds,
+        Laborable: !esCerrado,
+        Hora_Apertura_1: esCerrado ? null : (ap1 || null),
+        Hora_Cierre_1: esCerrado ? null : (ci1 || null),
+        Hora_Apertura_2: esCerrado ? null : (ap2 || null),
+        Hora_Cierre_2: esCerrado ? null : (ci2 || null)
+    };
+
+    try {
+        const btnGuardar = event.currentTarget; 
+        const textoOriginal = btnGuardar.textContent;
+        btnGuardar.textContent = 'Guardando...';
+        btnGuardar.style.opacity = '0.7';
+
+        const respuesta = await fetch('http://localhost:3000/api/horarios/bulk', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("Horarios actualizados con éxito.", "success");
+            cargarTablaConfigHorarios(); 
+        } else {
+            mostrarNotificacion("Error al actualizar la base de datos.", "error");
+        }
+
+        btnGuardar.textContent = textoOriginal;
+        btnGuardar.style.opacity = '1';
+
+    } catch (error) {
+        console.error(error);
         mostrarNotificacion("Error de conexión.", "error");
     }
 }

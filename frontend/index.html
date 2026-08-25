@@ -536,11 +536,104 @@
                 </div>
             </div>
 
-            <!-- SUB-SECCIÓN 3: HORARIOS (Vacía por ahora) -->
+            <!-- SUB-SECCIÓN 3: HORARIOS DE ATENCIÓN (Modo Bulk Edit) -->
             <div id="vistaConfigHorarios" style="display: none;">
-                <div style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 4rem 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.02); width: 100%; text-align: center; color: var(--texto-claro);">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    <p style="font-size: 1.1rem; font-weight: 500;">Próximamente: Configuración de Horarios de Atención</p>
+                
+                <style>
+                    .btn-dia-horario {
+                        background-color: #f8f9fa;
+                        border: 1px solid #ccc;
+                        border-radius: 20px;
+                        padding: 8px 16px;
+                        cursor: pointer;
+                        font-size: 13px;
+                        font-weight: 500;
+                        color: #555;
+                        transition: all 0.2s ease;
+                    }
+                    .btn-dia-horario:hover { background-color: #e2e3e5; }
+                    .btn-dia-horario.active {
+                        background-color: var(--mostaza);
+                        color: white;
+                        border-color: var(--mostaza);
+                    }
+                </style>
+
+                <div style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 2.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); width: 100%;">
+                    
+                    <div style="margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1rem;">
+                        <h2 style="font-weight: 500; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; color: var(--texto-oscuro); margin: 0;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            Horario de Atención
+                        </h2>
+                        <p style="color: var(--texto-claro); font-size: 0.9rem; margin-top: 8px;">Consultá y modificá la franja horaria y los bloques de la agenda diaria.</p>
+                    </div>
+
+                    <!-- 1. VISOR ACTUAL (Arriba, como principal) -->
+                    <div style="margin-bottom: 40px; background: #fff; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+                        <div style="background: #f8f9fa; padding: 12px 20px; border-bottom: 1px solid #eee; font-weight: 600; font-size: 14px; color: #333;">
+                            Resumen de la semana actual
+                        </div>
+                        <div id="visorHorariosActuales" style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px;">
+                            <!-- JS inyectará el resumen de los 7 días acá -->
+                        </div>
+                    </div>
+
+                    <!-- 2. PANEL DE EDICIÓN EN LOTE (Abajo) -->
+                    <div style="background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 25px;">
+                        <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 15px; color: #333;">Modificar horarios</h3>
+                        
+                        <!-- Fila 1: Selección de días -->
+                        <div style="margin-bottom: 25px;">
+                            <label style="display: block; margin-bottom: 12px; font-weight: 600; font-size: 13px; color: #555;">1. Días a configurar</label>
+                            <div id="configDiasLaborables" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="button" class="btn-dia-horario active" data-id="1">Lun</button>
+                                <button type="button" class="btn-dia-horario active" data-id="2">Mar</button>
+                                <button type="button" class="btn-dia-horario active" data-id="3">Mié</button>
+                                <button type="button" class="btn-dia-horario active" data-id="4">Jue</button>
+                                <button type="button" class="btn-dia-horario active" data-id="5">Vie</button>
+                                <button type="button" class="btn-dia-horario" data-id="6">Sáb</button>
+                                <button type="button" class="btn-dia-horario" data-id="7">Dom</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: Configuración de Turnos -->
+                        <div style="margin-bottom: 25px;">
+                            <label style="display: block; margin-bottom: 12px; font-weight: 600; font-size: 13px; color: #555;">2. Franjas Horarias</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                
+                                <!-- Turno 1 -->
+                                <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                                    <h4 style="margin-top: 0; margin-bottom: 15px; font-size: 13px; color: var(--mostaza);">Turno 1 (Mañana)</h4>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="time" id="horarioAp1" value="09:30" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
+                                        <span style="color: #888; font-weight: 500;">a</span>
+                                        <input type="time" id="horarioCi1" value="15:00" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Turno 2 -->
+                                <div style="background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                                    <h4 style="margin-top: 0; margin-bottom: 15px; font-size: 13px; color: var(--mostaza);">Turno 2 (Tarde) <span style="font-weight: normal; font-size: 12px; color: #888;">(Opcional)</span></h4>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="time" id="horarioAp2" value="18:00" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
+                                        <span style="color: #888; font-weight: 500;">a</span>
+                                        <input type="time" id="horarioCi2" value="21:30" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; width: 100%;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3: Cierre y Guardado -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 20px; border-top: 1px solid #eee;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="checkCerrado" style="width: 18px; height: 18px; accent-color: #dc3545;" onchange="toggleCerrado()">
+                                <span style="font-weight: 500; color: #333; font-size: 14px;">Marcar días seleccionados como CERRADOS</span>
+                            </label>
+                            <button class="btn-primary" onclick="guardarHorarioEnLote()">Guardar cambios</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

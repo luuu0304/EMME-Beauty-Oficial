@@ -1048,6 +1048,65 @@ app.post('/api/cobrar-turno', async (req, res) => {
 });
 
 // ==========================================================================
+// 7.5. RUTAS: HORARIOS DE ATENCIÓN
+// ==========================================================================
+
+// Obtener la configuración semanal
+app.get('/api/horarios', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        // Ordenamos por ID para que siempre salga de Lunes a Domingo
+        let result = await pool.request().query("SELECT * FROM Horario_Atencion ORDER BY Id_Horario");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo horarios:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Actualizar múltiples días en lote (Bulk Edit)
+app.put('/api/horarios/bulk', async (req, res) => {
+    try {
+        const { diasIds, Laborable, Hora_Apertura_1, Hora_Cierre_1, Hora_Apertura_2, Hora_Cierre_2 } = req.body;
+        
+        if (!diasIds || diasIds.length === 0) return res.status(400).send("No se seleccionaron días");
+
+        let pool = await sql.connect(dbConfig);
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            for (let id of diasIds) {
+                const request = new sql.Request(transaction);
+                await request
+                    .input('Id', sql.Int, id)
+                    .input('Laborable', sql.Bit, Laborable)
+                    // ACÁ ESTÁ LA MAGIA: Cambiamos sql.Time por sql.VarChar
+                    .input('Apertura1', sql.VarChar, Hora_Apertura_1 || null)
+                    .input('Cierre1', sql.VarChar, Hora_Cierre_1 || null)
+                    .input('Apertura2', sql.VarChar, Hora_Apertura_2 || null)
+                    .input('Cierre2', sql.VarChar, Hora_Cierre_2 || null)
+                    .query(`
+                        UPDATE Horario_Atencion 
+                        SET Laborable = @Laborable, 
+                            Hora_Apertura_1 = @Apertura1, Hora_Cierre_1 = @Cierre1, 
+                            Hora_Apertura_2 = @Apertura2, Hora_Cierre_2 = @Cierre2
+                        WHERE Id_Horario = @Id
+                    `);
+            }
+            await transaction.commit();
+            res.status(200).send("Horarios actualizados exitosamente");
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (err) {
+        console.error("Error actualizando horarios:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// ==========================================================================
 // 8. RUTAS: DASHBOARD Y RESÚMENES
 // ==========================================================================
 app.get('/api/dashboard/kpis', async (req, res) => {
