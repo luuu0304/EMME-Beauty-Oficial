@@ -453,6 +453,27 @@ app.post('/api/empleadas/:id/areas', async (req, res) => {
     }
 });
 
+// Obtener el historial completo de liquidaciones (Cobros)
+app.get('/api/liquidaciones', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query(`
+            SELECT 
+                ls.Id_Liquidacion,
+                ls.Fecha,
+                ls.Monto_Total,
+                e.Nombre_Ap
+            FROM Liquidacion_Sueldo ls
+            JOIN Empleada e ON ls.Id_Empleada = e.Id_Empleada
+            ORDER BY ls.Fecha DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo liquidaciones:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
 
 // ==========================================================================
 // 4. RUTAS: SERVICIOS, ÁREAS & EXTRAS
@@ -1081,11 +1102,10 @@ app.put('/api/horarios/bulk', async (req, res) => {
                 await request
                     .input('Id', sql.Int, id)
                     .input('Laborable', sql.Bit, Laborable)
-                    // ACÁ ESTÁ LA MAGIA: Cambiamos sql.Time por sql.VarChar
-                    .input('Apertura1', sql.VarChar, Hora_Apertura_1 || null)
-                    .input('Cierre1', sql.VarChar, Hora_Cierre_1 || null)
-                    .input('Apertura2', sql.VarChar, Hora_Apertura_2 || null)
-                    .input('Cierre2', sql.VarChar, Hora_Cierre_2 || null)
+                    .input('Apertura1', sql.Time, Hora_Apertura_1 || null)
+                    .input('Cierre1', sql.Time, Hora_Cierre_1 || null)
+                    .input('Apertura2', sql.Time, Hora_Apertura_2 || null)
+                    .input('Cierre2', sql.Time, Hora_Cierre_2 || null)
                     .query(`
                         UPDATE Horario_Atencion 
                         SET Laborable = @Laborable, 

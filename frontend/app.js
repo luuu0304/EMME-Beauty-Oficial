@@ -74,6 +74,21 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Inicializar Flatpickr para el Historial de Cobros
+    const inputRangoCobros = document.getElementById('rangoFechaCobros');
+    if (inputRangoCobros) {
+        flatpickr(inputRangoCobros, {
+            mode: "range",
+            locale: "es",
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2 || selectedDates.length === 0) {
+                    aplicarFiltrosCobros();
+                }
+            }
+        });
+    }
+
     // Lógica del desplegable
     const selectFiltroDash = document.getElementById('filtroRapidoDash');
     if (selectFiltroDash) {
@@ -1823,6 +1838,112 @@ async function guardarEspecialidades() {
         console.error(error);
         mostrarNotificacion("Error de conexión.", "error");
     }
+}
+
+// ==========================================
+// HISTORIAL DE COBROS (EMPLEADAS)
+// ==========================================
+let memoriaLiquidaciones = [];
+
+function cambiarVistaEmpleadas(vista) {
+    const vistaSaldos = document.getElementById('vistaSaldosEmpleadas');
+    const vistaCobros = document.getElementById('vistaCobrosEmpleadas');
+    const btnSaldos = document.getElementById('btnVistaSaldos');
+    const btnCobros = document.getElementById('btnVistaCobros');
+    
+    // Agarramos los controles GLOBALES del header
+    const buscadorPrincipal = document.getElementById('buscadorEmpleadas'); 
+    const btnNueva = document.getElementById('btnNuevaEmpleada');
+
+    if (vista === 'saldos') {
+        vistaSaldos.style.display = 'block';
+        vistaCobros.style.display = 'none';
+        btnSaldos.classList.add('active');
+        btnCobros.classList.remove('active');
+        
+        // Mostramos los controles globales
+        if (buscadorPrincipal) buscadorPrincipal.style.display = 'inline-block';
+        if (btnNueva) btnNueva.style.display = 'inline-block';
+        
+    } else if (vista === 'cobros') {
+        vistaSaldos.style.display = 'none';
+        vistaCobros.style.display = 'block';
+        btnCobros.classList.add('active');
+        btnSaldos.classList.remove('active');
+        
+        // Ocultamos los controles globales porque acá tenemos filtros propios
+        if (buscadorPrincipal) buscadorPrincipal.style.display = 'none';
+        if (btnNueva) btnNueva.style.display = 'none';
+        
+        cargarHistorialCobros(); 
+    }
+}
+
+async function cargarHistorialCobros() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/liquidaciones');
+        memoriaLiquidaciones = await respuesta.json();
+        aplicarFiltrosCobros(); // Dibuja la tabla inicial
+    } catch (error) {
+        console.error("Error al cargar historial:", error);
+        document.getElementById('tablaHistorialCobrosBody').innerHTML = '<tr><td colspan="3" style="text-align:center; color:#d9534f; padding: 20px;">Error de conexión con el servidor.</td></tr>';
+    }
+}
+
+function aplicarFiltrosCobros() {
+    const textoBuscado = document.getElementById('buscadorHistorialCobros').value.toLowerCase();
+    const rangoValor = document.getElementById('rangoFechaCobros').value;
+    let fechaDesde = null, fechaHasta = null;
+
+    if (rangoValor) {
+        if (rangoValor.includes(' a ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' a ');
+        } else if (rangoValor.includes(' to ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' to ');
+        } else if (rangoValor.length === 10) {
+            fechaDesde = rangoValor;
+            fechaHasta = rangoValor;
+        }
+    }
+
+    const filtradas = memoriaLiquidaciones.filter(liq => {
+        const cumpleTexto = liq.Nombre_Ap.toLowerCase().includes(textoBuscado);
+        let cumpleFecha = true;
+
+        if (fechaDesde && fechaHasta) {
+            const fechaLiq = liq.Fecha.split('T')[0];
+            cumpleFecha = (fechaLiq >= fechaDesde) && (fechaLiq <= fechaHasta);
+        }
+
+        return cumpleTexto && cumpleFecha;
+    });
+
+    dibujarTablaCobros(filtradas);
+}
+
+function dibujarTablaCobros(lista) {
+    const tbody = document.getElementById('tablaHistorialCobrosBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px; color:#888;">No se encontraron registros de cobro con esos filtros.</td></tr>';
+        return;
+    }
+
+    lista.forEach(liq => {
+        const fechaObj = new Date(liq.Fecha);
+        const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
+        
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 15px; color: #555;">${fechaLimpia}</td>
+                <td style="padding: 15px; font-weight: 500; color: #333;">${liq.Nombre_Ap}</td>
+                <td style="padding: 15px; text-align: right; font-weight: 600; color: #28a745;">$${liq.Monto_Total.toLocaleString('es-AR')}</td>
+            </tr>
+        `;
+    });
 }
 
 // ==========================================================================
