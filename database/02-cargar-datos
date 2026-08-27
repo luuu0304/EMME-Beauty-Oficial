@@ -85,3 +85,13 @@ GO
 -- ('Laminado de cejas', 'Cejas y Pestañas', 23000, 90),
 -- ('Pestañas pelo por pelo', 'Cejas y Pestañas', 28000, 90);
 -- GO
+
+
+-- Insertar datos a Extra:
+-- INSERT INTO Extra (Nombre, Precio) VALUES
+-- ('Francesitas', 3000),
+-- ('Cat Eye', 3000),
+-- ('Polvos', 3000),
+-- ('Baby Boomer', 3000),
+-- ('Full Diseño', 3000),
+-- ('Retiro de otro salon', 3000);

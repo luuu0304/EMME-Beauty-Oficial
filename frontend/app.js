@@ -2177,7 +2177,9 @@ async function cargarIngresos() {
             const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
 
             const clientaMostrar = ingreso.Nombre_Clienta ? ingreso.Nombre_Clienta : '<span style="color:#aaa;">- Mostrador -</span>';
-            const servicioMostrar = ingreso.Concepto ? `Extra: ${ingreso.Concepto}` : ingreso.Nombre_Servicio;
+            
+            // Si hay concepto lo mostramos tal cual (ej: "Turno: Manicura"), sino usamos el nombre del servicio.
+            const servicioMostrar = ingreso.Concepto ? ingreso.Concepto : (ingreso.Nombre_Servicio || '-');
 
             const filaHTML = `
                 <tr style="border-bottom: 1px solid #eee;" data-fecha="${fechaCorta}">

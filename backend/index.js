@@ -339,6 +339,7 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
         await transaction.begin();
         
         try {
+            // 1. Calculamos cuánto hay que pagarle
             const requestCalc = new sql.Request(transaction);
             const resultCalc = await requestCalc
                 .input('Id_Empleada', sql.Int, id)
@@ -365,25 +366,23 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
                 return res.status(400).send("No hay saldo pendiente para liquidar.");
             }
 
+            // 2. Guardamos el registro en el historial de liquidaciones
             const requestLiq = new sql.Request(transaction);
-            const resultLiq = await requestLiq
+            await requestLiq
                 .input('Id_Empleada', sql.Int, id)
                 .input('Monto', sql.Decimal(12, 2), montoTotal)
                 .query(`
                     INSERT INTO Liquidacion_Sueldo (Id_Empleada, Monto_Total)
-                    OUTPUT inserted.Id_Liquidacion
                     VALUES (@Id_Empleada, @Monto)
                 `);
                 
-            const idLiquidacion = resultLiq.recordset[0].Id_Liquidacion;
-            
+            // 3. Marcamos los turnos como liquidados (simplificado)
             const requestUpdate = new sql.Request(transaction);
             await requestUpdate
                 .input('Id_Empleada', sql.Int, id)
-                .input('Id_Liquidacion', sql.Int, idLiquidacion)
                 .query(`
                     UPDATE Turno 
-                    SET Liquidado = 1, Id_Liquidacion = @Id_Liquidacion 
+                    SET Liquidado = 1
                     WHERE Id_Empleada = @Id_Empleada 
                       AND Estado = 'Pagado' 
                       AND Liquidado = 0
@@ -391,6 +390,7 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
                 
             await transaction.commit();
             res.status(200).json({ message: "Sueldo liquidado con éxito" });
+            
         } catch (err) {
             await transaction.rollback();
             throw err;
@@ -1016,14 +1016,24 @@ app.post('/api/cobrar-turno', async (req, res) => {
         const { idTurno, montoTotal, medioPago, descuento, extras } = req.body;
         let pool = await sql.connect(dbConfig);
         
+        // 1. Magia Nueva: Ahora no solo traemos el Estado, sino también el Nombre del Servicio
         const chequeo = await pool.request()
             .input('Id_Turno', sql.Int, idTurno)
-            .query(`SELECT Estado FROM Turno WHERE Id_Turno = @Id_Turno`);
+            .query(`
+                SELECT t.Estado, s.Nombre AS NombreServicio 
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE t.Id_Turno = @Id_Turno
+            `);
         
         if (chequeo.recordset.length === 0) return res.status(404).send("Turno no encontrado");
         if (chequeo.recordset[0].Estado === 'Pagado') {
             return res.status(400).send("¡Ojo! Este turno ya fue cobrado.");
         }
+
+        // 2. Armamos el texto exacto que queremos que aparezca en la tabla de Ingresos
+        const nombreDelServicio = chequeo.recordset[0].NombreServicio;
+        const conceptoDinamico = `Turno: ${nombreDelServicio}`;
 
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
@@ -1032,12 +1042,13 @@ app.post('/api/cobrar-turno', async (req, res) => {
             const requestIngreso = new sql.Request(transaction);
             await requestIngreso
                 .input('Id_Turno', sql.Int, idTurno)
+                .input('Concepto', sql.VarChar, conceptoDinamico) // <-- Acá mandamos el nombre real
                 .input('Monto_Total', sql.Decimal(12, 2), montoTotal)
                 .input('Medio_Pago', sql.VarChar, medioPago)
                 .input('Descuento', sql.Decimal(12, 2), descuento)
                 .query(`
-                    INSERT INTO Ingreso (Id_Turno, Fecha, Monto_Total, Medio_Pago, Descuento_Aplicado)
-                    VALUES (@Id_Turno, GETDATE(), @Monto_Total, @Medio_Pago, @Descuento)
+                    INSERT INTO Ingreso (Id_Turno, Fecha, Concepto, Monto_Total, Medio_Pago, Descuento)
+                    VALUES (@Id_Turno, GETDATE(), @Concepto, @Monto_Total, @Medio_Pago, @Descuento)
                 `);
             
             if (extras && extras.length > 0) {
