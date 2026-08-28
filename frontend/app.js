@@ -3338,3 +3338,23 @@ async function cargarGraficoDashboard(desde, hasta) {
         console.error("Error cargando los gráficos:", error);
     }
 }
+
+// ==========================================
+// LÓGICA DEL MENÚ DESPLEGABLE / HAMBURGUESA
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const btnMenu = document.getElementById('btnToggleMenu');
+    const sidebar = document.getElementById('sidebar');
+
+    if (btnMenu && sidebar) {
+        btnMenu.addEventListener('click', () => {
+            // Si estamos en celular, abrimos/cerramos tipo cajón
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+            } else {
+                // Si estamos en la compu, colapsamos/expandimos la barra
+                sidebar.classList.toggle('collapsed');
+            }
+        });
+    }
+});

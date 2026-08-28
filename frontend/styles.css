@@ -39,43 +39,150 @@ body {
 /* ==========================================================================
    2. ESTRUCTURA PRINCIPAL (Barra lateral, Contenido)
    ========================================================================== */
+
+/* BARRA LATERAL (Base) */
 .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 250px;
-    background-color: var(--blanco);
-    border-right: 1px solid var(--borde);
-    padding: 2rem 1rem;
+    height: 100vh;
+    background-color: var(--blanco, #ffffff);
+    border-right: 1px solid var(--borde, #eeeeee);
+    padding: 20px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    overflow-x: hidden;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
 }
 
+/* CONTENIDO PRINCIPAL (Base) */
+.main-content {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    padding: 30px;
+    transition: all 0.3s ease;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+/* Expandir contenido principal cuando la barra se colapsa */
+body:has(.sidebar.collapsed) .main-content {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+}
+
+/* ELEMENTOS DEL MENÚ */
 .logo-text {
     font-size: 1.5rem;
-    font-weight: 300;
+    font-weight: 600;
     letter-spacing: 4px;
     text-align: center;
     margin-bottom: 3rem;
-    color: var(--texto-oscuro);
+    color: var(--texto-oscuro, #333);
+    transition: all 0.3s ease;
 }
 
 .menu-item {
-    padding: 1rem;
-    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    margin-bottom: 5px;
     border-radius: 8px;
     cursor: pointer;
-    color: var(--texto-oscuro);
+    color: var(--texto-claro, #555);
     font-weight: 500;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .menu-item:hover, .menu-item.active {
     background-color: #f9f4e8;
-    color: var(--mostaza);
+    color: var(--mostaza, #d4af37);
 }
 
-.main-content {
-    flex: 1;
-    padding: 3rem;
-    overflow-y: auto;
+/* Botón de Colapsar */
+.btn-colapsar-sidebar:hover {
+    background-color: #f8f9fa !important;
+}
+.btn-colapsar-sidebar svg {
+    transition: transform 0.3s ease;
+}
+
+/* =========================================
+   MODO COLAPSADO (Computadora) 
+   ========================================= */
+.sidebar.collapsed {
+    width: 80px;
+    padding: 20px 10px;
+}
+
+.sidebar.collapsed .logo-text {
+    font-size: 1rem;
+    letter-spacing: 1px;
+}
+
+.sidebar.collapsed .menu-text {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+}
+
+.sidebar.collapsed .menu-item {
+    justify-content: center;
+    padding: 12px 0;
+}
+
+/* Rotar la flecha al colapsar */
+.sidebar.collapsed .btn-colapsar-sidebar svg {
+    transform: rotate(180deg);
+}
+
+/* =========================================
+   MODO MÓVIL (Celular) 
+   ========================================= */
+@media (max-width: 768px) {
+    .sidebar {
+        left: -250px; 
+        width: 250px; 
+        box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.mobile-open {
+        left: 0;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 15px;
+    }
+
+    .sidebar.collapsed .menu-text {
+        opacity: 1;
+        visibility: visible;
+        width: auto;
+        height: auto;
+    }
+    
+    .sidebar.collapsed .menu-item {
+        justify-content: flex-start;
+        padding: 12px 15px;
+    }
+    
+    .sidebar.collapsed .logo-text {
+        font-size: 1.5rem;
+        letter-spacing: 4px;
+    }
+    
+    /* Evitar que rote en móvil */
+    .sidebar.collapsed .btn-colapsar-sidebar svg {
+        transform: rotate(0deg);
+    }
 }
 
 /* ==========================================================================
