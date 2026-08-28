@@ -204,9 +204,26 @@
 
         <!-- 3.2. SECCIÓN: CLIENTAS -->
         <div id="seccionClientas" style="display: none;">
-            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                <button id="btnVistaTarjetas" class="btn-tab" onclick="cambiarVistaClientas('tarjetas')">Vista Tarjetas</button>
-                <button id="btnVistaLista" class="btn-tab active" onclick="cambiarVistaClientas('lista')">Vista Lista</button>
+            <!-- SUB-NAVEGACIÓN Y FILTROS DE CLIENTAS -->
+            <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="btnVistaTarjetas" class="btn-tab" onclick="cambiarVistaClientas('tarjetas')">Vista Tarjetas</button>
+                    <button id="btnVistaLista" class="btn-tab active" onclick="cambiarVistaClientas('lista')">Vista Lista</button>
+                </div>
+                
+                <!-- NUEVO: FILTRO INTELIGENTE CRM -->
+                <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 5px 10px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    <select id="filtroRetencionClientas" onchange="aplicarFiltroClientas()" style="border: none; outline: none; background: transparent; font-size: 14px; color: #333; cursor: pointer;">
+                        <option value="todas">Todas las clientas</option>
+                        <option value="este_mes">Vinieron este mes</option>
+                        <option value="15_dias">Hace más de 15 días</option>
+                        <option value="30_dias">Hace más de 30 días</option>
+                        <option value="60_dias">Hace más de 60 días</option>
+                    </select>
+                </div>
+
             </div>
 
             <!-- VISTA TARJETAS -->

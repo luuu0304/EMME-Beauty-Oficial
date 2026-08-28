@@ -1354,64 +1354,129 @@ function cambiarVistaClientas(vista) {
 async function cargarClientas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
-        const clientas = await respuesta.json();
-
-        listaGlobalClientas = clientas;
-
-        const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
-        const tbodyLista = document.getElementById('tablaClientasBody');
+        listaGlobalClientas = await respuesta.json();
         
-        if (contenedorTarjetas) contenedorTarjetas.innerHTML = '';
-        if (tbodyLista) tbodyLista.innerHTML = '';
-        
-        clientas.forEach(clienta => {
-            let fechaNac = '-';
-            if (clienta.Fecha_Nac) {
-                fechaNac = new Date(clienta.Fecha_Nac).toLocaleDateString('es-AR');
-            }
-            const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
-
-            const tarjetaHTML = `
-                <div class="card item-clienta-busqueda"> 
-                    <div class="card-header">
-                        <div class="avatar">${iniciales}</div>
-                        <div class="client-info">
-                            <h3 class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</h3>
-                            <span>Cumple: ${fechaNac}</span>
-                        </div>
-                    </div>
-                    <div class="visit-info">
-                        <p>Instagram: <strong>${clienta.Ig || '-'}</strong></p>
-                        <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
-                    </div>
-                   <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
-                        <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
-                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
-                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
-                    </div>
-                </div>
-            `;
-            if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
-
-            const filaHTML = `
-                <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
-                    <td style="padding: 12px 15px;">${clienta.Telefono || '-'}</td>
-                    <td style="padding: 12px 15px;">${clienta.Ig || '-'}</td>
-                    <td style="padding: 12px 15px;">${fechaNac}</td>
-                    <td style="padding: 12px 15px; text-align: center;">
-                        <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
-                        <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
-                        <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
-                    </td>
-                </tr>
-            `;
-            if (tbodyLista) tbodyLista.innerHTML += filaHTML;
-        });
+        // Llamamos a la función que dibuja el HTML por primera vez con TODAS las clientas
+        renderizarClientas(listaGlobalClientas);
     } catch (error) {
         console.error("Error conectando con la API de clientas:", error);
     }
-}   
+}
+
+// Sacamos toda la lógica de dibujo a una función separada para poder reutilizarla
+function renderizarClientas(clientasParaMostrar) {
+    const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
+    const tbodyLista = document.getElementById('tablaClientasBody');
+    
+    if (contenedorTarjetas) contenedorTarjetas.innerHTML = '';
+    if (tbodyLista) tbodyLista.innerHTML = '';
+
+    // Si el filtro no encuentra a nadie, mostramos un mensajito amigable
+    if (clientasParaMostrar.length === 0) {
+        const trVacio = document.createElement('tr');
+        trVacio.innerHTML = `<td colspan="5" style="text-align:center; padding:30px; color:#888;">No hay clientas que coincidan con este filtro.</td>`;
+        if (tbodyLista) tbodyLista.appendChild(trVacio);
+        if (contenedorTarjetas) contenedorTarjetas.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 30px; color: #888;">No hay clientas que coincidan con este filtro.</div>';
+        return;
+    }
+    
+    clientasParaMostrar.forEach(clienta => {
+        let fechaNac = '-';
+        if (clienta.Fecha_Nac) {
+            // Cortamos la fecha para quedarnos solo con el "YYYY-MM-DD"
+            const fechaLimpia = clienta.Fecha_Nac.split('T')[0];
+            
+            // Configuramos para que solo muestre el día y el mes (Ej: "04 de mayo")
+            const opcionesFecha = { day: '2-digit', month: 'long' };
+            fechaNac = new Date(fechaLimpia + 'T12:00:00').toLocaleDateString('es-AR', opcionesFecha);
+        }
+        const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
+
+        const tarjetaHTML = `
+            <div class="card item-clienta-busqueda"> 
+                <div class="card-header">
+                    <div class="avatar">${iniciales}</div>
+                    <div class="client-info">
+                        <h3 class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</h3>
+                        <span>Cumple: ${fechaNac}</span>
+                    </div>
+                </div>
+                <div class="visit-info">
+                    <p>Instagram: <strong>${clienta.Ig || '-'}</strong></p>
+                    <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
+                </div>
+               <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
+                    <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
+                    <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
+                    <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
+                </div>
+            </div>
+        `;
+        if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
+
+        const filaHTML = `
+            <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
+                <td style="padding: 12px 15px;">${clienta.Telefono || '-'}</td>
+                <td style="padding: 12px 15px;">${clienta.Ig || '-'}</td>
+                <td style="padding: 12px 15px;">${fechaNac}</td>
+                <td style="padding: 12px 15px; text-align: center;">
+                    <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
+                    <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
+                    <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
+                </td>
+            </tr>
+        `;
+        if (tbodyLista) tbodyLista.innerHTML += filaHTML;
+    });
+}
+
+// La función mágica del CRM
+function aplicarFiltroClientas() {
+    const filtroElegido = document.getElementById('filtroRetencionClientas').value;
+    const hoy = new Date();
+    
+    // Si elige "todas", mandamos la lista global entera
+    if (filtroElegido === 'todas') {
+        renderizarClientas(listaGlobalClientas);
+        return;
+    }
+
+    const clientasFiltradas = listaGlobalClientas.filter(clienta => {
+        // Asegurate de que este nombre (Fecha_Ultimo_Turno) sea el que manda tu backend. 
+        // Si se llama Ultimo_Turno o Fecha, cambialo acá abajo:
+        const fechaUltimoVisita = clienta.Fecha_Ultimo_Turno;
+        // Si la clienta es nueva y nunca tuvo un turno, la filtramos para que no rompa la matemática
+        if (!fechaUltimoVisita) return false;
+
+        const fechaObj = new Date(fechaUltimoVisita);
+        
+        // Calculamos cuántos días de diferencia hay entre hoy y su último turno
+        const milisegundos = hoy.getTime() - fechaObj.getTime();
+        const diasPasados = Math.floor(milisegundos / (1000 * 60 * 60 * 24));
+
+        if (filtroElegido === 'este_mes') {
+            return fechaObj.getMonth() === hoy.getMonth() && fechaObj.getFullYear() === hoy.getFullYear();
+        } 
+        else if (filtroElegido === '15_dias') {
+            // Vino hace más de 15 días, pero menos de 30
+            return diasPasados >= 15 && diasPasados < 30;
+        } 
+        else if (filtroElegido === '30_dias') {
+            // Vino hace más de un mes, pero menos de dos
+            return diasPasados >= 30 && diasPasados < 60;
+        } 
+        else if (filtroElegido === '60_dias') {
+            // Colgada total, hace más de dos meses que no viene
+            return diasPasados >= 60;
+        }
+        
+        return true;
+    });
+
+    // Dibujamos solo las que pasaron el filtro
+    renderizarClientas(clientasFiltradas);
+}
 
 async function guardarClienta() {
     const idOculto = document.getElementById('idClientaOculto').value;

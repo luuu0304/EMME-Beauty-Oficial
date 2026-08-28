@@ -47,15 +47,34 @@ app.get('/', (req, res) => {
 // 2. RUTAS: CLIENTAS
 // ==========================================================================
 
-// Obtener todas las clientas
+// Obtener todas las clientas (con la fecha de su último turno)
 app.get('/api/clientas', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
-        let result = await pool.request().query("SELECT * FROM Clienta");
+        let result = await pool.request().query(`
+            SELECT 
+                c.Id_Clienta,
+                c.Nombre,
+                c.Apellido,
+                c.Telefono,
+                c.Ig,
+                c.Fecha_Nac,
+                MAX(t.Fecha_Hora) AS Fecha_Ultimo_Turno
+            FROM Clienta c
+            LEFT JOIN Turno t ON c.Id_Clienta = t.Id_Clienta
+            GROUP BY 
+                c.Id_Clienta, 
+                c.Nombre, 
+                c.Apellido, 
+                c.Telefono, 
+                c.Ig, 
+                c.Fecha_Nac
+            ORDER BY c.Nombre ASC, c.Apellido ASC
+        `);
         res.json(result.recordset);
     } catch (err) {
-        console.error("Error en la base de datos: ", err);
-        res.status(500).send("Error conectando a la base de datos");
+        console.error("Error obteniendo clientas:", err);
+        res.status(500).send("Error interno del servidor");
     }
 });
 
