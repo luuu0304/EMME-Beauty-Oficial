@@ -556,25 +556,84 @@ function agendarTurnoRapido(idClienta, nombre, apellido) {
     abrirModalTurno();
 }
 
+// 1. Variable global para guardar los servicios en memoria
+let listaServiciosGlobal = [];
+
+// 2. Reemplazamos tu cargarServicios original
 async function cargarServicios() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/servicios');
-        const servicios = await respuesta.json();
+        listaServiciosGlobal = await respuesta.json(); // Guardamos TODOS los servicios acá
         
-        const selectServicio = document.getElementById('servicioTurno');
-        if (selectServicio) {
-            selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
-            
-            servicios.forEach(servicio => {
-                const opcion = document.createElement('option');
-                opcion.value = servicio.Id_Servicio;
-                opcion.textContent = servicio.Nombre;
-                selectServicio.appendChild(opcion);
-            });
-        }
+        // Llenamos el primer select (Áreas)
+        await cargarAreasEnModalTurno();
     } catch (error) {
         console.error("Error conectando con la API de servicios:", error);
     }
+}
+
+// 3. NUEVA FUNCIÓN: Trae las áreas para el primer select
+async function cargarAreasEnModalTurno() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const areas = await respuesta.json();
+        
+        const selectArea = document.getElementById('areaTurno');
+        if (selectArea) {
+            selectArea.innerHTML = '<option value="">Seleccione un área...</option>';
+            areas.forEach(area => {
+                // Imprimimos el fantasma en la consola para ver su verdadera identidad
+                console.log("Datos del área recibida:", area); 
+
+                const opcion = document.createElement('option');
+                opcion.value = area.Id_Area;
+                
+                // Le decimos que intente con las variaciones más comunes de tu DB
+                opcion.textContent = area.Nombre || area.Nombre_Area || area.Area || area.Descripcion || "Área sin nombre"; 
+                
+                selectArea.appendChild(opcion);
+            });
+        }
+    } catch (error) {
+        console.error("Error cargando áreas:", error);
+    }
+}
+
+// 4. NUEVA FUNCIÓN: Se ejecuta al elegir un Área y desbloquea los Servicios
+function filtrarServiciosPorAreaEnModal() {
+    const idAreaSeleccionada = document.getElementById('areaTurno').value;
+    const selectServicio = document.getElementById('servicioTurno');
+    const selectEmpleada = document.getElementById('empleadaTurno');
+    
+    // Reseteamos los selects dependientes
+    selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
+    selectEmpleada.innerHTML = '<option value="">Primero elija un servicio...</option>';
+    
+    // Bloqueamos a la profesional por seguridad
+    selectEmpleada.disabled = true;
+    selectEmpleada.style.backgroundColor = '#f8f9fa';
+
+    // Si vuelve a la opción vacía, bloqueamos el servicio y cortamos acá
+    if (!idAreaSeleccionada) {
+        selectServicio.disabled = true;
+        selectServicio.style.backgroundColor = '#f8f9fa';
+        return;
+    }
+
+    // Filtramos la lista global buscando solo los servicios de esa área
+    const serviciosFiltrados = listaServiciosGlobal.filter(s => s.Id_Area == idAreaSeleccionada);
+
+    // Llenamos el select con el resultado
+    serviciosFiltrados.forEach(servicio => {
+        const opcion = document.createElement('option');
+        opcion.value = servicio.Id_Servicio;
+        opcion.textContent = servicio.Nombre;
+        selectServicio.appendChild(opcion);
+    });
+
+    // ¡Habilitamos el select de servicios para que puedan elegir!
+    selectServicio.disabled = false;
+    selectServicio.style.backgroundColor = 'white';
 }
 
 // ==========================================================================
