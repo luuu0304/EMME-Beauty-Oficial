@@ -471,6 +471,24 @@ body:has(.sidebar.collapsed) .main-content {
     color: var(--mostaza) !important;
 }
 
+/* Ajuste de layout para los Extras del Modal */
+#contenedorExtras > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+
+#contenedorExtras label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap; /* ¡Esta es la regla mágica que evita el salto de línea! */
+    margin: 0;
+    font-size: 13px;
+    color: #333;
+}
+
 /* ==========================================================================
    6. VISTAS DE AGENDA (Grilla, Calendario)
    ========================================================================== */

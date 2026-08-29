@@ -1191,7 +1191,8 @@ function abrirModalTurnosAgrupados(turnos) {
                 precioServicio,
                 turno.Estado, 
                 turno.Color,
-                senaPagada
+                senaPagada,
+                turno.Comentario_Admin
             );
         };
         
@@ -1296,8 +1297,9 @@ async function cargarTurnosAgenda() {
                         turno.Nombre_Servicio, 
                         precioServicio,
                         turno.Estado, 
-                        turno.Color,
-                        senaPagada
+                        turno.Color || '',
+                        senaPagada,
+                        turno.Comentario_Admin || ''
                     );
                 };
                 tarjeta.innerHTML = `
@@ -1444,10 +1446,24 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
 
             let tagsHTML = '';
             if (turno.Color) {
-                const detalles = turno.Color.split(',');
+                // Pequeña corrección acá: separamos por ' | ' que es lo que guarda la nueva ruta
+                const detalles = turno.Color.split(' | ');
                 detalles.forEach(detalle => {
-                    tagsHTML += `<span style="background: #f0e6d2; color: #8b6d3b; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; margin-right: 5px; display: inline-block; margin-top: 8px;">${detalle.trim()}</span>`;
+                    if(detalle.trim() !== '') {
+                        tagsHTML += `<span style="background: #f0e6d2; color: #8b6d3b; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; margin-right: 5px; display: inline-block; margin-top: 8px;">${detalle.trim()}</span>`;
+                    }
                 });
+            }
+
+            // NUEVO: Dibujamos la nota interna si existe
+            let notaHTML = '';
+            if (turno.Comentario_Admin) {
+                notaHTML = `
+                    <div style="background: #fff8e1; border-left: 3px solid #ffeeba; padding: 8px 12px; margin-top: 10px; border-radius: 4px; font-size: 12px; color: #856404;">
+                        <span style="font-weight: 700; display: block; margin-bottom: 3px;">Nota Interna (Admin):</span>
+                        ${turno.Comentario_Admin}
+                    </div>
+                `;
             }
 
             const itemHTML = `
@@ -1460,6 +1476,7 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
                     <div>
                         ${tagsHTML}
                     </div>
+                    ${notaHTML}
                 </div>
             `;
             listaHistorial.innerHTML += itemHTML;
@@ -2543,7 +2560,8 @@ function filtrarIngresos() {
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 let precioBaseActual = 0;
 
-function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0) {
+// 1. Agregamos el parámetro comentarioAdmin al final
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '') {
     precioBaseActual = parseFloat(precioBase) || 0;
     const senaActual = parseFloat(sena) || 0;
     
@@ -2563,10 +2581,16 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
 
     document.getElementById('colorTurnoInput').value = '';
     
+    // Asignamos el valor al nuevo input de la nota adhesiva
+    const inputComentario = document.getElementById('comentarioAdminInput');
+    if (inputComentario) {
+        inputComentario.value = (comentarioAdmin && comentarioAdmin !== 'null') ? comentarioAdmin : '';
+    }
+    
     const contenedorColores = document.getElementById('listaColoresGuardados');
     contenedorColores.innerHTML = ''; 
     
-    if (color) {
+    if (color && color !== 'null') {
         const arrayColores = color.split(' | ');
         arrayColores.forEach(c => {
             contenedorColores.innerHTML += `<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 15px; font-size: 12px;"> ${c}</span>`;
@@ -2595,6 +2619,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         btnGuardar.style.display = 'none';
         inputColor.disabled = true;
         inputDescuento.disabled = true;
+        if (inputComentario) inputComentario.disabled = true; // Bloqueamos la nota si está pagado
         if (inputSena) inputSena.disabled = true;
         if (btnActualizarSena) btnActualizarSena.disabled = true;
         checkboxes.forEach(chk => chk.disabled = true);
@@ -2610,6 +2635,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         btnGuardar.style.display = 'inline-block';
         inputColor.disabled = false;
         inputDescuento.disabled = false;
+        if (inputComentario) inputComentario.disabled = false; // Habilitamos la nota
         if (inputSena) inputSena.disabled = false;
         if (btnActualizarSena) btnActualizarSena.disabled = false;
         checkboxes.forEach(chk => chk.disabled = false);
@@ -2626,12 +2652,15 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
 }
 
+// 2. Modificamos para enviar la nota al backend
 async function guardarDetallesTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const colorElegido = document.getElementById('colorTurnoInput').value;
+    const comentario = document.getElementById('comentarioAdminInput').value;
     
-    if (!colorElegido.trim()) {
-        mostrarNotificacion("Escribí un color primero", "error");
+    // Ahora permite guardar si hay un color O un comentario
+    if (!colorElegido.trim() && !comentario.trim()) {
+        mostrarNotificacion("Escribí un color o comentario para guardar", "warning");
         return;
     }
     
@@ -2639,11 +2668,14 @@ async function guardarDetallesTurno() {
         const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Color: colorElegido })
+            body: JSON.stringify({ 
+                Color: colorElegido,
+                Comentario_Admin: comentario 
+            })
         });
         
         if (respuesta.ok) {
-            mostrarNotificacion("¡Color agregado!", "success");
+            mostrarNotificacion("¡Detalles guardados!", "success");
             setTimeout(() => {
                 window.location.reload();
             }, 1000);

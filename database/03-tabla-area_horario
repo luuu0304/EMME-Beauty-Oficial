@@ -49,3 +49,6 @@
 -- ALTER TABLE Ingreso ADD Descuento DECIMAL(10,2) DEFAULT 0;
 
 -- EXEC sp_rename 'Clienta.Ig', 'Observacion', 'COLUMN';
+
+-- ALTER TABLE Turno ADD Comentario_Admin VARCHAR(500) NULL;
+-- ALTER TABLE Turno ADD Comentario_Empleada VARCHAR(500) NULL;

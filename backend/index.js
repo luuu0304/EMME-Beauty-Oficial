@@ -146,7 +146,8 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
                     t.Fecha_Hora, 
                     s.Nombre AS Nombre_Servicio, 
                     e.Nombre_Ap,
-                    t.Color
+                    t.Color,
+                    t.Comentario_Admin
                 FROM Turno t
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                 JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
@@ -710,7 +711,8 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
                     e.Nombre_Ap, 
                     t.Estado,
                     t.Color,
-                    t.Sena_Monto
+                    t.Sena_Monto,
+                    t.Comentario_Admin
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -788,23 +790,33 @@ app.post('/api/turnos', async (req, res) => {
 app.put('/api/turnos/:id/detalles', async (req, res) => {
     try {
         const { id } = req.params;
-        const { Color } = req.body; 
+        // 1. Ahora también atrapamos el Comentario_Admin que manda el frontend
+        const { Color, Comentario_Admin } = req.body; 
+        
         let pool = await sql.connect(dbConfig);
         
         await pool.request()
             .input('Id_Turno', sql.Int, id)
-            .input('NuevoColor', sql.VarChar, Color)
+            .input('NuevoColor', sql.VarChar, Color || '') 
+            .input('Comentario', sql.VarChar, Comentario_Admin || '') // 2. Lo declaramos como variable SQL
             .query(`
                 UPDATE Turno 
-                SET Color = CASE 
+                SET 
+                    -- Lógica del color: si viene vacío no hace nada. Si trae algo, lo agrega.
+                    Color = CASE 
+                                WHEN @NuevoColor = '' THEN Color 
                                 WHEN Color IS NULL OR Color = '' THEN @NuevoColor 
                                 ELSE Color + ' | ' + @NuevoColor 
                             END,
+                    
+                    -- Lógica del comentario: simplemente reemplaza lo viejo por lo nuevo
+                    Comentario_Admin = @Comentario,
+                    
                     Estado = CASE WHEN Estado = 'Pendiente' THEN 'En progreso' ELSE Estado END
                 WHERE Id_Turno = @Id_Turno AND Estado != 'Pagado'
             `);
             
-        res.status(200).send("Color agregado a la sesión.");
+        res.status(200).send("Detalles y comentarios actualizados.");
     } catch (error) {
         console.error("Error al guardar detalles:", error);
         res.status(500).send("Error interno al actualizar el turno");
