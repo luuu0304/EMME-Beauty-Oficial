@@ -209,6 +209,81 @@ const btnNuevoGasto = document.getElementById('btnNuevoGasto');
 const btnNuevoIngreso = document.getElementById('btnNuevoIngreso');
 const btnMenuConfig = document.getElementById('btnMenuConfig');
 
+// ==========================================
+// ROUTER DE LA APLICACIÓN (History API)
+// ==========================================
+
+// 1. Definimos nuestras rutas y qué sección de HTML le corresponde a cada una
+const rutas = {
+    '/': 'seccionTurnos',
+    '/turnos': 'seccionTurnos',
+    '/clientas': 'seccionClientas',
+    '/empleados': 'seccionEmpleados',
+    '/gastos': 'seccionGastos',
+    '/ingresos': 'seccionIngresos',
+    '/resumenes': 'seccionResumenes',
+    '/configuracion': 'seccionConfiguracion'
+};
+
+// 2. Función principal que maneja el cambio de vista
+function router() {
+    // Obtenemos la ruta actual (Ej: "/clientas")
+    // Como estamos en un entorno local (/frontend/index.html), limpiamos la ruta para simular la raíz
+    let path = window.location.pathname.replace('/frontend/index.html', '') || '/';
+    if (path === '') path = '/'; // Fallback a la raíz
+
+    // Buscamos qué sección le toca. Si escriben cualquier cosa, los mandamos a Turnos por defecto (Tu página de error 404 iría acá)
+    const idSeccion = rutas[path] || 'seccionTurnos';
+
+    // Ocultamos todas las secciones
+    const todasLasSecciones = [
+        'seccionTurnos', 'seccionClientas', 'seccionEmpleados', 
+        'seccionGastos', 'seccionIngresos', 'seccionResumenes', 'seccionConfiguracion'
+    ];
+    
+    todasLasSecciones.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.style.display = 'none';
+    });
+
+    // Mostramos solo la sección activa
+    const seccionActiva = document.getElementById(idSeccion);
+    if (seccionActiva) seccionActiva.style.display = 'block';
+
+    // Actualizamos el menú lateral para que pinte de mostaza el ítem correcto
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.getAttribute('data-link') === path) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// 3. Interceptamos los clics en el menú para no recargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    document.body.addEventListener('click', e => {
+        // Si hicieron clic en un elemento del menú (o en algo dentro de él)
+        const menuItem = e.target.closest('.menu-item');
+        
+        if (menuItem && menuItem.hasAttribute('data-link')) {
+            e.preventDefault(); // Evita que el navegador intente cargar otra página
+            const rutaDestino = menuItem.getAttribute('data-link');
+            
+            // Empujamos la nueva URL al historial del navegador simulando el cambio
+            window.history.pushState(null, null, '/frontend/index.html' + rutaDestino);
+            
+            // Ejecutamos el router para pintar la pantalla
+            router();
+        }
+    });
+
+    // Ejecutamos el router al cargar la página por primera vez
+    router();
+});
+
+// 4. Escuchamos las flechas de "Atrás" y "Adelante" del navegador
+window.addEventListener('popstate', router);
+
 // Función principal del menú
 botonesMenu.forEach(boton => {
     boton.addEventListener('click', () => {
