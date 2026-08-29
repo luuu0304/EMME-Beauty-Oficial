@@ -138,11 +138,10 @@
                     </div>
                     
                     <!-- Filtros por Especialidad (Derecha) -->
-                    <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center;">
+                    <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center; flex-wrap: wrap;">
                         <span style="font-weight: 500; font-size: 14px;">Filtrar por:</span>
-                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: #e2e3e5; border: none; padding: 6px 15px; cursor: pointer;">Todo</button>
-                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Manicura', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Manicura</button>
-                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Cejas y Pestañas', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Cejas y Pestañas</button>
+                        <button class="btn-secundario filtro-btn active" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: var(--mostaza, #d4af37); color: white; border: 1px solid var(--mostaza, #d4af37); padding: 6px 15px; cursor: pointer;">Todo</button>
+                        <!-- JavaScript inyectará los botones de las áreas acá al lado -->
                     </div>
                 </div>
 

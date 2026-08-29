@@ -731,6 +731,38 @@ function filtrarServiciosPorAreaEnModal() {
     selectServicio.style.backgroundColor = 'white';
 }
 
+async function cargarBotonesAreasAgenda() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const areas = await respuesta.json();
+        
+        const contenedorFiltros = document.getElementById('filtrosEspecialidad');
+        
+        if (!contenedorFiltros) return;
+
+        // Por cada área que venga de la base de datos, creamos un botón
+        areas.forEach(area => {
+            const nombreArea = area.Nombre || area.Nombre_Area || area.Area || "Área sin nombre";
+            
+            const boton = document.createElement('button');
+            boton.className = 'btn-secundario filtro-btn';
+            
+            // Le damos el estilo de "inactivo" por defecto (fondo blanco, borde gris)
+            boton.style.cssText = 'border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;';
+            boton.textContent = nombreArea;
+            
+            // Le conectamos tu función que ya funciona perfecto
+            boton.onclick = function() { 
+                filtrarAgendaPorArea(nombreArea, this); 
+            };
+            
+            contenedorFiltros.appendChild(boton);
+        });
+    } catch (error) {
+        console.error("Error cargando los botones de áreas:", error);
+    }
+}
+
 // ==========================================================================
 // VARIABLES GLOBALES Y HELPERS DE LA NUEVA AGENDA DINÁMICA
 // ==========================================================================
@@ -769,6 +801,7 @@ function generarBloques(apertura, cierre) {
 // ==========================================================================
 async function inicializarAgendaDiaria() {
     try {
+        await cargarBotonesAreasAgenda();
         // 1. Traemos las profesionales
         const resEmp = await fetch('http://localhost:3000/api/empleadas');
         empleadasAgendaGlobal = await resEmp.json();
@@ -965,31 +998,44 @@ async function actualizarGrillaDiaria() {
     }
 }
 
-// Filtrar agenda al tocar los botones
-function filtrarAgendaPorArea(areaSeleccionada, botonClickeado) {
-    document.querySelectorAll('.filtro-btn').forEach(btn => {
-        btn.style.background = 'white';
-        btn.style.border = '1px solid #ccc';
-    });
-    botonClickeado.style.background = '#e2e3e5';
-    botonClickeado.style.border = 'none';
+let filtroAgendaActual = 'Todo';
 
-    const headers = document.querySelectorAll('#agendaHeader > div:not(.hora-col)');
+function filtrarAgendaPorArea(areaSeleccionada, btnPulsado) {
+    filtroAgendaActual = areaSeleccionada;
 
-    headers.forEach(header => {
-        const areasDeLaChica = header.getAttribute('data-areas');
+    // 1. Efecto visual: despintamos todos los botones y pintamos el que tocaste
+    if (btnPulsado) {
+        const botones = document.querySelectorAll('#filtrosEspecialidad .filtro-btn');
+        botones.forEach(b => {
+            // Volvemos todos al estado inactivo (fondo blanco, texto oscuro)
+            b.style.background = 'white';
+            b.style.border = '1px solid #ccc';
+            b.style.color = '#333';
+        });
         
-        const claseColumna = Array.from(header.classList).find(c => c.startsWith('col-emp-'));
-        const celdasDeLaChica = document.querySelectorAll(`.${claseColumna}`);
+        // Pintamos el botón presionado con el color de EMME
+        btnPulsado.style.background = 'var(--mostaza, #d4af37)'; 
+        btnPulsado.style.border = '1px solid var(--mostaza, #d4af37)';
+        btnPulsado.style.color = 'white';
+    }
 
-        if (areaSeleccionada === 'Todo' || (areasDeLaChica && areasDeLaChica.includes(areaSeleccionada))) {
-            header.style.display = ''; 
-            celdasDeLaChica.forEach(celda => celda.style.display = ''); 
-        } else {
-            header.style.display = 'none';
-            celdasDeLaChica.forEach(celda => celda.style.display = 'none');
-        }
-    });
+    // 2. Lógica de filtrado: recorremos a las chicas
+    if (typeof empleadasAgendaGlobal !== 'undefined') {
+        empleadasAgendaGlobal.forEach(emp => {
+            const areasDeLaEmpleada = (emp.Areas || '').toLowerCase();
+            const areaBuscada = areaSeleccionada.toLowerCase();
+            
+            // Chequeamos si pasa el filtro
+            const debeMostrar = (areaSeleccionada === 'Todo' || areasDeLaEmpleada.includes(areaBuscada));
+
+            // 3. Ocultamos o mostramos TODAS sus celdas (las de arriba y las de abajo)
+            const celdas = document.querySelectorAll(`.col-emp-${emp.Id_Empleada}`);
+            
+            celdas.forEach(celda => {
+                celda.style.display = debeMostrar ? '' : 'none';
+            });
+        });
+    }
 }
 
 function inicializarFechaAgenda() {
