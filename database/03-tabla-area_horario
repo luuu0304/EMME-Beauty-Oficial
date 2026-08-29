@@ -46,4 +46,6 @@
 -- ('Sábado', '09:30', '15:00', '18:00', '21:30', 1),
 -- ('Domingo', '00:00', '00:00', '00:00', '00:00', 0);
 
-ALTER TABLE Ingreso ADD Descuento DECIMAL(10,2) DEFAULT 0;
+-- ALTER TABLE Ingreso ADD Descuento DECIMAL(10,2) DEFAULT 0;
+
+-- EXEC sp_rename 'Clienta.Ig', 'Observacion', 'COLUMN';

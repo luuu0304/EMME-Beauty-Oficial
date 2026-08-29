@@ -16,7 +16,7 @@ CREATE TABLE Clienta (
     Apellido VARCHAR(50) NOT NULL,
     Fecha_Nac DATE NULL,
     Telefono VARCHAR(20) NULL,
-    Ig VARCHAR(50) NULL
+    Observacion VARCHAR(50) NULL
 );
 
 CREATE TABLE Empleada (

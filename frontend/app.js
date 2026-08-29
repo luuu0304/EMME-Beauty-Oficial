@@ -213,7 +213,6 @@ const btnMenuConfig = document.getElementById('btnMenuConfig');
 // ROUTER DE LA APLICACIÓN (History API)
 // ==========================================
 
-// 1. Definimos nuestras rutas y qué sección de HTML le corresponde a cada una
 const rutas = {
     '/': 'seccionTurnos',
     '/turnos': 'seccionTurnos',
@@ -225,17 +224,13 @@ const rutas = {
     '/configuracion': 'seccionConfiguracion'
 };
 
-// 2. Función principal que maneja el cambio de vista
 function router() {
-    // Obtenemos la ruta actual (Ej: "/clientas")
-    // Como estamos en un entorno local (/frontend/index.html), limpiamos la ruta para simular la raíz
     let path = window.location.pathname.replace('/frontend/index.html', '') || '/';
-    if (path === '') path = '/'; // Fallback a la raíz
+    if (path === '') path = '/';
 
-    // Buscamos qué sección le toca. Si escriben cualquier cosa, los mandamos a Turnos por defecto (Tu página de error 404 iría acá)
     const idSeccion = rutas[path] || 'seccionTurnos';
 
-    // Ocultamos todas las secciones
+    // 1. Ocultamos todas las secciones
     const todasLasSecciones = [
         'seccionTurnos', 'seccionClientas', 'seccionEmpleados', 
         'seccionGastos', 'seccionIngresos', 'seccionResumenes', 'seccionConfiguracion'
@@ -246,43 +241,68 @@ function router() {
         if (elemento) elemento.style.display = 'none';
     });
 
-    // Mostramos solo la sección activa
+    // 2. Mostramos solo la sección activa
     const seccionActiva = document.getElementById(idSeccion);
     if (seccionActiva) seccionActiva.style.display = 'block';
 
-    // Actualizamos el menú lateral para que pinte de mostaza el ítem correcto
+    // 3. Pintamos de mostaza el menú correspondiente
     document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
         if (item.getAttribute('data-link') === path) {
             item.classList.add('active');
         }
     });
+
+    // 4. ¡NUEVO! Actualizamos el Título y los Botones de la Cabecera
+    actualizarCabecera(path);
 }
 
-// 3. Interceptamos los clics en el menú para no recargar la página
-document.addEventListener('DOMContentLoaded', () => {
-    document.body.addEventListener('click', e => {
-        // Si hicieron clic en un elemento del menú (o en algo dentro de él)
-        const menuItem = e.target.closest('.menu-item');
-        
-        if (menuItem && menuItem.hasAttribute('data-link')) {
-            e.preventDefault(); // Evita que el navegador intente cargar otra página
-            const rutaDestino = menuItem.getAttribute('data-link');
-            
-            // Empujamos la nueva URL al historial del navegador simulando el cambio
-            window.history.pushState(null, null, '/frontend/index.html' + rutaDestino);
-            
-            // Ejecutamos el router para pintar la pantalla
-            router();
-        }
-    });
+// Función que controla la UI del Header según donde estemos parados
+function actualizarCabecera(ruta) {
+    const tituloHeader = document.querySelector('.header h1');
+    
+    // Primero apagamos todos los botones y buscadores
+    document.getElementById('buscadorClientas').style.display = 'none';
+    document.getElementById('buscadorEmpleadas').style.display = 'none';
+    document.getElementById('btnNuevaClienta').style.display = 'none';
+    document.getElementById('btnNuevoTurno').style.display = 'none';
+    document.getElementById('btnNuevaEmpleada').style.display = 'none';
+    document.getElementById('btnNuevoGasto').style.display = 'none';
+    document.getElementById('btnNuevoIngreso').style.display = 'none';
 
-    // Ejecutamos el router al cargar la página por primera vez
-    router();
-});
-
-// 4. Escuchamos las flechas de "Atrás" y "Adelante" del navegador
-window.addEventListener('popstate', router);
+    // Luego prendemos solo lo que corresponde según la ruta actual
+    switch (ruta) {
+        case '/':
+        case '/turnos':
+            if (tituloHeader) tituloHeader.textContent = 'Gestión de Turnos';
+            document.getElementById('btnNuevoTurno').style.display = 'block';
+            break;
+        case '/clientas':
+            if (tituloHeader) tituloHeader.textContent = 'Gestión de Clientas';
+            document.getElementById('buscadorClientas').style.display = 'block';
+            document.getElementById('btnNuevaClienta').style.display = 'block';
+            break;
+        case '/empleados':
+            if (tituloHeader) tituloHeader.textContent = 'Gestión de Profesionales';
+            document.getElementById('buscadorEmpleadas').style.display = 'block';
+            document.getElementById('btnNuevaEmpleada').style.display = 'block';
+            break;
+        case '/gastos':
+            if (tituloHeader) tituloHeader.textContent = 'Gestión de Gastos';
+            document.getElementById('btnNuevoGasto').style.display = 'block';
+            break;
+        case '/ingresos':
+            if (tituloHeader) tituloHeader.textContent = 'Gestión de Ingresos';
+            document.getElementById('btnNuevoIngreso').style.display = 'block';
+            break;
+        case '/resumenes':
+            if (tituloHeader) tituloHeader.textContent = 'Panel de Control';
+            break;
+        case '/configuracion':
+            if (tituloHeader) tituloHeader.textContent = 'Configuración del Sistema';
+            break;
+    }
+}
 
 // Función principal del menú
 botonesMenu.forEach(boton => {
@@ -1308,15 +1328,14 @@ function prepararNuevaClienta() {
     document.getElementById('apellidoInput').value = '';
     document.getElementById('cumpleInput').value = '';
     document.getElementById('telefonoInput').value = '';
-    document.getElementById('igInput').value = '';
-    
+    document.getElementById('obsInput').value = '';    
     document.getElementById('tituloModalClienta').textContent = 'Registre un nuevo Cliente';
     document.getElementById('btnGuardarClienta').textContent = 'Registrar';
     
     abrirModal();
 }
 
-function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
+function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, observacion) {
     document.getElementById('idClientaOculto').value = id; 
     document.getElementById('nombreInput').value = nombre;
     document.getElementById('apellidoInput').value = apellido;
@@ -1328,8 +1347,7 @@ function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
     }
 
     document.getElementById('telefonoInput').value = (telefono === 'null' || !telefono || telefono === 'undefined') ? '' : telefono;
-    document.getElementById('igInput').value = (ig === 'null' || !ig || ig === 'undefined') ? '' : ig;
-    
+    document.getElementById('obsInput').value = (observacion === 'null' || !observacion || observacion === 'undefined') ? '' : observacion;    
     document.getElementById('tituloModalClienta').textContent = 'Editar Clienta';
     document.getElementById('btnGuardarClienta').textContent = 'Actualizar';
     
@@ -1477,13 +1495,13 @@ function renderizarClientas(clientasParaMostrar) {
                     </div>
                 </div>
                 <div class="visit-info">
-                    <p>Instagram: <strong>${clienta.Ig || '-'}</strong></p>
+                    <p>Observación: <strong>${clienta.Observacion || '-'}</strong></p>
                     <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                 </div>
                <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
                     <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
                     <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
-                    <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
+                    <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Observacion}')">Editar</button>
                 </div>
             </div>
         `;
@@ -1493,12 +1511,12 @@ function renderizarClientas(clientasParaMostrar) {
             <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
                 <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
                 <td style="padding: 12px 15px;">${clienta.Telefono || '-'}</td>
-                <td style="padding: 12px 15px;">${clienta.Ig || '-'}</td>
+                <td style="padding: 12px 15px;">${clienta.Observacion || '-'}</td>
                 <td style="padding: 12px 15px;">${fechaNac}</td>
                 <td style="padding: 12px 15px; text-align: center;">
                     <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
                     <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
-                    <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
+                    <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Observacion}')">Editar</button>
                 </td>
             </tr>
         `;
@@ -1559,7 +1577,7 @@ async function guardarClienta() {
     const apellido = document.getElementById('apellidoInput').value.trim();
     const fechaNac = document.getElementById('cumpleInput').value;
     const telefono = document.getElementById('telefonoInput').value.trim();
-    const ig = document.getElementById('igInput').value.trim();
+    const observacion = document.getElementById('obsInput').value.trim();
 
     if (!nombre || !apellido) {
         mostrarNotificacion("¡Por favor completá el Nombre y el Apellido!", "warning");
@@ -1571,7 +1589,7 @@ async function guardarClienta() {
         Apellido: apellido,
         Fecha_Nac: fechaNac ? fechaNac : null,
         Telefono: telefono ? telefono : null,
-        Ig: ig ? ig : null
+        Observacion: observacion ? observacion : null
     };
 
     const url = idOculto 

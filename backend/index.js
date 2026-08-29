@@ -57,7 +57,7 @@ app.get('/api/clientas', async (req, res) => {
                 c.Nombre,
                 c.Apellido,
                 c.Telefono,
-                c.Ig,
+                c.Observacion,
                 c.Fecha_Nac,
                 MAX(t.Fecha_Hora) AS Fecha_Ultimo_Turno
             FROM Clienta c
@@ -67,7 +67,7 @@ app.get('/api/clientas', async (req, res) => {
                 c.Nombre, 
                 c.Apellido, 
                 c.Telefono, 
-                c.Ig, 
+                c.Observacion, 
                 c.Fecha_Nac
             ORDER BY c.Nombre ASC, c.Apellido ASC
         `);
@@ -81,7 +81,7 @@ app.get('/api/clientas', async (req, res) => {
 // Registrar una nueva clienta
 app.post('/api/clientas', async (req, res) => {
     try {
-        const { Nombre, Apellido, Fecha_Nac, Telefono, Ig } = req.body;
+        const { Nombre, Apellido, Fecha_Nac, Telefono, Observacion } = req.body;
         let pool = await sql.connect(dbConfig);
         
         const resultado = await pool.request()
@@ -89,11 +89,11 @@ app.post('/api/clientas', async (req, res) => {
             .input('Apellido', sql.VarChar, Apellido)
             .input('Fecha_Nac', sql.Date, Fecha_Nac || null)
             .input('Telefono', sql.VarChar, Telefono || null)
-            .input('Ig', sql.VarChar, Ig || null)
+            .input('Observacion', sql.VarChar, Observacion || null)
             .query(`
-                INSERT INTO Clienta (Nombre, Apellido, Fecha_Nac, Telefono, Ig)
+                INSERT INTO Clienta (Nombre, Apellido, Fecha_Nac, Telefono, Observacion)
                 OUTPUT inserted.Id_Clienta
-                VALUES (@Nombre, @Apellido, @Fecha_Nac, @Telefono, @Ig)
+                VALUES (@Nombre, @Apellido, @Fecha_Nac, @Telefono, @Observacion)
             `);
             
         res.status(201).json({ 
@@ -110,7 +110,7 @@ app.post('/api/clientas', async (req, res) => {
 app.put('/api/clientas/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { Nombre, Apellido, Fecha_Nac, Telefono, Ig } = req.body;
+        const { Nombre, Apellido, Fecha_Nac, Telefono, Observacion } = req.body;
         let pool = await sql.connect(dbConfig);
         
         await pool.request()
@@ -119,10 +119,10 @@ app.put('/api/clientas/:id', async (req, res) => {
             .input('Apellido', sql.VarChar, Apellido)
             .input('Fecha_Nac', sql.Date, Fecha_Nac || null)
             .input('Telefono', sql.VarChar, Telefono || null)
-            .input('Ig', sql.VarChar, Ig || null)
+            .input('Observacion', sql.VarChar, Observacion || null)
             .query(`
                 UPDATE Clienta 
-                SET Nombre = @Nombre, Apellido = @Apellido, Fecha_Nac = @Fecha_Nac, Telefono = @Telefono, Ig = @Ig
+                SET Nombre = @Nombre, Apellido = @Apellido, Fecha_Nac = @Fecha_Nac, Telefono = @Telefono, Observacion = @Observacion
                 WHERE Id_Clienta = @Id_Clienta
             `);
             
