@@ -1168,6 +1168,74 @@ app.put('/api/horarios/bulk', async (req, res) => {
     }
 });
 
+// ==========================================
+// MEDIOS DE PAGO
+// ==========================================
+
+// Obtener todos los medios de pago activos
+app.get('/api/medios-pago', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query(`
+            SELECT Id_Medio_Pago, Nombre 
+            FROM Medio_Pago 
+            WHERE Activo = 1 
+            ORDER BY Nombre ASC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo medios de pago: ", err);
+        res.status(500).send("Error conectando a la base de datos");
+    }
+});
+
+// Crear un nuevo medio de pago
+app.post('/api/medios-pago', async (req, res) => {
+    try {
+        const { Nombre } = req.body;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Nombre', sql.VarChar, Nombre)
+            .query('INSERT INTO Medio_Pago (Nombre, Activo) VALUES (@Nombre, 1)');
+        res.status(201).send("Medio de pago creado exitosamente");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al crear el medio de pago");
+    }
+});
+
+// Editar el nombre de un medio de pago
+app.put('/api/medios-pago/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre } = req.body;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .input('Nombre', sql.VarChar, Nombre)
+            .query('UPDATE Medio_Pago SET Nombre = @Nombre WHERE Id_Medio_Pago = @Id');
+        res.status(200).send("Medio de pago actualizado");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al actualizar");
+    }
+});
+
+// "Eliminar" (Desactivar) un medio de pago
+app.delete('/api/medios-pago/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .query('UPDATE Medio_Pago SET Activo = 0 WHERE Id_Medio_Pago = @Id');
+        res.status(200).send("Medio de pago desactivado");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al eliminar");
+    }
+});
+
 // ==========================================================================
 // 8. RUTAS: DASHBOARD Y RESÚMENES
 // ==========================================================================

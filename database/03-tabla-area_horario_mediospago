@@ -52,3 +52,15 @@
 
 -- ALTER TABLE Turno ADD Comentario_Admin VARCHAR(500) NULL;
 -- ALTER TABLE Turno ADD Comentario_Empleada VARCHAR(500) NULL;
+
+-- 1. Creamos la tabla
+-- CREATE TABLE Medio_Pago (
+    -- Id_Medio_Pago INT IDENTITY(1,1) PRIMARY KEY,
+    -- Nombre VARCHAR(50) NOT NULL,
+    -- Activo BIT DEFAULT 1 -- Para que el día de mañana puedas "apagar" un medio de pago sin borrar el historial
+-- );
+
+-- 2. Insertamos los valores por defecto que ya usás
+-- INSERT INTO Medio_Pago (Nombre) VALUES 
+-- ('Efectivo'), 
+-- ('Transferencia');

@@ -45,7 +45,8 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarExtrasDisponibles();
     inicializarFechaAgenda();
     inicializarAgendaDiaria();
-    cargarDatosDashboard()
+    cargarDatosDashboard();
+    cargarMediosDePago();
     
     // Leer el anotador al arrancar
     const seccionGuardada = localStorage.getItem('emme_seccion_activa');
@@ -1221,6 +1222,18 @@ function abrirModalTurnosAgrupados(turnos) {
     });
     
     modal.style.display = 'flex';
+}
+
+// Cerrar modal de turnos agrupados al hacer clic afuera
+const modalTurnosAgrupados = document.getElementById('modalTurnos');
+if (modalTurnosAgrupados) {
+    modalTurnosAgrupados.addEventListener('click', function(e) {
+        // e.target es exactamente el elemento que recibió el clic.
+        // Si es el fondo oscuro (el modal-overlay en sí) y no la tarjeta blanca de adentro, lo cerramos.
+        if (e.target === this) {
+            this.style.display = 'none';
+        }
+    });
 }
 
 function inicializarAgendaSemanal() {
@@ -2552,6 +2565,76 @@ function filtrarIngresos() {
     }
 }
 
+async function cargarMediosDePago() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/medios-pago');
+        const medios = await respuesta.json();
+        
+        // Buscamos los dos <select> que tenemos en el HTML
+        const selectCobroTurno = document.getElementById('selectMedioPago');
+        const selectNuevoIngreso = document.getElementById('pagoIngresoManual');
+        
+        // Armamos las opciones en HTML
+        let opcionesHTML = '';
+        if (medios.length === 0) {
+            opcionesHTML = '<option value="">No hay medios cargados</option>';
+        } else {
+            medios.forEach(medio => {
+                // Guardamos el Nombre en el value para no romper la lógica actual de guardado
+                opcionesHTML += `<option value="${medio.Nombre}">${medio.Nombre}</option>`;
+            });
+        }
+        
+        // Inyectamos las opciones si los select existen
+        if (selectCobroTurno) selectCobroTurno.innerHTML = opcionesHTML;
+        if (selectNuevoIngreso) selectNuevoIngreso.innerHTML = opcionesHTML;
+        
+    } catch (error) {
+        console.error("Error al cargar los medios de pago:", error);
+    }
+}
+
+async function cargarTablaMediosPago() {
+    const tbody = document.getElementById('tablaConfigPagosBody');
+    if (!tbody) return;
+    
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/medios-pago');
+        const medios = await respuesta.json();
+        
+        tbody.innerHTML = '';
+        
+        if (medios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--texto-claro);">No hay medios de pago registrados.</td></tr>';
+            return;
+        }
+        
+        medios.forEach(medio => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--borde)';
+            
+            // Limpiamos el nombre por si tiene comillas (buena práctica que tenías en tu código)
+            const nombreMedio = String(medio.Nombre ?? '').replace(/'/g, "\\'");
+            
+            tr.innerHTML = `
+                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${medio.Id_Medio_Pago}</td>
+                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${medio.Nombre}</td>
+                <td style="padding: 8px 15px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="abrirModalMedioPago(${medio.Id_Medio_Pago}, '${nombreMedio}')" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarMedioPago(${medio.Id_Medio_Pago})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error("Error cargando tabla de medios:", error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#d9534f;">Error al cargar la tabla.</td></tr>';
+    }
+}
 
 // ==========================================================================
 // 8. MÓDULO DE COBRO Y EXTRAS
@@ -2881,33 +2964,45 @@ function cambiarVistaConfig(vista) {
     const vistaGastos = document.getElementById('vistaConfigGastos');
     const vistaServicios = document.getElementById('vistaConfigServicios');
     const vistaHorarios = document.getElementById('vistaConfigHorarios');
+    const vistaPagos = document.getElementById('vistaConfigPagos'); // Agregamos la nueva
     
     const btnGastos = document.getElementById('btnVistaConfigGastos');
     const btnServicios = document.getElementById('btnVistaConfigServicios');
     const btnHorarios = document.getElementById('btnVistaConfigHorarios');
+    const btnPagos = document.getElementById('btnVistaConfigPagos'); // Agregamos el nuevo
 
-    vistaGastos.style.display = 'none';
-    vistaServicios.style.display = 'none';
-    vistaHorarios.style.display = 'none';
+    // Apagamos todo de forma segura
+    if (vistaGastos) vistaGastos.style.display = 'none';
+    if (vistaServicios) vistaServicios.style.display = 'none';
+    if (vistaHorarios) vistaHorarios.style.display = 'none';
+    if (vistaPagos) vistaPagos.style.display = 'none';
     
-    btnGastos.classList.remove('active');
-    btnServicios.classList.remove('active');
-    btnHorarios.classList.remove('active');
+    if (btnGastos) btnGastos.classList.remove('active');
+    if (btnServicios) btnServicios.classList.remove('active');
+    if (btnHorarios) btnHorarios.classList.remove('active');
+    if (btnPagos) btnPagos.classList.remove('active');
 
+    // Prendemos solo lo que toca
     if (vista === 'gastos') {
-        vistaGastos.style.display = 'block';
-        btnGastos.classList.add('active');
+        if (vistaGastos) vistaGastos.style.display = 'block';
+        if (btnGastos) btnGastos.classList.add('active');
     
     } else if (vista === 'servicios') {
-        vistaServicios.style.display = 'block';
-        btnServicios.classList.add('active');
+        if (vistaServicios) vistaServicios.style.display = 'block';
+        if (btnServicios) btnServicios.classList.add('active');
         cargarTablaConfigServicios();
         cargarTablaConfigAreas();
     
     } else if (vista === 'horarios') {
-        vistaHorarios.style.display = 'block';
-        btnHorarios.classList.add('active');
+        if (vistaHorarios) vistaHorarios.style.display = 'block';
+        if (btnHorarios) btnHorarios.classList.add('active');
         cargarTablaConfigHorarios();
+        
+    } else if (vista === 'pagos') {
+        if (vistaPagos) vistaPagos.style.display = 'block';
+        if (btnPagos) btnPagos.classList.add('active');
+        // ¡Acá llamamos a la función que vamos a crear ya mismo!
+        cargarTablaMediosPago(); 
     }
 }
 
@@ -3400,6 +3495,86 @@ async function guardarHorarioEnLote() {
     } catch (error) {
         console.error(error);
         mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+// ==========================================
+// CONFIGURACIÓN DE MEDIOS DE PAGO
+// ==========================================
+
+function abrirModalMedioPago(id = '', nombre = '') {
+    document.getElementById('idMedioPagoOculto').value = id;
+    document.getElementById('nombreMedioPagoInput').value = nombre;
+
+    const titulo = document.getElementById('tituloModalMedioPago');
+    if (titulo) {
+        titulo.textContent = id ? 'Editar Medio de Pago' : 'Nuevo Medio de Pago';
+    }
+
+    // ARREGLO 1: Usamos classList.add('active') en vez de display flex
+    const modal = document.getElementById('modalMedioPago');
+    if (modal) modal.classList.add('active');
+}
+
+// Agregamos la función para cerrar correctamente
+function cerrarModalMedioPago() {
+    const modal = document.getElementById('modalMedioPago');
+    if (modal) modal.classList.remove('active');
+}
+
+async function guardarMedioPago() {
+    const id = document.getElementById('idMedioPagoOculto').value;
+    const nombre = document.getElementById('nombreMedioPagoInput').value.trim();
+
+    if (!nombre) {
+        mostrarNotificacion('Por favor, ingresá un nombre.', 'warning');
+        return;
+    }
+
+    const url = id ? `http://localhost:3000/api/medios-pago/${id}` : 'http://localhost:3000/api/medios-pago';
+    const metodo = id ? 'PUT' : 'POST';
+
+    try {
+        const respuesta = await fetch(url, {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Nombre: nombre })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion(id ? 'Método actualizado con éxito' : 'Nuevo método guardado', 'success');
+            cerrarModalMedioPago(); // Usamos la nueva función
+            cargarTablaMediosPago(); 
+            cargarMediosDePago(); 
+        } else {
+            mostrarNotificacion('Error al guardar en el servidor', 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion('No se pudo conectar con el servidor', 'error');
+    }
+}
+
+async function eliminarMedioPago(id) {
+    // ARREGLO 2: Usamos tu cartel de confirmación lindo en vez de confirm()
+    const confirmacion = await pedirConfirmacion('¿Estás segura de que querés borrar este método de pago?');
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/medios-pago/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion('Método de pago eliminado', 'success');
+            cargarTablaMediosPago();
+            cargarMediosDePago();
+        } else {
+            mostrarNotificacion('Error al intentar eliminar', 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion('No se pudo conectar con el servidor', 'error');
     }
 }
 
