@@ -1083,12 +1083,16 @@ app.post('/api/cobrar-turno', async (req, res) => {
                 `);
             
             if (extras && extras.length > 0) {
-                for (let idExtra of extras) {
-                    const requestExtra = new sql.Request(transaction);
-                    await requestExtra
-                        .input('Id_Turno', sql.Int, idTurno)
-                        .input('Id_Extra', sql.Int, idExtra)
-                        .query(`INSERT INTO Turno_Extra (Id_Turno, Id_Extra) VALUES (@Id_Turno, @Id_Extra)`);
+                for (let idEx of extras) {
+                    await new sql.Request(transaction)
+                        .input('IdT', sql.Int, idTurno)
+                        .input('IdE', sql.Int, idEx)
+                        .query(`
+                            INSERT INTO Turno_Extra (Id_Turno, Id_Extra, Precio_Cobrado) 
+                            SELECT @IdT, @IdE, Precio 
+                            FROM Extra 
+                            WHERE Id_Extra = @IdE
+                        `);
                 }
             }
             
@@ -1352,6 +1356,39 @@ app.get('/api/dashboard/servicios-estrella', async (req, res) => {
         res.json(result.recordset);
     } catch (err) {
         console.error("Error cargando servicios estrella:", err);
+        res.status(500).json({ error: "Error interno" });
+    }
+});
+
+// Top Empleadas con más turnos realizados
+app.get('/api/dashboard/top-empleadas', async (req, res) => {
+    const { desde, hasta } = req.query;
+    try {
+        let pool = await sql.connect(dbConfig);
+
+        const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
+        const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
+
+        const query = `
+            SELECT TOP 5 
+                e.Nombre_Ap AS Nombre, 
+                COUNT(t.Id_Turno) as Cantidad
+            FROM Turno t
+            JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
+            WHERE t.Estado = 'Pagado' 
+              AND t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta
+            GROUP BY e.Nombre_Ap
+            ORDER BY Cantidad DESC
+        `;
+
+        let result = await pool.request()
+            .input('Desde', sql.DateTime, fechaDesde)
+            .input('Hasta', sql.DateTime, fechaHasta)
+            .query(query);
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error cargando top empleadas:", err);
         res.status(500).json({ error: "Error interno" });
     }
 });

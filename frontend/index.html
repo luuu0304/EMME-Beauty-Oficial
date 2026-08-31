@@ -480,6 +480,8 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+                
+                <!-- COLUMNA IZQUIERDA (2fr) -->
                 <div style="display: flex; flex-direction: column; gap: 20px;">
                     <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
                         <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Ingresos diarios</h3>
@@ -494,14 +496,28 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- COLUMNA DERECHA (1fr) -->
                 <div style="display: flex; flex-direction: column; gap: 30px;">
+                    
+                    <!-- Gráfico 3: Servicios -->
                     <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
                         <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Servicios Estrella (Top 5)</h3>
                         <div style="position: relative; height: 250px; width: 100%;">
                             <canvas id="graficoServicios"></canvas>
                         </div>
                     </div>
-                </div>
+                    
+                    <!-- Gráfico 4: Top Profesionales -->
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Top Profesionales (Turnos)</h3>
+                        <div style="position: relative; height: 220px; width: 100%; display: flex; justify-content: center;">
+                            <canvas id="graficoEmpleadas"></canvas>
+                        </div>
+                    </div>
+
+                </div> <!-- Fin Columna Derecha -->
+
             </div>
         </div> <!-- Fin Sección Resúmenes -->
 

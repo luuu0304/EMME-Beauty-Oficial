@@ -3050,13 +3050,15 @@ async function cargarTablaConfigCategorias() {
     }
 }
 
-function abrirModalNuevaCategoria() {
-    document.getElementById('idCategoriaOculto').value = '';
-    document.getElementById('nombreNuevaCategoriaInput').value = '';
-    if (modalCategoria) modalCategoria.classList.add('active');
+function abrirModalNuevaCategoria() { 
+    document.querySelector('#modalNuevaCategoria h2').textContent = 'Nueva Categoría';
+    document.getElementById('idCategoriaOculto').value = ''; 
+    document.getElementById('nombreNuevaCategoriaInput').value = ''; 
+    document.getElementById('modalNuevaCategoria').classList.add('active'); 
 }
 
 function editarCategoriaGasto(id, nombre) {
+    document.querySelector('#modalNuevaCategoria h2').textContent = 'Editar Categoría';
     document.getElementById('idCategoriaOculto').value = id;
     document.getElementById('nombreNuevaCategoriaInput').value = nombre;
     if (modalCategoria) modalCategoria.classList.add('active');
@@ -3652,6 +3654,7 @@ async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
 let graficoIngresosInstancia = null;
 let graficoTurnosInstancia = null;
 let graficoServiciosInstancia = null;
+let graficoEmpleadasInstancia = null;
 
 // Llama al servidor y dibuja AMBOS gráficos
 async function cargarGraficoDashboard(desde, hasta) {
@@ -3800,6 +3803,39 @@ async function cargarGraficoDashboard(desde, hasta) {
                             grid: { display: false }
                         }
                     }
+                }
+            });
+        }
+
+        // ==========================================
+        // 4. GRÁFICO DE TOP EMPLEADAS (Dona)
+        // ==========================================
+        const respEmp = await fetch(`http://localhost:3000/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
+        if (respEmp.ok) {
+            const datosEmp = await respEmp.json();
+            const ctxEmpleadas = document.getElementById('graficoEmpleadas').getContext('2d');
+            
+            if (graficoEmpleadasInstancia) graficoEmpleadasInstancia.destroy();
+            
+            graficoEmpleadasInstancia = new Chart(ctxEmpleadas, {
+                type: 'doughnut', 
+                data: {
+                    labels: datosEmp.map(d => d.Nombre),
+                    datasets: [{ 
+                        data: datosEmp.map(d => d.Cantidad), 
+                        // Colores variados y armónicos para la marca
+                        backgroundColor: ['#d4af37', '#17a2b8', '#28a745', '#e6c875', '#6c757d'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } 
+                    },
+                    cutout: '65%' // Qué tan ancho es el agujero de la dona
                 }
             });
         }
