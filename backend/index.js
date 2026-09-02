@@ -1,9 +1,15 @@
+require('dotenv').config(); // 1. Esto carga los secretos
 const express = require('express');
 const cors = require('cors');
 const sql = require('mssql');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+// 2. Usamos la llave secreta del .env
+const SECRET_KEY = process.env.SECRET_KEY; 
 
 // ==========================================================================
 // ÍNDICE DEL BACKEND (API REST)
@@ -18,18 +24,18 @@ const port = 3000;
 // 9. INICIO DEL SERVIDOR
 // ==========================================================================
 
-
 // ==========================================================================
-// 1. MIDDLEWARES & CONFIGURACIÓN DE LA BASE DE DATOS
+// 1. CONFIGURACIÓN Y MIDDLEWARES
 // ==========================================================================
 app.use(cors());
 app.use(express.json());
 
+// 3. Ocultamos también las credenciales de SQL vinculándolas al .env
 const dbConfig = {
-    user: 'sa',
-    password: 'TThmA4bmPfPUk*',
-    server: 'localhost', 
-    database: 'EmmE_Beauty_V2',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER, 
+    database: process.env.DB_NAME,
     options: {
         encrypt: true,
         trustServerCertificate: true,
@@ -37,9 +43,69 @@ const dbConfig = {
     }
 };
 
-// Ruta base de testeo
-app.get('/', (req, res) => {
-    res.send('¡Hola! El backend de EMME Beauty está vivo ');
+// ==========================================================================
+// 1.5. MÓDULO DE SEGURIDAD (AUTH)
+// ==========================================================================
+
+// Registrar un nuevo usuario (Lo usaremos para crear el Admin por primera vez)
+app.post('/api/auth/register', async (req, res) => {
+    const { Username, Password, Rol, Id_Empleada } = req.body;
+    try {
+        // "Hasheamos" (encriptamos) la contraseña. El 10 es el nivel de seguridad.
+        const hashedPassword = await bcrypt.hash(Password, 10);
+        
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Username', sql.VarChar, Username)
+            .input('PasswordHash', sql.VarChar, hashedPassword)
+            .input('Rol', sql.VarChar, Rol)
+            .input('Id_Empleada', sql.Int, Id_Empleada || null)
+            .query(`
+                INSERT INTO Usuario (Username, Password_Hash, Rol, Id_Empleada)
+                VALUES (@Username, @PasswordHash, @Rol, @Id_Empleada)
+            `);
+            
+        res.status(201).json({ message: "Usuario creado con éxito" });
+    } catch (err) {
+        console.error("Error al registrar:", err);
+        res.status(500).json({ error: "Error al registrar usuario" });
+    }
+});
+
+// Login de usuario
+app.post('/api/auth/login', async (req, res) => {
+    const { Username, Password } = req.body;
+    try {
+        let pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('Username', sql.VarChar, Username)
+            .query(`SELECT * FROM Usuario WHERE Username = @Username`);
+            
+        // 1. Chequeamos si el usuario existe
+        if (result.recordset.length === 0) {
+            return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+        }
+        
+        const usuario = result.recordset[0];
+        
+        // 2. Verificamos que la contraseña coincida con el garabato de la base de datos
+        const passwordValida = await bcrypt.compare(Password, usuario.Password_Hash);
+        if (!passwordValida) {
+            return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+        }
+        
+        // 3. Generamos la pulsera VIP (Token) que dura 12 horas
+        const token = jwt.sign(
+            { id: usuario.Id_Usuario, rol: usuario.Rol, idEmpleada: usuario.Id_Empleada },
+            SECRET_KEY,
+            { expiresIn: '12h' }
+        );
+        
+        res.json({ message: "Login exitoso", token, rol: usuario.Rol });
+    } catch (err) {
+        console.error("Error en login:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
 });
 
 

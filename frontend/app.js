@@ -36,71 +36,103 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
     }, 3500);
 }
 
-// Inicialización general al cargar la página
+// ==========================================================================
+// INICIALIZACIÓN GLOBAL (Cuando carga la página)
+// ==========================================================================
 window.addEventListener('DOMContentLoaded', () => {
-    cargarClientas();
-    cargarEmpleadas();
-    cargarServicios();
-    cargarCategoriasGasto();
-    cargarExtrasDisponibles();
-    inicializarFechaAgenda();
-    inicializarAgendaDiaria();
-    cargarDatosDashboard();
-    cargarMediosDePago();
-    
-    // Leer el anotador al arrancar
-    const seccionGuardada = localStorage.getItem('emme_seccion_activa');
-    if (seccionGuardada) {
-        // Buscamos el botón que tenga ese mismo texto y le hacemos un "clic fantasma"
-        const botonSeleccionado = Array.from(botonesMenu).find(b => b.textContent.trim() === seccionGuardada);
-        if (botonSeleccionado) {
-            botonSeleccionado.click();
+    // 1. CHEQUEO DE SEGURIDAD (Login)
+    const token = localStorage.getItem('emme_token');
+    const rol = localStorage.getItem('emme_rol');
+    const pantallaLogin = document.getElementById('pantallaLogin');
+
+    if (!token || !rol) {
+        // Si no hay pulsera VIP, nos aseguramos de que el Login tape todo
+        pantallaLogin.style.display = 'flex';
+        pantallaLogin.style.opacity = '1';
+    } else {
+        // Si ya está logueada, ocultamos el login y aplicamos las reglas
+        pantallaLogin.style.display = 'none';
+        aplicarPermisos(rol);
+        
+        // 2. Carga de datos base (Solo si entró al sistema)
+        cargarClientas();
+        cargarEmpleadas();
+        cargarServicios();
+        cargarCategoriasGasto();
+        cargarExtrasDisponibles();
+        cargarMediosDePago();
+        cargarDatosDashboard();
+
+        // 3. Inicializar Calendarios (Flatpickr) y Filtros
+        inicializarFechaAgenda();
+        if (rol === 'Empleada') {
+            inicializarAgendaSemanal(); // Si es chica1, dibuja su semana
+        } else {
+            inicializarAgendaDiaria(); // Si es Mili, dibuja el general
         }
-    }
-    //  Inicializar el calendario de rango (Flatpickr)
-    const inputRango = document.getElementById('rangoFechasCustomDash');
-    if (inputRango) {
-        flatpickr(inputRango, {
-            mode: "range",
-            locale: "es", 
-            dateFormat: "Y-m-d", 
-            onChange: function(selectedDates, dateStr, instance) {
-                // Cuando eligen LAS DOS fechas, llamamos al servidor
-                if (selectedDates.length === 2) {
-                    const desde = formatoFechaSQL(selectedDates[0]);
-                    const hasta = formatoFechaSQL(selectedDates[1]);
-                    cargarDatosDashboard(desde, hasta); 
+        
+        // Calendario Rango Dashboard
+        const inputRango = document.getElementById('rangoFechasCustomDash');
+        if (inputRango) {
+            flatpickr(inputRango, {
+                mode: "range",
+                locale: "es", 
+                dateFormat: "Y-m-d", 
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length === 2) {
+                        const desde = formatoFechaSQL(selectedDates[0]);
+                        const hasta = formatoFechaSQL(selectedDates[1]);
+                        cargarDatosDashboard(desde, hasta); 
+                    }
                 }
-            }
-        });
-    }
+            });
+        }
 
-    // Inicializar Flatpickr para el Historial de Cobros
-    const inputRangoCobros = document.getElementById('rangoFechaCobros');
-    if (inputRangoCobros) {
-        flatpickr(inputRangoCobros, {
-            mode: "range",
-            locale: "es",
-            dateFormat: "Y-m-d",
-            onChange: function(selectedDates) {
-                if (selectedDates.length === 2 || selectedDates.length === 0) {
-                    aplicarFiltrosCobros();
+        // Calendario Rango Historial de Cobros
+        const inputRangoCobros = document.getElementById('rangoFechaCobros');
+        if (inputRangoCobros) {
+            flatpickr(inputRangoCobros, {
+                mode: "range",
+                locale: "es",
+                dateFormat: "Y-m-d",
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2 || selectedDates.length === 0) {
+                        aplicarFiltrosCobros();
+                    }
                 }
-            }
-        });
-    }
+            });
+        }
 
-    // Lógica del desplegable
-    const selectFiltroDash = document.getElementById('filtroRapidoDash');
-    if (selectFiltroDash) {
-        selectFiltroDash.addEventListener('change', (e) => {
-            if (e.target.value === 'personalizado') {
-                inputRango.style.display = 'block';
-            } else {
-                inputRango.style.display = 'none';
-                cargarDatosDashboard(); // Si elige un rango rápido, carga de nuevo
+        // Lógica del desplegable rápido del Dashboard
+        const selectFiltroDash = document.getElementById('filtroRapidoDash');
+        if (selectFiltroDash) {
+            selectFiltroDash.addEventListener('change', (e) => {
+                if (e.target.value === 'personalizado') {
+                    inputRango.style.display = 'block';
+                } else {
+                    inputRango.style.display = 'none';
+                    cargarDatosDashboard(); 
+                }
+            });
+        }
+
+        //  configurarBuscadorDropdownClientas();
+
+        // 4. Restaurar última sección visitada (o abrir Turnos por defecto)
+        const seccionGuardada = localStorage.getItem('emme_seccion_activa');
+        const botonesMenu = document.querySelectorAll('.menu-item'); 
+        
+        if (seccionGuardada) {
+            const botonSeleccionado = Array.from(botonesMenu).find(b => b.textContent.trim() === seccionGuardada);
+            if (botonSeleccionado) {
+                botonSeleccionado.click();
+            } else if (botonesMenu.length > 0) {
+                botonesMenu[0].click(); // Si por algún motivo no la encuentra, abre la primera
             }
-        });
+        } else if (botonesMenu.length > 0) {
+            // Si acaba de iniciar sesión y no hay sección guardada, abre Turnos
+            botonesMenu[0].click();
+        }
     }
 });
 
@@ -1139,6 +1171,20 @@ async function cargarTurnosSemana() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (!inputFecha || !inputFecha.value) return;
 
+    // --- MAGIA DE SEGURIDAD ---
+    const rolUsuario = localStorage.getItem('emme_rol');
+    const token = localStorage.getItem('emme_token');
+    let idEmpleadaLogueada = null;
+    
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            idEmpleadaLogueada = payload.idEmpleada;
+        } catch (e) {
+            console.error("Error leyendo token:", e);
+        }
+    }
+
     try {
         const [año, mes, dia] = inputFecha.value.split('-');
         const fechaElegida = new Date(año, mes - 1, dia);
@@ -1152,7 +1198,7 @@ async function cargarTurnosSemana() {
             celda.turnosAgrupados = []; 
         });
 
-        const todosLosTurnos = [];
+        let todosLosTurnos = [];
         for (let i = 0; i < 6; i++) { 
             const fechaDia = new Date(fechaLunes);
             fechaDia.setDate(fechaLunes.getDate() + i);
@@ -1167,6 +1213,11 @@ async function cargarTurnosSemana() {
                 const turnosDia = await respuesta.json();
                 todosLosTurnos.push(...turnosDia); 
             }
+        }
+
+        // Filtramos si es Empleada
+        if (rolUsuario === 'Empleada' && idEmpleadaLogueada) {
+            todosLosTurnos = todosLosTurnos.filter(t => t.Id_Empleada === idEmpleadaLogueada);
         }
 
         todosLosTurnos.forEach(turno => {
@@ -1186,30 +1237,72 @@ async function cargarTurnosSemana() {
         });
 
         document.querySelectorAll('.celda-semanal').forEach(celda => {
-            const cantidad = celda.turnosAgrupados ? celda.turnosAgrupados.length : 0;
+            const turnos = celda.turnosAgrupados || [];
+            const cantidad = turnos.length;
             
             if (cantidad > 0) {
-                const boton = document.createElement('button');
-                boton.style.width = '90%';
-                boton.style.padding = '5px';
-                boton.style.backgroundColor = '#fdf3e1';
-                boton.style.border = '1px solid #f6c23e';
-                boton.style.borderRadius = '6px';
-                boton.style.cursor = 'pointer';
-                boton.style.fontWeight = 'bold';
-                boton.style.color = '#d69e2e';
-                boton.style.fontSize = '12px';
-                boton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                
-                boton.innerHTML = `
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;">
-                        <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/>
-                    </svg>
-                    ${cantidad} Turno${cantidad > 1 ? 's' : ''}
-                `;
-                
-                boton.onclick = () => abrirModalTurnosAgrupados(celda.turnosAgrupados);
-                celda.appendChild(boton);
+                if (rolUsuario === 'Empleada') {
+                    // VISTA EMPLEADA: Tarjetas estiradas
+                    turnos.forEach(turno => {
+                        const tarjeta = document.createElement('div');
+                        tarjeta.className = 'tarjeta-turno-empleada'; 
+                        
+                        // Calculamos la altura dinámica (Cada bloque son 30 min)
+                        const duracionMinutos = turno.Duracion_Minutos || 60;
+                        const cantidadBloques = duracionMinutos / 30;
+                        
+                        tarjeta.style.position = 'absolute';
+                        tarjeta.style.top = '0';
+                        tarjeta.style.left = '4px';
+                        tarjeta.style.width = 'calc(100% - 8px)';
+                        tarjeta.style.zIndex = '10';
+                        
+                        // Estiramos la altura para que tape las celdas vacías de abajo
+                        tarjeta.style.height = `calc(${cantidadBloques * 100}% + ${cantidadBloques - 1}px)`;
+
+                        if (turno.Color && turno.Color !== 'null') {
+                            tarjeta.style.borderLeft = `4px solid ${turno.Color.split(' | ')[0]}`; 
+                        }
+                        
+                        tarjeta.innerHTML = `
+                            <span class="nombre-clienta">${turno.Nombre_Clienta || 'Clienta'}</span>
+                            <span class="servicio-detalle">${turno.Nombre_Servicio || 'Servicio'}</span>
+                        `;
+                        
+                        tarjeta.onclick = () => {
+                            const precioServicio = turno.Precio_Base || 0; 
+                            const senaPagada = turno.Sena_Monto || 0;
+                            abrirModalDetalleTurno(
+                                turno.Id_Turno, turno.Nombre_Clienta, turno.Nombre_Servicio, 
+                                precioServicio, turno.Estado, turno.Color, senaPagada, turno.Comentario_Admin
+                            );
+                        };
+                        celda.appendChild(tarjeta);
+                    });
+                } else {
+                    // VISTA ADMIN: Botón amarillo compacto
+                    const boton = document.createElement('button');
+                    boton.style.width = '90%';
+                    boton.style.padding = '5px';
+                    boton.style.backgroundColor = '#fdf3e1';
+                    boton.style.border = '1px solid #f6c23e';
+                    boton.style.borderRadius = '6px';
+                    boton.style.cursor = 'pointer';
+                    boton.style.fontWeight = 'bold';
+                    boton.style.color = '#d69e2e';
+                    boton.style.fontSize = '12px';
+                    boton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                    
+                    boton.innerHTML = `
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;">
+                            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/>
+                        </svg>
+                        ${cantidad} Turno${cantidad > 1 ? 's' : ''}
+                    `;
+                    
+                    boton.onclick = () => abrirModalTurnosAgrupados(celda.turnosAgrupados);
+                    celda.appendChild(boton);
+                }
             }
         });
 
@@ -1296,23 +1389,77 @@ if (modalTurnosAgrupados) {
     });
 }
 
-function inicializarAgendaSemanal() {
+async function inicializarAgendaSemanal() {
     const agendaBody = document.getElementById('agendaSemanalBody');
     if (!agendaBody) return;
-    
     agendaBody.innerHTML = ''; 
 
-    const horaInicio = 9; 
-    const horaFin = 20;   
+    try {
+        const resHor = await fetch('http://localhost:3000/api/horarios');
+        const horarios = await resHor.json();
+        const horarioRef = horarios.find(h => h.Laborable === true) || horarios[0];
 
-    for (let hora = horaInicio; hora <= horaFin; hora++) {
-        let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
-        agendaBody.appendChild(crearFilaSemanal(stringHoraEnPunto));
-        
-        if (hora < horaFin) {
-            let stringHoraMedia = hora.toString().padStart(2, '0') + ':30';
-            agendaBody.appendChild(crearFilaSemanal(stringHoraMedia));
+        // EL SALVAVIDAS DE LAS ZONAS HORARIAS
+        const extraerHoraMin = (valorTime) => {
+            if (!valorTime) return null;
+            
+            // Si el servidor manda formato UTC (con la T y la Z)
+            if (valorTime.includes('T')) {
+                const fecha = new Date(valorTime);
+                // getHours() fuerza al navegador a convertir la hora a tu zona local
+                return { h: fecha.getHours(), m: fecha.getMinutes() };
+            } else {
+                // Si el servidor manda el texto limpio "09:00"
+                const [h, m] = valorTime.split(':').map(Number);
+                return { h, m };
+            }
+        };
+
+        const generarFilasRango = (apertura, cierre) => {
+            const inicio = extraerHoraMin(apertura);
+            const fin = extraerHoraMin(cierre);
+            if (!inicio || !fin) return;
+            
+            let minInicio = inicio.h * 60 + inicio.m;
+            let minFin = fin.h * 60 + fin.m;
+
+            for (let min = minInicio; min < minFin; min += 30) {
+                let hora = Math.floor(min / 60);
+                let minutos = min % 60;
+                let stringHora = `${hora.toString().padStart(2, '0')}:${minutos === 0 ? '00' : '30'}`;
+                agendaBody.appendChild(crearFilaSemanal(stringHora));
+            }
+        };
+
+        // 1. Dibujamos el Turno Mañana
+        generarFilasRango(horarioRef.Hora_Apertura_1, horarioRef.Hora_Cierre_1);
+
+        // 2. INYECTAMOS TU BLOQUE DE DESCANSO (Si hay un turno tarde configurado)
+        if (horarioRef.Hora_Apertura_2) {
+            let divSiesta = document.createElement('div');
+            divSiesta.style.padding = '20px';
+            divSiesta.style.backgroundColor = '#fcfcfc';
+            divSiesta.style.textAlign = 'center';
+            divSiesta.style.color = '#aaa';
+            divSiesta.style.fontSize = '12px';
+            divSiesta.style.fontStyle = 'italic';
+            divSiesta.style.borderBottom = '1px solid #eee';
+            divSiesta.style.width = '100%';
+            divSiesta.style.display = 'block'; 
+            divSiesta.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Horario de corte / Descanso</span>
+                </div>
+            `;
+            agendaBody.appendChild(divSiesta);
         }
+
+        // 3. Dibujamos el Turno Tarde
+        generarFilasRango(horarioRef.Hora_Apertura_2, horarioRef.Hora_Cierre_2);
+
+    } catch (err) {
+        console.error("Error al inicializar la grilla semanal:", err);
     }
 }
 
@@ -3931,3 +4078,124 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================================================
+// MÓDULO DE SEGURIDAD
+// ==========================================================================
+async function iniciarSesion() {
+    const inputUsuario = document.getElementById('loginUsuario').value.trim();
+    const inputPassword = document.getElementById('loginPassword').value.trim();
+    const btn = event.currentTarget;
+
+    if (!inputUsuario || !inputPassword) {
+        mostrarNotificacion("Completá todos los campos", "warning");
+        return;
+    }
+
+    const textoOriginal = btn.textContent;
+    btn.textContent = 'Verificando...';
+    btn.style.opacity = '0.7';
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Username: inputUsuario, Password: inputPassword })
+        });
+
+        const datos = await respuesta.json();
+
+        if (respuesta.ok) {
+            // Guardamos la pulsera VIP y el Rol
+            localStorage.setItem('emme_token', datos.token);
+            localStorage.setItem('emme_rol', datos.rol);
+            
+            mostrarNotificacion("¡Bienvenida al sistema!", "success");
+
+            // Le damos medio segundo para que se vea la notificación y recargamos la página 
+            // para que el sistema (el DOMContentLoaded) cargue todos los datos.
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
+
+        } else {
+            mostrarNotificacion(datos.error || "Error al iniciar sesión", "error");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        mostrarNotificacion("Error de conexión con el servidor", "error");
+    } finally {
+        btn.textContent = textoOriginal;
+        btn.style.opacity = '1';
+    }
+}
+
+// Esta función esconde o muestra partes del HTML según quién entró
+function aplicarPermisos(rol) {
+    console.log("Configurando interfaz para rol:", rol);
+
+    const botonesMenu = document.querySelectorAll('.menu-item');
+    const btnNuevoTurno = document.getElementById('btnNuevoTurno'); 
+
+    // 1. Etiqueta global para CSS (Blindaje extra)
+    if (rol === 'Empleada') {
+        document.body.classList.add('is-empleada');
+    } else {
+        document.body.classList.remove('is-empleada');
+    }
+
+    // 2. Filtro del Menú Lateral
+    botonesMenu.forEach(boton => {
+        const textoMenu = boton.textContent.trim();
+
+        if (rol === 'Empleada') {
+            // Sumamos 'Clientas' a la lista de módulos prohibidos
+            if (['Clientas', 'Gastos', 'Ingresos', 'Configuración', 'Empleados', 'Empleadas'].includes(textoMenu)) {
+                boton.style.display = 'none';
+            } else {
+                boton.style.display = 'flex'; // Los permitidos (Turnos, Resúmenes) se ven
+            }
+        } else {
+            // Si es Admin (Mili), mostramos absolutamente todo
+            boton.style.display = 'flex';
+        }
+    });
+
+    // 3. Permisos de acciones (Ej: Crear turnos)
+    if (rol === 'Empleada') {
+        if (btnNuevoTurno) btnNuevoTurno.style.display = 'none';
+    } else {
+        if (btnNuevoTurno) btnNuevoTurno.style.display = 'block';
+    }
+
+    // 4. Forzar Vista Semanal para empleadas y ocultar la Diaria
+    if (rol === 'Empleada') {
+        // Buscamos las pestañas por su clase CSS
+        const botonesTabs = document.querySelectorAll('.btn-tab');
+        
+        botonesTabs.forEach(btn => {
+            const textoBoton = btn.textContent.trim();
+            
+            if (textoBoton === 'Agenda Diaria') {
+                // Desaparecemos el botón por completo
+                btn.style.display = 'none'; 
+            }
+            
+            if (textoBoton === 'Agenda Semanal') {
+                // Le damos 100 milisegundos de ventaja al HTML para que termine de cargar
+                // y recién ahí simulamos el clic
+                setTimeout(() => {
+                    btn.click();
+                }, 100);
+            }
+        });
+    }
+}
+
+// Función para salir del sistema
+function cerrarSesion() {
+    localStorage.removeItem('emme_token');
+    localStorage.removeItem('emme_rol');
+    localStorage.removeItem('emme_seccion_activa');
+    window.location.reload(); // Recargamos la página para que salte el Login
+}

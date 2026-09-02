@@ -650,3 +650,49 @@ body:has(.sidebar.collapsed) .main-content {
         transform: translateX(100%);
     }
 }
+
+/* =========================================
+   REGLAS DE SEGURIDAD (RBAC)
+   ========================================= */
+body.is-empleada #btnNuevoTurno {
+    display: none !important;
+}
+
+/* =========================================
+   TARJETAS DE AGENDA DETALLADA (EMPLEADAS)
+   ========================================= */
+.tarjeta-turno-empleada {
+    background-color: #fffdf7;
+    border-left: 4px solid var(--mostaza); /* Identidad de EMME */
+    padding: 8px 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.tarjeta-turno-empleada:hover {
+    transform: scale(1.02);
+}
+
+.tarjeta-turno-empleada .nombre-clienta {
+    font-weight: 700;
+    color: #333;
+    font-size: 13px;
+}
+
+.tarjeta-turno-empleada .servicio-detalle {
+    color: #666;
+    font-weight: 500;
+}
+
+.celda-semanal {
+    position: relative;
+}

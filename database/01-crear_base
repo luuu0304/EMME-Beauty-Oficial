@@ -88,20 +88,27 @@ CREATE TABLE Ingreso (
     Id_Turno INT NULL FOREIGN KEY REFERENCES Turno(Id_Turno)
 );
 
-CREATE TABLE Gasto (
-    Id_Gasto INT IDENTITY(1,1) PRIMARY KEY,
-    Fecha DATE NOT NULL,
-    Descripcion VARCHAR(200) NOT NULL,
-    Monto DECIMAL(10,2) NOT NULL,
-    Id_Categoria INT NULL FOREIGN KEY REFERENCES Categoria_Gasto(Id_Categoria)
-);
+-- CREATE TABLE Gasto (
+   -- Id_Gasto INT IDENTITY(1,1) PRIMARY KEY,
+    -- Fecha DATE NOT NULL,
+    -- Descripcion VARCHAR(200) NOT NULL,
+    -- Monto DECIMAL(10,2) NOT NULL,
+    -- Id_Categoria INT NULL FOREIGN KEY REFERENCES Categoria_Gasto(Id_Categoria)
+-- );
 
-CREATE TABLE Liquidacion_Sueldo (
-    Id_Liquidacion INT IDENTITY(1,1) PRIMARY KEY,
-    Id_Empleada INT FOREIGN KEY REFERENCES Empleada(Id_Empleada),
-    Fecha DATETIME DEFAULT GETDATE(),
-    Monto_Total DECIMAL(10,2) NOT NULL,
-    Detalle_JSON NVARCHAR(MAX) NULL
-);
-GO
+-- CREATE TABLE Liquidacion_Sueldo (
+    -- Id_Liquidacion INT IDENTITY(1,1) PRIMARY KEY,
+    -- Id_Empleada INT FOREIGN KEY REFERENCES Empleada(Id_Empleada),
+    -- Fecha DATETIME DEFAULT GETDATE(),
+    -- Monto_Total DECIMAL(10,2) NOT NULL,
+    -- Detalle_JSON NVARCHAR(MAX) NULL
+-- );
+-- GO
 
+CREATE TABLE Usuario (
+    Id_Usuario INT IDENTITY(1,1) PRIMARY KEY,
+    Username VARCHAR(50) UNIQUE NOT NULL, -- Puede ser 'mili_admin' o el DNI de la empleada
+    Password_Hash VARCHAR(255) NOT NULL,  -- Acá va el garabato encriptado
+    Rol VARCHAR(20) NOT NULL CHECK (Rol IN ('Admin', 'Empleada')), -- Restringimos los tipos
+    Id_Empleada INT NULL FOREIGN KEY REFERENCES Empleada(Id_Empleada) -- Si es Admin, esto queda en NULL
+);
