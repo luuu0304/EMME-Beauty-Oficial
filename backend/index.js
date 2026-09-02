@@ -727,6 +727,72 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
     }
 });
 
+// Obtener los datos core de un turno específico (Para editar)
+app.get('/api/turnos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input('Id_Turno', sql.Int, id)
+            .query(`
+                SELECT t.Id_Turno, t.Id_Clienta, c.Nombre + ' ' + c.Apellido AS NombreClienta,
+                       t.Id_Empleada, t.Id_Servicio, s.Id_Area, t.Fecha_Hora
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                WHERE t.Id_Turno = @Id_Turno
+            `);
+        
+        if(result.recordset.length === 0) return res.status(404).send("Turno no encontrado");
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error interno");
+    }
+});
+
+// Editar los datos core de un turno (Servicio, Profesional, Fecha, Hora)
+app.put('/api/turnos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Id_Servicio, Id_Empleada, Fecha_Hora } = req.body;
+        let pool = await sql.connect(dbConfig);
+        
+        // Validación de superposición de horarios
+        const infoS = await pool.request().input('Id', sql.Int, Id_Servicio).query(`SELECT Duracion_Minutos FROM Servicio WHERE Id_Servicio = @Id`);
+        const dur = infoS.recordset[0].Duracion_Minutos;
+
+        const chk = await pool.request()
+            .input('IdE', sql.Int, Id_Empleada)
+            .input('NFI', sql.DateTime, Fecha_Hora)
+            .input('Dur', sql.Int, dur)
+            .input('IdTurno', sql.Int, id) // Excluimos el turno actual de la validación!
+            .query(`
+                SELECT t.Id_Turno FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio 
+                WHERE t.Id_Empleada = @IdE AND t.Id_Turno != @IdTurno
+                AND (@NFI < DATEADD(MINUTE, s.Duracion_Minutos, t.Fecha_Hora) AND DATEADD(MINUTE, @Dur, @NFI) > t.Fecha_Hora)
+            `);
+
+        if (chk.recordset.length > 0) return res.status(400).send("La profesional ya tiene un turno en ese horario.");
+
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .input('IdS', sql.Int, Id_Servicio)
+            .input('IdE', sql.Int, Id_Empleada)
+            .input('FH', sql.DateTime, Fecha_Hora)
+            .query(`
+                UPDATE Turno 
+                SET Id_Servicio = @IdS, Id_Empleada = @IdE, Fecha_Hora = @FH
+                WHERE Id_Turno = @Id
+            `);
+            
+        res.status(200).json({ message: "Turno modificado correctamente" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error interno al actualizar");
+    }
+});
+
 // Crear un nuevo turno (Con validación de rango de tiempo y registro de Ingreso)
 app.post('/api/turnos', async (req, res) => {
     const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto } = req.body;

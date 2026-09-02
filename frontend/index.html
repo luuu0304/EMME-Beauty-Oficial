@@ -885,6 +885,7 @@
     <div class="modal-overlay" id="modalNuevoTurno">
         <div class="modal-content">
             <div class="modal-header">
+                <input type="hidden" id="idTurnoAEditarOculto" value="">
                 <h2>Agendar Nuevo Turno</h2>
             </div>
             
@@ -969,7 +970,14 @@
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                             <h3 id="nombreClientaCobro" style="margin: 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
-                            <span id="estadoTurnoBadge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404;">Pendiente</span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <!-- Botón Editar -->
+                                <button id="btnEditarDatosTurno" onclick="abrirEdicionTurno()" style="color: #17a2b8; background: transparent; border: 1px solid #b8daff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: none; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='transparent'">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    Editar
+                                </button>
+                                <span id="estadoTurnoBadge" style="padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404; white-space: nowrap;">Pendiente</span>
+                            </div>
                         </div>
                         <p id="servicioBaseCobro" style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
                         <p id="precioBaseCobro" style="margin: 0; font-weight: bold; color: var(--mostaza); font-size: 15px;">Precio Base: $0</p>

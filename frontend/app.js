@@ -421,7 +421,14 @@ document.addEventListener('DOMContentLoaded', function() {
 const modalTurno = document.getElementById('modalNuevoTurno');
 
 function abrirModalTurno() {
-    if (modalTurno) modalTurno.classList.add('active');
+    document.getElementById('modalNuevoTurno').querySelector('h2').textContent = 'Agendar Nuevo Turno';
+    document.getElementById('idTurnoAEditarOculto').value = '';
+    document.getElementById('btnNuevaClientaExpress').style.display = 'block';
+    document.getElementById('selectClientaTurno').disabled = false;
+    document.getElementById('inputBuscarClientaTurno').disabled = false;
+    document.getElementById('inputBuscarClientaTurno').value = '';
+    document.getElementById('senaTurnoInput').disabled = false;
+    document.getElementById('modalNuevoTurno').classList.add('active');
 }
 
 function cerrarModalTurno() {
@@ -461,6 +468,49 @@ if (btnCancelarExpress) {
         inputNombreExpress.value = '';
         inputApellidoExpress.value = '';
     });
+}
+
+async function abrirEdicionTurno() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    if (!idTurno) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}`);
+        if (!respuesta.ok) throw new Error("No se pudo traer el turno");
+        const turno = await respuesta.json();
+
+        // Cerramos el modal de detalle y abrimos el de creación en "Modo Edición"
+        cerrarModalDetalleTurno();
+        
+        document.getElementById('modalNuevoTurno').querySelector('h2').textContent = 'Editar Turno';
+        document.getElementById('idTurnoAEditarOculto').value = turno.Id_Turno;
+
+        // Bloqueamos la edición de clienta y seña (eso no debería cambiar acá)
+        document.getElementById('selectClientaTurno').value = turno.Id_Clienta;
+        document.getElementById('inputBuscarClientaTurno').value = turno.NombreClienta;
+        document.getElementById('inputBuscarClientaTurno').disabled = true;
+        document.getElementById('btnNuevaClientaExpress').style.display = 'none';
+        document.getElementById('senaTurnoInput').disabled = true;
+
+        // Autocompletamos Fecha y Hora
+        const fechaObj = new Date(turno.Fecha_Hora);
+        document.getElementById('fechaTurnoInput').value = formatoFechaSQL(fechaObj);
+        document.getElementById('horaTurnoInput').value = `${String(fechaObj.getHours()).padStart(2, '0')}:${String(fechaObj.getMinutes()).padStart(2, '0')}`;
+
+        // Autocompletamos los desplegables en cascada
+        document.getElementById('areaTurno').value = turno.Id_Area;
+        filtrarServiciosPorAreaEnModal(); // Sincrónico
+        
+        document.getElementById('servicioTurno').value = turno.Id_Servicio;
+        await filtrarProfesionalesPorServicio(); // Asincrónico, hay que esperarlo
+        
+        document.getElementById('empleadaTurno').value = turno.Id_Empleada;
+
+        document.getElementById('modalNuevoTurno').classList.add('active');
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error al abrir la edición", "error");
+    }
 }
 
 async function filtrarProfesionalesPorServicio() {
@@ -555,7 +605,7 @@ async function guardarTurno() {
         return;
     }
 
-    // --- NUEVA VALIDACIÓN DINÁMICA DE HORARIOS ---
+    // --- VALIDACIÓN DINÁMICA DE HORARIOS ---
     try {
         const resHorarios = await fetch('http://localhost:3000/api/horarios');
         const horariosVal = await resHorarios.json();
@@ -565,7 +615,7 @@ async function guardarTurno() {
 
         if (!horarioDiaElegido || !horarioDiaElegido.Laborable) {
             mostrarNotificacion("El local se encuentra cerrado el día seleccionado.", "warning");
-            return; // Cortamos la ejecución acá, no se guarda el turno
+            return; 
         }
 
         const ap1 = limpiarHoraSQL(horarioDiaElegido.Hora_Apertura_1);
@@ -593,18 +643,25 @@ async function guardarTurno() {
 
         if (!enTurno1 && !enTurno2) {
             mostrarNotificacion("El horario seleccionado está fuera de la franja de atención de este día.", "warning");
-            return; // Cortamos la ejecución acá, no se guarda el turno
+            return; 
         }
     } catch (err) {
         console.error("Error al validar horarios dinámicos:", err);
     }
     // ----------------------------------------------
 
+    const idAEditar = document.getElementById('idTurnoAEditarOculto').value;
     const inputSenaTurno = document.getElementById('senaTurnoInput');
     const montoSena = inputSenaTurno && inputSenaTurno.value ? parseFloat(inputSenaTurno.value) : 0;
 
     const fechaHoraCompleta = `${fecha}T${hora}:00`;
-    const nuevoTurno = {
+    
+    // Armamos el "paquete" de datos según si estamos creando o editando
+    const datosFinales = idAEditar ? {
+        Id_Servicio: parseInt(idServicio),
+        Id_Empleada: parseInt(idEmpleada),
+        Fecha_Hora: fechaHoraCompleta
+    } : {
         Id_Clienta: parseInt(idClientaFinal), 
         Id_Empleada: parseInt(idEmpleada),
         Id_Servicio: parseInt(idServicio),
@@ -612,15 +669,18 @@ async function guardarTurno() {
         Sena_Monto: montoSena 
     };
 
+    const url = idAEditar ? `http://localhost:3000/api/turnos/${idAEditar}` : 'http://localhost:3000/api/turnos';
+    const metodo = idAEditar ? 'PUT' : 'POST';
+
     try {
-        const respuesta = await fetch('http://localhost:3000/api/turnos', {
-            method: 'POST',
+        const respuesta = await fetch(url, {
+            method: metodo,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(nuevoTurno)
+            body: JSON.stringify(datosFinales)
         });
 
         if (respuesta.ok) {
-            mostrarNotificacion("Turno agendado con éxito.", "success");
+            mostrarNotificacion(idAEditar ? "Turno modificado con éxito." : "Turno agendado con éxito.", "success");
             cerrarModalTurno();
             setTimeout(() => { location.reload(); }, 1200);
         } else {
@@ -2689,6 +2749,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     const checkboxes = document.querySelectorAll('.check-extra');
     
     const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
+    const btnEditar = document.getElementById('btnEditarDatosTurno'); // <-- Agregamos el botón acá
     
     if (estado === 'Pagado') {
         badgeEstado.style.background = '#d4edda';
@@ -2702,10 +2763,13 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         btnGuardar.style.display = 'none';
         inputColor.disabled = true;
         inputDescuento.disabled = true;
-        if (inputComentario) inputComentario.disabled = true; // Bloqueamos la nota si está pagado
+        if (inputComentario) inputComentario.disabled = true; 
         if (inputSena) inputSena.disabled = true;
         if (btnActualizarSena) btnActualizarSena.disabled = true;
         checkboxes.forEach(chk => chk.disabled = true);
+        
+        // Ocultamos el botón de editar si está pagado
+        if (btnEditar) btnEditar.style.display = 'none'; 
     } else {
         badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
         badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
@@ -2718,10 +2782,13 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         btnGuardar.style.display = 'inline-block';
         inputColor.disabled = false;
         inputDescuento.disabled = false;
-        if (inputComentario) inputComentario.disabled = false; // Habilitamos la nota
+        if (inputComentario) inputComentario.disabled = false; 
         if (inputSena) inputSena.disabled = false;
         if (btnActualizarSena) btnActualizarSena.disabled = false;
         checkboxes.forEach(chk => chk.disabled = false);
+        
+        // Mostramos el botón de editar si está pendiente
+        if (btnEditar) btnEditar.style.display = 'block'; 
     }
 
     document.getElementById('descuentoCobroInput').value = 0;
