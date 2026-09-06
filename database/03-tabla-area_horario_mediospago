@@ -64,3 +64,8 @@
 -- INSERT INTO Medio_Pago (Nombre) VALUES 
 -- ('Efectivo'), 
 -- ('Transferencia');
+
+ALTER TABLE Turno ADD Id_Liquidacion INT NULL;
+
+SELECT * FROM Empleada
+    WHERE Id_Empleada = 2;

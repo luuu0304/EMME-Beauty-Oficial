@@ -254,19 +254,23 @@ const rutas = {
     '/gastos': 'seccionGastos',
     '/ingresos': 'seccionIngresos',
     '/resumenes': 'seccionResumenes',
-    '/configuracion': 'seccionConfiguracion'
+    '/configuracion': 'seccionConfiguracion',
+    '/mis-pagos': 'seccion-mis-pagos'
 };
 
 function router() {
     let path = window.location.pathname.replace('/frontend/index.html', '') || '/';
     if (path === '') path = '/';
 
-    const idSeccion = rutas[path] || 'seccionTurnos';
+    // Obtenemos el ID de la sección. Si es /mis-pagos lo forzamos al nuevo ID
+    let idSeccion = rutas[path] || 'seccionTurnos';
+    if (path === '/mis-pagos') idSeccion = 'seccion-mis-pagos';
 
-    // 1. Ocultamos todas las secciones
+    // 1. Ocultamos todas las secciones (Sumamos 'seccion-mis-pagos' a la lista)
     const todasLasSecciones = [
         'seccionTurnos', 'seccionClientas', 'seccionEmpleados', 
-        'seccionGastos', 'seccionIngresos', 'seccionResumenes', 'seccionConfiguracion'
+        'seccionGastos', 'seccionIngresos', 'seccionResumenes', 'seccionConfiguracion',
+        'seccion-mis-pagos' 
     ];
     
     todasLasSecciones.forEach(id => {
@@ -286,8 +290,13 @@ function router() {
         }
     });
 
-    // 4. ¡NUEVO! Actualizamos el Título y los Botones de la Cabecera
+    // 4. Actualizamos el Título y los Botones de la Cabecera
     actualizarCabecera(path);
+
+    // 5. ¡LA MAGIA NUEVA! Si entramos a Mis Pagos, disparamos la búsqueda a la base de datos
+    if (path === '/mis-pagos') {
+        cargarMisPagos();
+    }
 }
 
 // Función que controla la UI del Header según donde estemos parados
@@ -308,6 +317,7 @@ function actualizarCabecera(ruta) {
         case '/':
         case '/turnos':
             if (tituloHeader) tituloHeader.textContent = 'Gestión de Turnos';
+            // Ojo: Recordemos que si es empleada, aplicarPermisos ya se encarga de ocultar este botón por seguridad
             document.getElementById('btnNuevoTurno').style.display = 'block';
             break;
         case '/clientas':
@@ -334,6 +344,10 @@ function actualizarCabecera(ruta) {
         case '/configuracion':
             if (tituloHeader) tituloHeader.textContent = 'Configuración del Sistema';
             break;
+        // ¡NUEVO CASO!
+        case '/mis-pagos':
+            if (tituloHeader) tituloHeader.textContent = 'Mis Pagos y Liquidaciones';
+            break;
     }
 }
 
@@ -343,6 +357,7 @@ botonesMenu.forEach(boton => {
         botonesMenu.forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
 
+        // 1. Apagamos TODAS las secciones (Agregamos la de mis pagos)
         seccionTurnos.style.display = 'none';
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
@@ -350,14 +365,17 @@ botonesMenu.forEach(boton => {
         if(seccionIngresos) seccionIngresos.style.display = 'none';
         if(seccionResumenes) seccionResumenes.style.display = 'none';
         if(seccionConfiguracion) seccionConfiguracion.style.display = 'none';
+        
+        const seccionMisPagos = document.getElementById('seccion-mis-pagos');
+        if(seccionMisPagos) seccionMisPagos.style.display = 'none';
 
+        // 2. Apagamos botones de la cabecera
         btnNuevoTurno.style.display = 'none';
         btnNuevaClienta.style.display = 'none';
         btnNuevaEmpleada.style.display = 'none';
         btnNuevoGasto.style.display = 'none';
         buscadorClientas.style.display = 'none';
         if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'none';
-        
         if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'none'; 
 
         const opcionSeleccionada = boton.textContent.trim();
@@ -365,6 +383,7 @@ botonesMenu.forEach(boton => {
         // Guardamos dónde hizo clic el usuario
         localStorage.setItem('emme_seccion_activa', opcionSeleccionada);
 
+        // 3. Prendemos solo lo que corresponde
         if (opcionSeleccionada === 'Turnos') {
             seccionTurnos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Turnos';
@@ -395,13 +414,21 @@ botonesMenu.forEach(boton => {
             tituloHeader.textContent = 'Gestión de Ingresos';
             if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'block'; 
             cargarIngresos();
+            
         } else if (opcionSeleccionada === 'Resúmenes') {
             if(seccionResumenes) seccionResumenes.style.display = 'block';
             tituloHeader.textContent = 'Panel de Control';
+            
         } else if (opcionSeleccionada === 'Configuración') {
             if(seccionConfiguracion) seccionConfiguracion.style.display = 'block';
             tituloHeader.textContent = 'Configuración General';
             cargarTablaConfigCategorias();
+            
+        // ¡NUEVO! Caso para la empleada
+        } else if (opcionSeleccionada === 'Mis Pagos') {
+            if(seccionMisPagos) seccionMisPagos.style.display = 'block';
+            tituloHeader.textContent = 'Mis Pagos y Liquidaciones';
+            cargarMisPagos(); // Llamamos a la base de datos
         }
     });
 });
@@ -2428,7 +2455,8 @@ function dibujarTablaCobros(lista) {
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px; color:#888;">No se encontraron registros de cobro con esos filtros.</td></tr>';
+        // Cambiamos a colspan="4" porque sumamos la columna de Detalles
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#888;">No se encontraron registros de cobro con esos filtros.</td></tr>';
         return;
     }
 
@@ -2437,13 +2465,133 @@ function dibujarTablaCobros(lista) {
         const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
         
         tbody.innerHTML += `
-            <tr style="border-bottom: 1px solid #eee;">
+            <tr style="border-bottom: 1px solid #eee; transition: background-color 0.2s;">
                 <td style="padding: 15px; color: #555;">${fechaLimpia}</td>
                 <td style="padding: 15px; font-weight: 500; color: #333;">${liq.Nombre_Ap}</td>
-                <td style="padding: 15px; text-align: right; font-weight: 600; color: #28a745;">$${liq.Monto_Total.toLocaleString('es-AR')}</td>
+                <td style="padding: 15px; font-weight: 600; color: #28a745;">$${liq.Monto_Total.toLocaleString('es-AR')}</td>
+                <td style="padding: 15px; text-align: center;">
+                    <button class="btn-icon" onclick="abrirDetalleCobro(${liq.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </td>
             </tr>
         `;
     });
+}
+
+async function abrirDetalleCobro(idLiquidacion) {
+    const modal = document.getElementById('modalDetalleHistorial');
+    const tbody = document.getElementById('tablaDetalleHistorialBody');
+    
+    // Mostramos el mensaje de carga y abrimos el modal
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #888;">Cargando detalles de los turnos...</td></tr>';
+    modal.classList.add('active'); 
+
+    try {
+        // Hacemos la petición al servidor (al nuevo endpoint)
+        const respuesta = await fetch(`http://localhost:3000/api/liquidaciones/${idLiquidacion}/detalles`);
+        
+        if (!respuesta.ok) {
+            throw new Error("Error en la respuesta del servidor");
+        }
+        
+        const detalles = await respuesta.json();
+        
+        // Limpiamos el mensaje de carga
+        tbody.innerHTML = '';
+        
+        // Si es una liquidación vieja (antes de agregar la columna en SQL), va a venir vacío
+        if (detalles.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #888; font-style: italic;">No se encontraron detalles para este cobro (posiblemente sea un registro antiguo).</td></tr>';
+            return;
+        }
+        
+        // Dibujamos las filas con los turnos
+        detalles.forEach(item => {
+            const fechaObj = new Date(item.Fecha_Hora);
+            // Ajustamos la fecha para que no reste un día por la zona horaria
+            const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px 15px; color: #555;">${fechaLimpia}</td>
+                    <td style="padding: 12px 15px;">${item.Nombre_Clienta}</td>
+                    <td style="padding: 12px 15px; color: #666;">${item.Nombre_Servicio}</td>
+                    <td style="padding: 12px 15px; text-align: right;">$${item.Monto_Abonado.toLocaleString('es-AR')}</td>
+                    <td style="padding: 12px 15px; text-align: center; color: #888;">${item.Porcentaje}%</td>
+                    <td style="padding: 12px 15px; text-align: right; font-weight: 600; color: #28a745;">$${item.Comision.toLocaleString('es-AR')}</td>
+                </tr>
+            `;
+        });
+        
+    } catch (error) {
+        console.error("Error al buscar el desglose:", error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #d9534f;">Hubo un error al cargar la información.</td></tr>';
+    }
+}
+
+function cerrarModalHistorial() {
+    const modal = document.getElementById('modalDetalleHistorial');
+    modal.classList.remove('active');
+}
+
+async function cargarMisPagos() {
+    const tbody = document.getElementById('tablaMisPagosBody');
+    if (!tbody) return;
+
+    // 1. Agarramos la "pulsera VIP" que guardaste al iniciar sesión
+    const token = localStorage.getItem('emme_token');
+    if (!token) return;
+
+    try {
+        // 2. Desencriptamos la pulsera para sacar el ID de la empleada
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const idEmpleada = payload.Id_Empleada || payload.id; // Depende cómo lo llame tu backend
+
+        // 3. Vamos a buscar sus pagos al endpoint nuevo
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidaciones`);
+        
+        if (!respuesta.ok) throw new Error("Error al traer los pagos");
+        
+        const pagos = await respuesta.json();
+        
+        // 4. Limpiamos el texto de "Buscando..."
+        tbody.innerHTML = '';
+        
+        if (pagos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 30px; color: #888; font-style: italic;">Todavía no tenés pagos registrados.</td></tr>';
+            return;
+        }
+        
+        // 5. Dibujamos las filas
+        pagos.forEach(pago => {
+            const fechaObj = new Date(pago.Fecha);
+            const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #eee; transition: background-color 0.2s;">
+                    <td style="padding: 15px; color: #555;">${fechaLimpia}</td>
+                    <td style="padding: 15px; font-weight: 600; color: #28a745;">$${pago.Monto_Total.toLocaleString('es-AR')}</td>
+                    <td style="padding: 15px; text-align: center;">
+                        <!-- Acá viene la magia: RECICLAMOS el mismo modal de las admins -->
+                        <button class="btn-icon" onclick="abrirDetalleCobro(${pago.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (error) {
+        console.error("Error al cargar Mis Pagos:", error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 30px; color: #d9534f;">Hubo un problema de conexión. Intentá nuevamente.</td></tr>';
+    }
 }
 
 // ==========================================================================
@@ -4149,15 +4297,19 @@ function aplicarPermisos(rol) {
         const textoMenu = boton.textContent.trim();
 
         if (rol === 'Empleada') {
-            // Sumamos 'Clientas' a la lista de módulos prohibidos
+            // Modulos prohibidos para empleadas
             if (['Clientas', 'Gastos', 'Ingresos', 'Configuración', 'Empleados', 'Empleadas'].includes(textoMenu)) {
                 boton.style.display = 'none';
             } else {
-                boton.style.display = 'flex'; // Los permitidos (Turnos, Resúmenes) se ven
+                boton.style.display = 'flex'; // Los permitidos (Turnos, Resúmenes y Mis Pagos) se ven
             }
         } else {
-            // Si es Admin (Mili), mostramos absolutamente todo
-            boton.style.display = 'flex';
+            // Si es Admin (Mili), mostramos todo EXCEPTO la vista individual de empleadas
+            if (textoMenu === 'Mis Pagos') {
+                boton.style.display = 'none';
+            } else {
+                boton.style.display = 'flex';
+            }
         }
     });
 

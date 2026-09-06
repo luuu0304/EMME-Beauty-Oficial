@@ -452,23 +452,27 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
                 return res.status(400).send("No hay saldo pendiente para liquidar.");
             }
 
-            // 2. Guardamos el registro en el historial de liquidaciones
+            // 2. Guardamos el registro y RECUPERAMOS EL ID GENERADO (La magia está en el OUTPUT)
             const requestLiq = new sql.Request(transaction);
-            await requestLiq
+            const resultLiq = await requestLiq
                 .input('Id_Empleada', sql.Int, id)
                 .input('Monto', sql.Decimal(12, 2), montoTotal)
                 .query(`
                     INSERT INTO Liquidacion_Sueldo (Id_Empleada, Monto_Total)
+                    OUTPUT INSERTED.Id_Liquidacion
                     VALUES (@Id_Empleada, @Monto)
                 `);
                 
-            // 3. Marcamos los turnos como liquidados (simplificado)
+            const idLiquidacionGenerada = resultLiq.recordset[0].Id_Liquidacion;
+
+            // 3. Marcamos los turnos con ese ID para no perder el rastro
             const requestUpdate = new sql.Request(transaction);
             await requestUpdate
                 .input('Id_Empleada', sql.Int, id)
+                .input('Id_Liquidacion', sql.Int, idLiquidacionGenerada)
                 .query(`
                     UPDATE Turno 
-                    SET Liquidado = 1
+                    SET Liquidado = 1, Id_Liquidacion = @Id_Liquidacion
                     WHERE Id_Empleada = @Id_Empleada 
                       AND Estado = 'Pagado' 
                       AND Liquidado = 0
@@ -483,6 +487,65 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
         }
     } catch (err) {
         console.error("Error al liquidar sueldo:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener el detalle de una liquidación específica (Para el modal del Historial)
+app.get('/api/liquidaciones/:id/detalles', async (req, res) => {
+    const { id } = req.params;
+    try {
+        let pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('Id_Liquidacion', sql.Int, id)
+            .query(`
+                SELECT 
+                    t.Fecha_Hora,
+                    c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
+                    s.Nombre AS Nombre_Servicio,
+                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Monto_Abonado,
+                    ISNULL(ea.Porcentaje_Comision, 0.50) * 100 AS Porcentaje,
+                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50) AS Comision
+                FROM Turno t
+                JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                LEFT JOIN Area a ON s.Id_Area = a.Id_Area
+                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND a.Nombre = ea.Area
+                LEFT JOIN (
+                    SELECT Id_Turno, SUM(Precio) as Total_Extras
+                    FROM Turno_Extra te
+                    JOIN Extra ex ON te.Id_Extra = ex.Id_Extra
+                    GROUP BY Id_Turno
+                ) Extras ON t.Id_Turno = Extras.Id_Turno
+                WHERE t.Id_Liquidacion = @Id_Liquidacion
+                ORDER BY t.Fecha_Hora DESC
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo detalles de liquidación:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener el historial de cobros de UNA sola empleada (Para la sección Mis Pagos)
+app.get('/api/empleadas/:id/liquidaciones', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .query(`
+                SELECT Id_Liquidacion, Fecha, Monto_Total
+                FROM Liquidacion_Sueldo
+                WHERE Id_Empleada = @Id_Empleada
+                ORDER BY Fecha DESC
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo los pagos de la empleada:", err);
         res.status(500).send("Error interno del servidor");
     }
 });
