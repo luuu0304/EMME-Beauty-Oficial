@@ -1175,17 +1175,22 @@ function cambiarVistaAgenda(vista) {
     const vistaSemanal = document.getElementById('vistaSemanal');
     const btnDiaria = document.getElementById('btnVistaDiaria');
     const btnSemanal = document.getElementById('btnVistaSemanal');
+    const filtros = document.getElementById('filtrosEspecialidad'); // Capturamos el div de filtros
 
     if (vista === 'diaria') {
         vistaDiaria.style.display = 'block';
         vistaSemanal.style.display = 'none';
         btnDiaria.classList.add('active');
         btnSemanal.classList.remove('active');
+        
+        filtros.style.display = 'flex'; // Mostramos los filtros
     } else if (vista === 'semanal') {
         vistaDiaria.style.display = 'none';
         vistaSemanal.style.display = 'block';
         btnSemanal.classList.add('active');
         btnDiaria.classList.remove('active');
+        
+        filtros.style.display = 'none'; // Ocultamos los filtros para no confundir
         
         inicializarAgendaSemanal();
         cargarTurnosSemana();
@@ -1418,25 +1423,60 @@ if (modalTurnosAgrupados) {
 
 async function inicializarAgendaSemanal() {
     const agendaBody = document.getElementById('agendaSemanalBody');
-    if (!agendaBody) return;
+    const headerSemanal = document.getElementById('agendaSemanalHeader');
+    const fechaCalendario = document.getElementById('fechaAgendaInput').value; // Tomamos la fecha del control central
+
+    if (!agendaBody || !headerSemanal || !fechaCalendario) return;
+    
     agendaBody.innerHTML = ''; 
 
+    // --- MAGIA PARA CALCULAR LOS DÍAS DE LA SEMANA ---
+    // 1. Convertimos la fecha del input a objeto Date (usando la T para que no haya timezone bug)
+    let fechaBase = new Date(fechaCalendario + 'T00:00:00'); 
+    
+    // 2. Averiguamos qué día de la semana es (0=Domingo, 1=Lunes, 6=Sábado)
+    let diaDeLaSemana = fechaBase.getDay();
+    
+    // 3. Calculamos la distancia hasta el Lunes previo (Si es domingo, retrocedemos 6 días)
+    let diferenciaAlLunes = diaDeLaSemana === 0 ? -6 : 1 - diaDeLaSemana;
+    
+    // 4. Establecemos el "Lunes" de esta semana
+    let lunesDeEstaSemana = new Date(fechaBase);
+    lunesDeEstaSemana.setDate(fechaBase.getDate() + diferenciaAlLunes);
+
+    // 5. Dibujamos el encabezado con las fechas calculadas (Lunes a Sábado)
+    let htmlHeader = `<div class="hora-col" style="color: #999;">Hora</div>`;
+    const nombresDias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    
+    for (let i = 0; i < 6; i++) {
+        let diaIterado = new Date(lunesDeEstaSemana);
+        diaIterado.setDate(lunesDeEstaSemana.getDate() + i);
+        
+        // Formateamos para que diga "Lunes 14/09"
+        let diaNum = diaIterado.getDate().toString().padStart(2, '0');
+        let mesNum = (diaIterado.getMonth() + 1).toString().padStart(2, '0');
+        
+        htmlHeader += `
+            <div style="display: flex; flex-direction: column;">
+                <span>${nombresDias[i]}</span>
+                <span style="font-size: 12px; font-weight: normal; color: #666; margin-top: 4px;">${diaNum}/${mesNum}</span>
+            </div>
+        `;
+    }
+    headerSemanal.innerHTML = htmlHeader;
+
+    // --- FIN DE MAGIA, EMPIEZA LA CONSTRUCCIÓN DE FILAS ---
     try {
         const resHor = await fetch('http://localhost:3000/api/horarios');
         const horarios = await resHor.json();
         const horarioRef = horarios.find(h => h.Laborable === true) || horarios[0];
 
-        // EL SALVAVIDAS DE LAS ZONAS HORARIAS
         const extraerHoraMin = (valorTime) => {
             if (!valorTime) return null;
-            
-            // Si el servidor manda formato UTC (con la T y la Z)
             if (valorTime.includes('T')) {
                 const fecha = new Date(valorTime);
-                // getHours() fuerza al navegador a convertir la hora a tu zona local
                 return { h: fecha.getHours(), m: fecha.getMinutes() };
             } else {
-                // Si el servidor manda el texto limpio "09:00"
                 const [h, m] = valorTime.split(':').map(Number);
                 return { h, m };
             }
@@ -1458,10 +1498,8 @@ async function inicializarAgendaSemanal() {
             }
         };
 
-        // 1. Dibujamos el Turno Mañana
         generarFilasRango(horarioRef.Hora_Apertura_1, horarioRef.Hora_Cierre_1);
 
-        // 2. INYECTAMOS TU BLOQUE DE DESCANSO (Si hay un turno tarde configurado)
         if (horarioRef.Hora_Apertura_2) {
             let divSiesta = document.createElement('div');
             divSiesta.style.padding = '20px';
@@ -1482,7 +1520,6 @@ async function inicializarAgendaSemanal() {
             agendaBody.appendChild(divSiesta);
         }
 
-        // 3. Dibujamos el Turno Tarde
         generarFilasRango(horarioRef.Hora_Apertura_2, horarioRef.Hora_Cierre_2);
 
     } catch (err) {

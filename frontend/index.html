@@ -191,69 +191,56 @@
                 </div>
             </div>
 
+            <!-- LA BARRA DE CONTROLES AHORA ES GENERAL (Sirve para las 2 vistas) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <!-- Controles de Fecha (Izquierda) -->
+                <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <button class="btn-icon" id="btnDiaAnterior" title="Anterior">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    
+                    <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
+                    
+                    <button class="btn-icon" id="btnDiaSiguiente" title="Siguiente">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+                
+                <!-- Filtros por Especialidad (Derecha) -->
+                <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center; flex-wrap: wrap;">
+                    <span style="font-weight: 500; font-size: 14px;">Filtrar por:</span>
+                    <button class="btn-secundario filtro-btn active" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: var(--mostaza, #d4af37); color: white; border: 1px solid var(--mostaza, #d4af37); padding: 6px 15px; cursor: pointer;">Todo</button>
+                </div>
+            </div>
+
             <!-- VISTA 1: AGENDA DIARIA -->
             <div id="vistaDiaria" style="display: block;">
-                
-                <!-- BARRA DE CONTROLES SUPERIOR (En la misma línea) -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    
-                    <!-- Controles de Fecha (Izquierda) -->
-                    <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <button class="btn-icon" id="btnDiaAnterior" title="Día Anterior">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                        </button>
-                        
-                        <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
-                        
-                        <button class="btn-icon" id="btnDiaSiguiente" title="Día Siguiente">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </button>
-                    </div>
-                    
-                    <!-- Filtros por Especialidad (Derecha) -->
-                    <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center; flex-wrap: wrap;">
-                        <span style="font-weight: 500; font-size: 14px;">Filtrar por:</span>
-                        <button class="btn-secundario filtro-btn active" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: var(--mostaza, #d4af37); color: white; border: 1px solid var(--mostaza, #d4af37); padding: 6px 15px; cursor: pointer;">Todo</button>
-                    </div>
-                </div>
-
-                <!-- CONTENEDOR DE LA AGENDA (Scroll vertical y horizontal) -->
                 <div class="agenda-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; overflow-x: auto; max-height: 65vh; position: relative;">
-                    
                     <div style="min-width: max-content;">
                         <div class="agenda-header" id="agendaHeader" style="position: sticky; top: 0; z-index: 10; background: #f8f9fa; border-bottom: 1px solid #eee;">
                             <div class="hora-col">Hora</div>
                         </div>
-                        
                         <div class="agenda-body" id="agendaBody">
                             <!-- JS inyectará las filas acá -->
                         </div>
                     </div>
-                    
                 </div>
             </div>
             
             <!-- VISTA 2: AGENDA SEMANAL -->
             <div id="vistaSemanal" style="display: none;">
-                <!-- Grilla Semanal -->
                 <div class="agenda-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; max-height: 60vh;">
-                    <!-- Encabezado de Días -->
-                    <div id="agendaSemanalHeader" style="display: grid; grid-template-columns: 80px repeat(6, 1fr); background: #f8f9fa; border-bottom: 1px solid #eee; text-align: center; font-weight: 600; padding: 15px 0;">
+                    <!--  EL ENCABEZADO AHORA LO VA A RELLENAR JAVASCRIPT -->
+                    <div id="agendaSemanalHeader" style="position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 80px repeat(6, 1fr); background: #f8f9fa; border-bottom: 1px solid #eee; text-align: center; font-weight: 600; padding: 15px 0;">
                         <div class="hora-col" style="color: #999;">Hora</div>
-                        <div>Lunes</div>
-                        <div>Martes</div>
-                        <div>Miércoles</div>
-                        <div>Jueves</div>
-                        <div>Viernes</div>
-                        <div>Sábado</div>
+                        <!-- Los días (Lunes a Sábado) se inyectarán acá con sus fechas reales -->
                     </div>
-                    <!-- Cuerpo de la Agenda (Filas de horas) -->
                     <div id="agendaSemanalBody">
-                        <!-- JavaScript inyectará las filas y los botones acá -->
+                        <!-- JS inyectará las filas acá -->
                     </div>
                 </div>
             </div>
-        </div> <!-- Fin Sección Turnos -->
+        </div>
 
         <!-- -------------------------------------------------- -->
         <!-- 3.2. SECCIÓN: CLIENTAS -->
