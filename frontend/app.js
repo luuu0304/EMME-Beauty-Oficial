@@ -1305,8 +1305,15 @@ async function cargarTurnosSemana() {
                             const precioServicio = turno.Precio_Base || 0; 
                             const senaPagada = turno.Sena_Monto || 0;
                             abrirModalDetalleTurno(
-                                turno.Id_Turno, turno.Nombre_Clienta, turno.Nombre_Servicio, 
-                                precioServicio, turno.Estado, turno.Color, senaPagada, turno.Comentario_Admin
+                                turno.Id_Turno, 
+                                turno.Nombre_Clienta, 
+                                turno.Nombre_Servicio, 
+                                precioServicio, 
+                                turno.Estado, 
+                                turno.Color, 
+                                senaPagada, 
+                                turno.Comentario_Admin,
+                                turno.Nombre_Area || ''
                             );
                         };
                         celda.appendChild(tarjeta);
@@ -1360,7 +1367,7 @@ function abrirModalTurnosAgrupados(turnos) {
         tarjeta.style.padding = '15px';
         tarjeta.style.border = '1px solid #eee';
         tarjeta.style.borderRadius = '8px';
-        tarjeta.style.borderLeft = `4px solid ${turno.Color || '#f6c23e'}`;
+        tarjeta.style.borderLeft = `4px solid ${turno.Color ? turno.Color.split(' | ')[0] : '#f6c23e'}`;
         tarjeta.style.backgroundColor = '#fafafa';
         tarjeta.style.cursor = 'pointer'; 
 
@@ -1378,7 +1385,8 @@ function abrirModalTurnosAgrupados(turnos) {
                 turno.Estado, 
                 turno.Color,
                 senaPagada,
-                turno.Comentario_Admin
+                turno.Comentario_Admin,
+                turno.Nombre_Area || '' // 👉 ¡ACÁ SUMAMOS EL ÁREA QUE FALTABA!
             );
         };
         
@@ -1583,7 +1591,8 @@ async function cargarTurnosAgenda() {
                         turno.Estado, 
                         turno.Color || '',
                         senaPagada,
-                        turno.Comentario_Admin || ''
+                        turno.Comentario_Admin || '',
+                        turno.Nombre_Area || '' // 👉 ¡ACÁ ESTÁ EL DATO MÁGICO AGREGADO!
                     );
                 };
                 tarjeta.innerHTML = `
@@ -3121,7 +3130,7 @@ const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 let precioBaseActual = 0;
 
 // 1. Agregamos el parámetro comentarioAdmin al final
-function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '') {
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '') {
     precioBaseActual = parseFloat(precioBase) || 0;
     const senaActual = parseFloat(sena) || 0;
     
@@ -3139,34 +3148,65 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         textoDetalleSena.textContent = `Seña abonada: -$${senaActual.toLocaleString('es-AR')}`;
     }
 
-    document.getElementById('colorTurnoInput').value = '';
+    // --- MAGIA ANTI-FALLOS PARA EL ÁREA ---
+    let areaDefinitiva = nombreArea;
     
-    // Asignamos el valor al nuevo input de la nota adhesiva
+    // Si el backend no mandó el área en el turno, la buscamos en nuestra memoria global
+    if (!areaDefinitiva || areaDefinitiva === 'null' || areaDefinitiva === 'undefined') {
+        if (typeof listaServiciosGlobal !== 'undefined') {
+            const srv = listaServiciosGlobal.find(s => s.Nombre === nombreServicio);
+            if (srv) {
+                areaDefinitiva = srv.Area || srv.area || srv.Nombre_Area || '';
+            }
+        }
+    }
+    
+    // Plan B de rescate extremo: deducir por el nombre del servicio
+    const nombreSrvLow = (nombreServicio || '').toLowerCase();
+    const esUñas = nombreSrvLow.includes('kapping') || nombreSrvLow.includes('esmaltado') || nombreSrvLow.includes('soft') || nombreSrvLow.includes('esculpidas');
+
+    // --- LÓGICA DE EXTRAS ---
+    const divExtras = document.getElementById('seccionExtras');
+    if (divExtras) {
+        if (areaDefinitiva === 'Manicura' || areaDefinitiva === 'Pedicura' || esUñas) {
+            divExtras.style.display = 'flex'; // Lo mostramos
+        } else {
+            divExtras.style.display = 'none'; // Lo ocultamos
+        }
+    }
+
+    // --- NUEVA LÓGICA DE COLORES (CHIPS) ---
+    document.getElementById('inputNuevoColor').value = '';
+    const contenedorColores = document.getElementById('contenedorChipsColores');
+    const inputOcultoColores = document.getElementById('coloresGuardados');
+    
+    contenedorColores.innerHTML = ''; 
+    inputOcultoColores.value = '';
+
+    if (color && color !== 'null') {
+        const arrayColores = color.split('|');
+        arrayColores.forEach(c => {
+            if(c.trim()) agregarChipColor(c.trim());
+        });
+    }
+
     const inputComentario = document.getElementById('comentarioAdminInput');
     if (inputComentario) {
         inputComentario.value = (comentarioAdmin && comentarioAdmin !== 'null') ? comentarioAdmin : '';
     }
     
-    const contenedorColores = document.getElementById('listaColoresGuardados');
-    contenedorColores.innerHTML = ''; 
-    
-    if (color && color !== 'null') {
-        const arrayColores = color.split(' | ');
-        arrayColores.forEach(c => {
-            contenedorColores.innerHTML += `<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 15px; font-size: 12px;"> ${c}</span>`;
-        });
-    }
     const badgeEstado = document.getElementById('estadoTurnoBadge');
     badgeEstado.textContent = estado || 'Pendiente';
     
     const btnCobrar = document.getElementById('btnConfirmarCobro'); 
     const btnGuardar = document.getElementById('btnGuardarDetalles');
-    const inputColor = document.getElementById('colorTurnoInput');
+    const inputColor = document.getElementById('inputNuevoColor'); 
     const inputDescuento = document.getElementById('descuentoCobroInput');
+    const inputRecargo = document.getElementById('recargoCobroInput'); 
     const checkboxes = document.querySelectorAll('.check-extra');
     
     const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
-    const btnEditar = document.getElementById('btnEditarDatosTurno'); // <-- Agregamos el botón acá
+    const btnEditar = document.getElementById('btnEditarDatosTurno');
     
     if (estado === 'Pagado') {
         badgeEstado.style.background = '#d4edda';
@@ -3180,12 +3220,12 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         btnGuardar.style.display = 'none';
         inputColor.disabled = true;
         inputDescuento.disabled = true;
+        if (inputRecargo) inputRecargo.disabled = true;
         if (inputComentario) inputComentario.disabled = true; 
         if (inputSena) inputSena.disabled = true;
         if (btnActualizarSena) btnActualizarSena.disabled = true;
         checkboxes.forEach(chk => chk.disabled = true);
         
-        // Ocultamos el botón de editar si está pagado
         if (btnEditar) btnEditar.style.display = 'none'; 
     } else {
         badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
@@ -3199,16 +3239,17 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         btnGuardar.style.display = 'inline-block';
         inputColor.disabled = false;
         inputDescuento.disabled = false;
+        if (inputRecargo) inputRecargo.disabled = false;
         if (inputComentario) inputComentario.disabled = false; 
         if (inputSena) inputSena.disabled = false;
         if (btnActualizarSena) btnActualizarSena.disabled = false;
         checkboxes.forEach(chk => chk.disabled = false);
         
-        // Mostramos el botón de editar si está pendiente
         if (btnEditar) btnEditar.style.display = 'block'; 
     }
 
     document.getElementById('descuentoCobroInput').value = 0;
+    if(inputRecargo) inputRecargo.value = 0;
     checkboxes.forEach(chk => chk.checked = false);
     
     if (typeof recalcularTotalCobro === 'function') {
@@ -3219,14 +3260,13 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
 }
 
-// 2. Modificamos para enviar la nota al backend
+// 2. Leemos los colores desde el input oculto
 async function guardarDetallesTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
-    const colorElegido = document.getElementById('colorTurnoInput').value;
+    const coloresFinales = document.getElementById('coloresGuardados').value; // Actualizado
     const comentario = document.getElementById('comentarioAdminInput').value;
     
-    // Ahora permite guardar si hay un color O un comentario
-    if (!colorElegido.trim() && !comentario.trim()) {
+    if (!coloresFinales.trim() && !comentario.trim()) {
         mostrarNotificacion("Escribí un color o comentario para guardar", "warning");
         return;
     }
@@ -3236,7 +3276,7 @@ async function guardarDetallesTurno() {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                Color: colorElegido,
+                Color: coloresFinales,
                 Comentario_Admin: comentario 
             })
         });
@@ -3263,6 +3303,47 @@ if (modalDetalleTurno) {
     modalDetalleTurno.addEventListener('click', function(e) {
         if(e.target === modalDetalleTurno) cerrarModalDetalleTurno();
     });
+}
+
+function manejarEnterColor(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); // Evita que el formulario intente enviarse
+        const input = document.getElementById('inputNuevoColor');
+        const color = input.value.trim();
+        
+        if (color) {
+            agregarChipColor(color);
+            input.value = ''; // Limpiamos el input para escribir otro
+        }
+    }
+}
+
+function agregarChipColor(color) {
+    const contenedor = document.getElementById('contenedorChipsColores');
+    const chip = document.createElement('div');
+    chip.className = 'chip-color';
+    // Estilos de la píldora gris
+    chip.style.cssText = 'background: #e9ecef; color: #333; padding: 5px 12px; border-radius: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
+    
+    chip.innerHTML = `
+        ${color}
+        <span style="cursor: pointer; font-weight: bold; color: #999; font-size: 16px; line-height: 1;" onclick="eliminarChipColor(this)">×</span>
+    `;
+    
+    contenedor.appendChild(chip);
+    actualizarInputOcultoColores();
+}
+
+function eliminarChipColor(cruzElement) {
+    cruzElement.parentElement.remove(); // Borra el chip de la pantalla
+    actualizarInputOcultoColores(); // Recalcula los colores guardados
+}
+
+function actualizarInputOcultoColores() {
+    const chips = document.querySelectorAll('#contenedorChipsColores .chip-color');
+    // Toma todos los chips, les saca la "×" de texto, limpia espacios y los une con "|"
+    const colores = Array.from(chips).map(chip => chip.innerText.replace('×', '').trim());
+    document.getElementById('coloresGuardados').value = colores.join(' | ');
 }
 
 async function cargarExtrasDisponibles() {
@@ -3308,10 +3389,14 @@ function recalcularTotalCobro() {
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
 
+    const recargoInput = document.getElementById('recargoCobroInput').value; // Nuevo
+    const recargo = recargoInput ? parseFloat(recargoInput) : 0; // Nuevo
+
     const senaInput = document.getElementById('senaDetalleInput').value;
     const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
 
-    let totalFinal = precioBaseActual + sumaExtras - descuento - senaAbonada;
+    // Fórmula: Precio + Extras + Recargo - Descuento - Seña
+    let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
     
     if (totalFinal < 0) totalFinal = 0;
 
@@ -3334,6 +3419,9 @@ async function confirmarCobroTurno() {
     
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
+
+    const recargoInput = document.getElementById('recargoCobroInput').value; // Nuevo
+    const recargo = recargoInput ? parseFloat(recargoInput) : 0; // Nuevo
     
     const senaInput = document.getElementById('senaDetalleInput').value;
     const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
@@ -3347,7 +3435,7 @@ async function confirmarCobroTurno() {
         sumaExtras += parseFloat(chk.value);
     });
 
-    let totalFinal = precioBaseActual + sumaExtras - descuento - senaAbonada;
+    let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
     if (totalFinal < 0) totalFinal = 0;
 
     const datosCobro = {
@@ -3355,6 +3443,7 @@ async function confirmarCobroTurno() {
         montoTotal: totalFinal,
         medioPago: medioPago,
         descuento: descuento,
+        recargo: recargo, // Opcional: lo mandamos por si tu backend lo quiere guardar
         extras: extrasSeleccionados
     };
 
