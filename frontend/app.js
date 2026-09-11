@@ -1597,6 +1597,91 @@ async function guardarSenaIndependiente() {
     }
 }
 
+async function cargarHorariosDisponibles() {
+    const selectHora = document.getElementById('horaTurnoInput');
+    const fechaInput = document.getElementById('fechaTurnoInput').value; 
+    const idEmpleada = document.getElementById('empleadaTurno').value;
+
+    if (!fechaInput || !idEmpleada) {
+        selectHora.innerHTML = '<option value="">Elija fecha y profesional...</option>';
+        selectHora.disabled = true;
+        return;
+    }
+
+    selectHora.innerHTML = '<option value="">Calculando...</option>';
+    selectHora.disabled = true;
+
+    try {
+        const respHorarios = await fetch('http://localhost:3000/api/horarios');
+        const horariosSemana = await respHorarios.json();
+
+        const fechaObj = new Date(fechaInput + 'T00:00:00'); 
+        let diaSemanaJS = fechaObj.getDay(); 
+        let idDiaBD = diaSemanaJS === 0 ? 7 : diaSemanaJS; 
+        
+        const configDia = horariosSemana.find(h => h.Id_Horario === idDiaBD);
+
+        if (!configDia || !configDia.Laborable) {
+            selectHora.innerHTML = '<option value="">Local cerrado este día</option>';
+            return;
+        }
+
+        // --- LA MAGIA QUE SIEMPRE FUNCIONÓ ---
+        // Le pasamos el texto feo (ej: 12:30Z) a new Date(), y tu compu lo traduce a 09:30 local solito.
+        const extraerMinutos = (fechaSql) => {
+            if (!fechaSql) return null;
+            const fecha = new Date(fechaSql);
+            return fecha.getHours() * 60 + fecha.getMinutes();
+        };
+
+        const apertura1 = extraerMinutos(configDia.Hora_Apertura_1);
+        const cierre1 = extraerMinutos(configDia.Hora_Cierre_1);
+        const apertura2 = extraerMinutos(configDia.Hora_Apertura_2);
+        const cierre2 = extraerMinutos(configDia.Hora_Cierre_2);
+
+        const respTurnos = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/agenda/${fechaInput}`);
+        const turnosOcupados = await respTurnos.json();
+
+        let horariosPosibles = [];
+        
+        if (apertura1 !== null && cierre1 !== null) {
+            for (let m = apertura1; m < cierre1; m += 30) horariosPosibles.push(m);
+        }
+        if (apertura2 !== null && cierre2 !== null) {
+            for (let m = apertura2; m < cierre2; m += 30) horariosPosibles.push(m);
+        }
+
+        const horariosFiltrados = horariosPosibles.filter(minutoEvaluado => {
+            const estaOcupado = turnosOcupados.some(turno => {
+                const inicioOcupado = extraerMinutos(turno.Fecha_Hora);
+                const finOcupado = inicioOcupado + turno.Duracion_Minutos;
+                
+                return minutoEvaluado >= inicioOcupado && minutoEvaluado < finOcupado;
+            });
+            return !estaOcupado;
+        });
+
+        selectHora.innerHTML = '<option value="">Seleccione un horario...</option>';
+        if (horariosFiltrados.length === 0) {
+            selectHora.innerHTML = '<option value="">Sin horarios disponibles</option>';
+        } else {
+            horariosFiltrados.forEach(minutos => {
+                const horasFormat = Math.floor(minutos / 60).toString().padStart(2, '0');
+                const minFormat = (minutos % 60).toString().padStart(2, '0');
+                const textoHora = `${horasFormat}:${minFormat}`;
+                selectHora.innerHTML += `<option value="${textoHora}">${textoHora}</option>`;
+            });
+        }
+        
+        selectHora.disabled = false;
+        selectHora.style.backgroundColor = 'white';
+
+    } catch (error) {
+        console.error("Error al calcular horarios:", error);
+        selectHora.innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
 // ==========================================================================
 // 4. MÓDULO DE CLIENTAS
 // ==========================================================================

@@ -922,6 +922,29 @@ app.put('/api/turnos/:id', async (req, res) => {
     }
 });
 
+// Obtener los turnos ocupados de una profesional en una fecha específica
+app.get('/api/empleadas/:id/agenda/:fecha', async (req, res) => {
+    try {
+        const { id, fecha } = req.params;
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .input('Fecha', sql.VarChar, fecha) 
+            .query(`
+                SELECT t.Fecha_Hora, s.Duracion_Minutos
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE t.Id_Empleada = @Id_Empleada 
+                AND CAST(t.Fecha_Hora AS DATE) = @Fecha
+                AND t.Estado != 'Cancelado'
+            `);
+        res.json(result.recordset);
+    } catch (error) {
+        console.error("Error consultando disponibilidad:", error);
+        res.status(500).send("Error interno");
+    }
+});
+
 // Crear un nuevo turno (Con validación de rango de tiempo y registro de Ingreso)
 app.post('/api/turnos', async (req, res) => {
     const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto } = req.body;

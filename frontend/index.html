@@ -120,7 +120,7 @@
                     <rect x="2" y="5" width="20" height="14" rx="2"></rect>
                     <line x1="2" y1="10" x2="22" y2="10"></line>
                 </svg>
-                <span>Mis Pagos</span>
+                <span class="menu-text">Mis Pagos</span>
             </div>
 
             <div class="menu-item" data-link="/resumenes">
@@ -1020,7 +1020,8 @@
             
             <div class="form-group" style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px;">Profesional:</label>
-                <select id="empleadaTurno" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa;" disabled>
+                <!-- Acá agregamos el onchange="cargarHorariosDisponibles()" -->
+                <select id="empleadaTurno" onchange="cargarHorariosDisponibles()" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa;" disabled>
                     <option value="">Primero elija un servicio...</option>
                 </select>
             </div>
@@ -1028,11 +1029,13 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Fecha</label>
-                    <input type="date" id="fechaTurnoInput">
+                    <input type="date" id="fechaTurnoInput" onchange="cargarHorariosDisponibles()">
                 </div>
                 <div class="form-group">
                     <label>Hora</label>
-                    <input type="time" id="horaTurnoInput">
+                    <select id="horaTurnoInput" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa;" disabled>
+                        <option value="">Elija fecha y profesional...</option>
+                    </select>
                 </div>
             </div>
 
