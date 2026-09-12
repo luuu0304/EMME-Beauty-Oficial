@@ -1,23 +1,23 @@
 // ==========================================================================
-// ÍNDICE DEL DOCUMENTO
-// 1. UTILIDADES GLOBALES Y NOTIFICACIONES
-// 2. NAVEGACIÓN Y MENÚ LATERAL
-// 3. MÓDULO DE TURNOS Y CALENDARIO
-// 4. MÓDULO DE CLIENTAS (Incluye Perfil e Historial)
-// 5. MÓDULO DE EMPLEADAS
-// 6. MÓDULO DE GASTOS
-// 7. MÓDULO DE INGRESOS
-// 8. MÓDULO DE COBRO Y EXTRAS
-// 9. MÓDULO CONFIGURACIÓN
-// 10. SECCIÓN: DASHBOARD Y MÉTRICAS
+// ÍNDICE DEL CONTROLADOR FRONTEND (APP.JS) - EMME BEAUTY
+// ==========================================================================
+// 1. UTILIDADES GLOBALES Y SEGURIDAD (Login, Toasts, Confirmaciones)
+// 2. INICIALIZACIÓN GLOBAL (Eventos de arranque de la SPA)
+// 3. NAVEGACIÓN Y ROUTER (Menú Lateral y Cambio de Vistas)
+// 4. MÓDULO DE TURNOS Y AGENDA (Diaria, Semanal y Validaciones)
+// 5. MÓDULO DE COBROS Y CHECK-OUT (Señas, Extras, Descuentos)
+// 6. MÓDULO DE CLIENTAS (CRM, Retención e Historial Estético)
+// 7. MÓDULO DE EMPLEADAS (Liquidaciones, Saldos y Mis Pagos)
+// 8. MÓDULO DE FINANZAS (Registro de Gastos e Ingresos manuales)
+// 9. MÓDULO DE DASHBOARD Y MÉTRICAS (Gráficos)
+// 10. MÓDULO DE CONFIGURACIÓN (Servicios, Áreas, Horarios, Pagos)
 // ==========================================================================
 
-
 // ==========================================================================
-// 1. UTILIDADES GLOBALES Y NOTIFICACIONES
+// 1. UTILIDADES GLOBALES Y SEGURIDAD
 // ==========================================================================
 
-// Sistema de notificaciones (Toasts)
+// --- Sistema de Notificaciones (Toasts) ---
 function mostrarNotificacion(mensaje, tipo = 'success') {
     const contenedor = document.getElementById('toastContainer');
     if (!contenedor) return;
@@ -36,107 +36,7 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
     }, 3500);
 }
 
-// ==========================================================================
-// INICIALIZACIÓN GLOBAL (Cuando carga la página)
-// ==========================================================================
-window.addEventListener('DOMContentLoaded', () => {
-    // 1. CHEQUEO DE SEGURIDAD (Login)
-    const token = localStorage.getItem('emme_token');
-    const rol = localStorage.getItem('emme_rol');
-    const pantallaLogin = document.getElementById('pantallaLogin');
-
-    if (!token || !rol) {
-        // Si no hay pulsera VIP, nos aseguramos de que el Login tape todo
-        pantallaLogin.style.display = 'flex';
-        pantallaLogin.style.opacity = '1';
-    } else {
-        // Si ya está logueada, ocultamos el login y aplicamos las reglas
-        pantallaLogin.style.display = 'none';
-        aplicarPermisos(rol);
-        
-        // 2. Carga de datos base (Solo si entró al sistema)
-        cargarClientas();
-        cargarEmpleadas();
-        cargarServicios();
-        cargarCategoriasGasto();
-        cargarExtrasDisponibles();
-        cargarMediosDePago();
-        cargarDatosDashboard();
-
-        // 3. Inicializar Calendarios (Flatpickr) y Filtros
-        inicializarFechaAgenda();
-        if (rol === 'Empleada') {
-            inicializarAgendaSemanal(); // Si es chica1, dibuja su semana
-        } else {
-            inicializarAgendaDiaria(); // Si es Mili, dibuja el general
-        }
-        
-        // Calendario Rango Dashboard
-        const inputRango = document.getElementById('rangoFechasCustomDash');
-        if (inputRango) {
-            flatpickr(inputRango, {
-                mode: "range",
-                locale: "es", 
-                dateFormat: "Y-m-d", 
-                onChange: function(selectedDates, dateStr, instance) {
-                    if (selectedDates.length === 2) {
-                        const desde = formatoFechaSQL(selectedDates[0]);
-                        const hasta = formatoFechaSQL(selectedDates[1]);
-                        cargarDatosDashboard(desde, hasta); 
-                    }
-                }
-            });
-        }
-
-        // Calendario Rango Historial de Cobros
-        const inputRangoCobros = document.getElementById('rangoFechaCobros');
-        if (inputRangoCobros) {
-            flatpickr(inputRangoCobros, {
-                mode: "range",
-                locale: "es",
-                dateFormat: "Y-m-d",
-                onChange: function(selectedDates) {
-                    if (selectedDates.length === 2 || selectedDates.length === 0) {
-                        aplicarFiltrosCobros();
-                    }
-                }
-            });
-        }
-
-        // Lógica del desplegable rápido del Dashboard
-        const selectFiltroDash = document.getElementById('filtroRapidoDash');
-        if (selectFiltroDash) {
-            selectFiltroDash.addEventListener('change', (e) => {
-                if (e.target.value === 'personalizado') {
-                    inputRango.style.display = 'block';
-                } else {
-                    inputRango.style.display = 'none';
-                    cargarDatosDashboard(); 
-                }
-            });
-        }
-
-        //  configurarBuscadorDropdownClientas();
-
-        // 4. Restaurar última sección visitada (o abrir Turnos por defecto)
-        const seccionGuardada = localStorage.getItem('emme_seccion_activa');
-        const botonesMenu = document.querySelectorAll('.menu-item'); 
-        
-        if (seccionGuardada) {
-            const botonSeleccionado = Array.from(botonesMenu).find(b => b.textContent.trim() === seccionGuardada);
-            if (botonSeleccionado) {
-                botonSeleccionado.click();
-            } else if (botonesMenu.length > 0) {
-                botonesMenu[0].click(); // Si por algún motivo no la encuentra, abre la primera
-            }
-        } else if (botonesMenu.length > 0) {
-            // Si acaba de iniciar sesión y no hay sección guardada, abre Turnos
-            botonesMenu[0].click();
-        }
-    }
-});
-
-// Sistema de Confirmación Personalizado (Promesa)
+// --- Sistema de Confirmación Personalizado ---
 function pedirConfirmacion(mensaje) {
     return new Promise((resolve) => {
         const modalConf = document.getElementById('modalConfirmacion');
@@ -159,68 +59,253 @@ function pedirConfirmacion(mensaje) {
     });
 }
 
-// ---------------------------------------------------------
-// LÓGICA DE FILTROS ESTANDARIZADOS (Gastos e Ingresos)
-// ---------------------------------------------------------
+// --- Seguridad y Autenticación ---
+async function iniciarSesion() {
+    const inputUsuario = document.getElementById('loginUsuario').value.trim();
+    const inputPassword = document.getElementById('loginPassword').value.trim();
+    const btn = event.currentTarget;
 
-// Inicializar Flatpickr para Gastos
-const inputRangoGastos = document.getElementById('rangoFechaGastos');
-if (inputRangoGastos) {
-    flatpickr(inputRangoGastos, {
-        mode: "range",
-        locale: "es",
-        dateFormat: "Y-m-d",
-        onChange: function(selectedDates) {
-            if (selectedDates.length === 2) aplicarFiltrosGastos(); // Llama a tu función de filtrado
-        }
-    });
-}
+    if (!inputUsuario || !inputPassword) {
+        mostrarNotificacion("Completá todos los campos", "warning");
+        return;
+    }
 
-// Alternar vista de filtros en Gastos
-const modoGastos = document.getElementById('modoFechaGastos');
-if (modoGastos) {
-    modoGastos.addEventListener('change', (e) => {
-        if (e.target.value === 'rango') {
-            document.getElementById('contenedorMesGastos').style.display = 'none';
-            inputRangoGastos.style.display = 'block';
+    const textoOriginal = btn.textContent;
+    btn.textContent = 'Verificando...';
+    btn.style.opacity = '0.7';
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Username: inputUsuario, Password: inputPassword })
+        });
+
+        const datos = await respuesta.json();
+
+        if (respuesta.ok) {
+            localStorage.setItem('emme_token', datos.token);
+            localStorage.setItem('emme_rol', datos.rol);
+            
+            mostrarNotificacion("¡Bienvenida al sistema!", "success");
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
+
         } else {
-            document.getElementById('contenedorMesGastos').style.display = 'flex';
-            inputRangoGastos.style.display = 'none';
-            aplicarFiltrosGastos(); // Recalcula si volvemos a "Mes"
+            mostrarNotificacion(datos.error || "Error al iniciar sesión", "error");
         }
-    });
+    } catch (error) {
+        console.error("Error:", error);
+        mostrarNotificacion("Error de conexión con el servidor", "error");
+    } finally {
+        btn.textContent = textoOriginal;
+        btn.style.opacity = '1';
+    }
 }
 
-// Inicializar Flatpickr para Ingresos
-const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
-if (inputRangoIngresos) {
-    flatpickr(inputRangoIngresos, {
-        mode: "range",
-        locale: "es",
-        dateFormat: "Y-m-d",
-        onChange: function(selectedDates) {
-            if (selectedDates.length === 2) filtrarIngresos(); // Llama a tu función de filtrado
-        }
-    });
-}
+function aplicarPermisos(rol) {
+    console.log("Configurando interfaz para rol:", rol);
 
-// Alternar vista de filtros en Ingresos
-const modoIngresos = document.getElementById('modoFechaIngresos');
-if (modoIngresos) {
-    modoIngresos.addEventListener('change', (e) => {
-        if (e.target.value === 'rango') {
-            document.getElementById('contenedorMesIngresos').style.display = 'none';
-            inputRangoIngresos.style.display = 'block';
+    const botonesMenu = document.querySelectorAll('.menu-item');
+    const btnNuevoTurno = document.getElementById('btnNuevoTurno'); 
+
+    if (rol === 'Empleada') {
+        document.body.classList.add('is-empleada');
+    } else {
+        document.body.classList.remove('is-empleada');
+    }
+
+    botonesMenu.forEach(boton => {
+        const textoMenu = boton.textContent.trim();
+        if (rol === 'Empleada') {
+            if (['Clientas', 'Gastos', 'Ingresos', 'Configuración', 'Empleados', 'Empleadas'].includes(textoMenu)) {
+                boton.style.display = 'none';
+            } else {
+                boton.style.display = 'flex'; 
+            }
         } else {
-            document.getElementById('contenedorMesIngresos').style.display = 'flex';
-            inputRangoIngresos.style.display = 'none';
-            filtrarIngresos(); // Recalcula si volvemos a "Mes"
+            if (textoMenu === 'Mis Pagos') {
+                boton.style.display = 'none';
+            } else {
+                boton.style.display = 'flex';
+            }
         }
     });
+
+    if (rol === 'Empleada') {
+        if (btnNuevoTurno) btnNuevoTurno.style.display = 'none';
+    } else {
+        if (btnNuevoTurno) btnNuevoTurno.style.display = 'block';
+    }
+
+    if (rol === 'Empleada') {
+        const botonesTabs = document.querySelectorAll('.btn-tab');
+        botonesTabs.forEach(btn => {
+            const textoBoton = btn.textContent.trim();
+            if (textoBoton === 'Agenda Diaria') {
+                btn.style.display = 'none'; 
+            }
+            if (textoBoton === 'Agenda Semanal') {
+                setTimeout(() => { btn.click(); }, 100);
+            }
+        });
+    }
 }
+
+function cerrarSesion() {
+    localStorage.removeItem('emme_token');
+    localStorage.removeItem('emme_rol');
+    localStorage.removeItem('emme_seccion_activa');
+    window.location.reload(); 
+}
+
 
 // ==========================================================================
-// 2. NAVEGACIÓN, MENÚ LATERAL Y PERSISTENCIA DE ESTADO
+// 2. INICIALIZACIÓN GLOBAL (Motor de arranque)
+// ==========================================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+    // 2.1. CHEQUEO DE SEGURIDAD
+    const token = localStorage.getItem('emme_token');
+    const rol = localStorage.getItem('emme_rol');
+    const pantallaLogin = document.getElementById('pantallaLogin');
+
+    if (!token || !rol) {
+        pantallaLogin.style.display = 'flex';
+        pantallaLogin.style.opacity = '1';
+    } else {
+        pantallaLogin.style.display = 'none';
+        aplicarPermisos(rol);
+        
+        // 2.2. CARGA DE DATOS BASE
+        cargarClientas();
+        cargarEmpleadas();
+        cargarServicios();
+        cargarCategoriasGasto();
+        cargarExtrasDisponibles();
+        cargarMediosDePago();
+        cargarDatosDashboard();
+
+        // 2.3. INICIALIZACIÓN DE CALENDARIOS (Agenda)
+        inicializarFechaAgenda();
+        if (rol === 'Empleada') {
+            inicializarAgendaSemanal();
+        } else {
+            inicializarAgendaDiaria();
+        }
+        
+        // 2.4. INICIALIZACIÓN DE FILTROS FLATPICKR (Rango de Fechas)
+        const inputRango = document.getElementById('rangoFechasCustomDash');
+        if (inputRango) {
+            flatpickr(inputRango, {
+                mode: "range", locale: "es", dateFormat: "Y-m-d", 
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2) {
+                        const desde = formatoFechaSQL(selectedDates[0]);
+                        const hasta = formatoFechaSQL(selectedDates[1]);
+                        cargarDatosDashboard(desde, hasta); 
+                    }
+                }
+            });
+        }
+
+        const inputRangoCobros = document.getElementById('rangoFechaCobros');
+        if (inputRangoCobros) {
+            flatpickr(inputRangoCobros, {
+                mode: "range", locale: "es", dateFormat: "Y-m-d",
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2 || selectedDates.length === 0) {
+                        aplicarFiltrosCobros();
+                    }
+                }
+            });
+        }
+
+        const inputRangoGastos = document.getElementById('rangoFechaGastos');
+        if (inputRangoGastos) {
+            flatpickr(inputRangoGastos, {
+                mode: "range", locale: "es", dateFormat: "Y-m-d",
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2) aplicarFiltrosGastos();
+                }
+            });
+        }
+
+        const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
+        if (inputRangoIngresos) {
+            flatpickr(inputRangoIngresos, {
+                mode: "range", locale: "es", dateFormat: "Y-m-d",
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2) filtrarIngresos(); 
+                }
+            });
+        }
+
+        // Lógica del desplegable rápido del Dashboard
+        const selectFiltroDash = document.getElementById('filtroRapidoDash');
+        if (selectFiltroDash) {
+            selectFiltroDash.addEventListener('change', (e) => {
+                if (e.target.value === 'personalizado') {
+                    inputRango.style.display = 'block';
+                } else {
+                    inputRango.style.display = 'none';
+                    cargarDatosDashboard(); 
+                }
+            });
+        }
+
+        // 2.5. RESTAURAR ÚLTIMA SECCIÓN VISITADA
+        const seccionGuardada = localStorage.getItem('emme_seccion_activa');
+        const botonesMenu = document.querySelectorAll('.menu-item'); 
+        
+        if (seccionGuardada) {
+            const botonSeleccionado = Array.from(botonesMenu).find(b => b.textContent.trim() === seccionGuardada);
+            if (botonSeleccionado) {
+                botonSeleccionado.click();
+            } else if (botonesMenu.length > 0) {
+                botonesMenu[0].click(); 
+            }
+        } else if (botonesMenu.length > 0) {
+            botonesMenu[0].click();
+        }
+    }
+});
+
+// Inicialización de FullCalendar (Alternativa de Agenda Visual)
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendario');
+    if (calendarEl) {
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek', locale: 'es', height: 'auto',
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
+            slotMinTime: '09:30:00', slotMaxTime: '21:30:00', allDaySlot: false, 
+            events: 'http://localhost:3000/api/turnos', eventColor: 'var(--mostaza)'
+        });
+        calendar.render();
+    }
+});
+
+// Inicialización del Menú Hamburguesa (Mobile)
+document.addEventListener('DOMContentLoaded', () => {
+    const btnMenu = document.getElementById('btnToggleMenu');
+    const sidebar = document.getElementById('sidebar');
+
+    if (btnMenu && sidebar) {
+        btnMenu.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        });
+    }
+});
+
+
+// ==========================================================================
+// 3. NAVEGACIÓN Y ROUTER (Control de Vistas)
 // ==========================================================================
 
 const botonesMenu = document.querySelectorAll('.menu-item');
@@ -240,11 +325,6 @@ const buscadorEmpleadas = document.getElementById('buscadorEmpleadas');
 const btnNuevaEmpleada = document.getElementById('btnNuevaEmpleada');
 const btnNuevoGasto = document.getElementById('btnNuevoGasto');
 const btnNuevoIngreso = document.getElementById('btnNuevoIngreso');
-const btnMenuConfig = document.getElementById('btnMenuConfig');
-
-// ==========================================
-// ROUTER DE LA APLICACIÓN (History API)
-// ==========================================
 
 const rutas = {
     '/': 'seccionTurnos',
@@ -262,11 +342,9 @@ function router() {
     let path = window.location.pathname.replace('/frontend/index.html', '') || '/';
     if (path === '') path = '/';
 
-    // Obtenemos el ID de la sección. Si es /mis-pagos lo forzamos al nuevo ID
     let idSeccion = rutas[path] || 'seccionTurnos';
     if (path === '/mis-pagos') idSeccion = 'seccion-mis-pagos';
 
-    // 1. Ocultamos todas las secciones (Sumamos 'seccion-mis-pagos' a la lista)
     const todasLasSecciones = [
         'seccionTurnos', 'seccionClientas', 'seccionEmpleados', 
         'seccionGastos', 'seccionIngresos', 'seccionResumenes', 'seccionConfiguracion',
@@ -278,11 +356,9 @@ function router() {
         if (elemento) elemento.style.display = 'none';
     });
 
-    // 2. Mostramos solo la sección activa
     const seccionActiva = document.getElementById(idSeccion);
     if (seccionActiva) seccionActiva.style.display = 'block';
 
-    // 3. Pintamos de mostaza el menú correspondiente
     document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
         if (item.getAttribute('data-link') === path) {
@@ -290,20 +366,16 @@ function router() {
         }
     });
 
-    // 4. Actualizamos el Título y los Botones de la Cabecera
     actualizarCabecera(path);
 
-    // 5. ¡LA MAGIA NUEVA! Si entramos a Mis Pagos, disparamos la búsqueda a la base de datos
     if (path === '/mis-pagos') {
         cargarMisPagos();
     }
 }
 
-// Función que controla la UI del Header según donde estemos parados
 function actualizarCabecera(ruta) {
     const tituloHeader = document.querySelector('.header h1');
     
-    // Primero apagamos todos los botones y buscadores
     document.getElementById('buscadorClientas').style.display = 'none';
     document.getElementById('buscadorEmpleadas').style.display = 'none';
     document.getElementById('btnNuevaClienta').style.display = 'none';
@@ -312,12 +384,10 @@ function actualizarCabecera(ruta) {
     document.getElementById('btnNuevoGasto').style.display = 'none';
     document.getElementById('btnNuevoIngreso').style.display = 'none';
 
-    // Luego prendemos solo lo que corresponde según la ruta actual
     switch (ruta) {
         case '/':
         case '/turnos':
             if (tituloHeader) tituloHeader.textContent = 'Gestión de Turnos';
-            // Ojo: Recordemos que si es empleada, aplicarPermisos ya se encarga de ocultar este botón por seguridad
             document.getElementById('btnNuevoTurno').style.display = 'block';
             break;
         case '/clientas':
@@ -344,20 +414,17 @@ function actualizarCabecera(ruta) {
         case '/configuracion':
             if (tituloHeader) tituloHeader.textContent = 'Configuración del Sistema';
             break;
-        // ¡NUEVO CASO!
         case '/mis-pagos':
             if (tituloHeader) tituloHeader.textContent = 'Mis Pagos y Liquidaciones';
             break;
     }
 }
 
-// Función principal del menú
 botonesMenu.forEach(boton => {
     boton.addEventListener('click', () => {
         botonesMenu.forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
 
-        // 1. Apagamos TODAS las secciones (Agregamos la de mis pagos)
         seccionTurnos.style.display = 'none';
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
@@ -369,7 +436,6 @@ botonesMenu.forEach(boton => {
         const seccionMisPagos = document.getElementById('seccion-mis-pagos');
         if(seccionMisPagos) seccionMisPagos.style.display = 'none';
 
-        // 2. Apagamos botones de la cabecera
         btnNuevoTurno.style.display = 'none';
         btnNuevaClienta.style.display = 'none';
         btnNuevaEmpleada.style.display = 'none';
@@ -379,11 +445,8 @@ botonesMenu.forEach(boton => {
         if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'none'; 
 
         const opcionSeleccionada = boton.textContent.trim();
-
-        // Guardamos dónde hizo clic el usuario
         localStorage.setItem('emme_seccion_activa', opcionSeleccionada);
 
-        // 3. Prendemos solo lo que corresponde
         if (opcionSeleccionada === 'Turnos') {
             seccionTurnos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Turnos';
@@ -424,75 +487,32 @@ botonesMenu.forEach(boton => {
             tituloHeader.textContent = 'Configuración General';
             cargarTablaConfigCategorias();
             
-        // ¡NUEVO! Caso para la empleada
         } else if (opcionSeleccionada === 'Mis Pagos') {
             if(seccionMisPagos) seccionMisPagos.style.display = 'block';
             tituloHeader.textContent = 'Mis Pagos y Liquidaciones';
-            cargarMisPagos(); // Llamamos a la base de datos
+            cargarMisPagos(); 
         }
     });
 });
 
-// Lógica del buscador de empleadas
-if (buscadorEmpleadas) {
-    buscadorEmpleadas.addEventListener('input', function(e) {
-        const textoBuscado = e.target.value.toLowerCase();
-        const tarjetas = document.querySelectorAll('#contenedorEmpleadas .card');
-        
-        tarjetas.forEach(tarjeta => {
-            const nombre = tarjeta.querySelector('h3').textContent.toLowerCase();
-            if (nombre.includes(textoBuscado)) {
-                tarjeta.style.display = '';
-            } else {
-                tarjeta.style.display = 'none';
-            }
-        });
-    });
-}
 
 // ==========================================================================
-// 3. MÓDULO DE TURNOS Y CALENDARIO
+// 4. MÓDULO DE TURNOS Y AGENDA
 // ==========================================================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    const calendarEl = document.getElementById('calendario');
-    
-    if (calendarEl) {
-        const calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridWeek',
-            locale: 'es', 
-            height: 'auto',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'timeGridWeek,timeGridDay'
-            },
-            slotMinTime: '09:30:00', 
-            slotMaxTime: '21:30:00', 
-            allDaySlot: false, 
-            events: 'http://localhost:3000/api/turnos',
-            eventColor: 'var(--mostaza)'
-        });
-        calendar.render();
-    }
-});
+let listaServiciosGlobal = [];
+let empleadasAgendaGlobal = [];
+let horariosAgendaGlobal = [];
+let filtroAgendaActual = 'Todo';
 
 const modalTurno = document.getElementById('modalNuevoTurno');
-
-function abrirModalTurno() {
-    document.getElementById('modalNuevoTurno').querySelector('h2').textContent = 'Agendar Nuevo Turno';
-    document.getElementById('idTurnoAEditarOculto').value = '';
-    document.getElementById('btnNuevaClientaExpress').style.display = 'block';
-    document.getElementById('selectClientaTurno').disabled = false;
-    document.getElementById('inputBuscarClientaTurno').disabled = false;
-    document.getElementById('inputBuscarClientaTurno').value = '';
-    document.getElementById('senaTurnoInput').disabled = false;
-    document.getElementById('modalNuevoTurno').classList.add('active');
-}
-
-function cerrarModalTurno() {
-    if (modalTurno) modalTurno.classList.remove('active');
-}
+const btnNuevaExpress = document.getElementById('btnNuevaClientaExpress');
+const btnCancelarExpress = document.getElementById('btnCancelarExpress');
+const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
+const grupoExpress = document.getElementById('grupoClientaExpress');
+const inputNombreExpress = document.getElementById('nombreExpress');
+const inputApellidoExpress = document.getElementById('apellidoExpress');
+const inputFechaTurno = document.getElementById('fechaTurnoInput');
 
 if (modalTurno) {
     modalTurno.addEventListener('click', function(e) {
@@ -500,18 +520,10 @@ if (modalTurno) {
     });
 }
 
-const inputFechaTurno = document.getElementById('fechaTurnoInput');
 if (inputFechaTurno) {
     const hoy = new Date().toISOString().split('T')[0];
     inputFechaTurno.setAttribute('min', hoy);
 }
-
-const btnNuevaExpress = document.getElementById('btnNuevaClientaExpress');
-const btnCancelarExpress = document.getElementById('btnCancelarExpress');
-const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
-const grupoExpress = document.getElementById('grupoClientaExpress');
-const inputNombreExpress = document.getElementById('nombreExpress');
-const inputApellidoExpress = document.getElementById('apellidoExpress');
 
 if (btnNuevaExpress) {
     btnNuevaExpress.addEventListener('click', () => {
@@ -529,6 +541,21 @@ if (btnCancelarExpress) {
     });
 }
 
+function abrirModalTurno() {
+    document.getElementById('modalNuevoTurno').querySelector('h2').textContent = 'Agendar Nuevo Turno';
+    document.getElementById('idTurnoAEditarOculto').value = '';
+    document.getElementById('btnNuevaClientaExpress').style.display = 'block';
+    document.getElementById('selectClientaTurno').disabled = false;
+    document.getElementById('inputBuscarClientaTurno').disabled = false;
+    document.getElementById('inputBuscarClientaTurno').value = '';
+    document.getElementById('senaTurnoInput').disabled = false;
+    document.getElementById('modalNuevoTurno').classList.add('active');
+}
+
+function cerrarModalTurno() {
+    if (modalTurno) modalTurno.classList.remove('active');
+}
+
 async function abrirEdicionTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     if (!idTurno) return;
@@ -538,30 +565,26 @@ async function abrirEdicionTurno() {
         if (!respuesta.ok) throw new Error("No se pudo traer el turno");
         const turno = await respuesta.json();
 
-        // Cerramos el modal de detalle y abrimos el de creación en "Modo Edición"
         cerrarModalDetalleTurno();
         
         document.getElementById('modalNuevoTurno').querySelector('h2').textContent = 'Editar Turno';
         document.getElementById('idTurnoAEditarOculto').value = turno.Id_Turno;
 
-        // Bloqueamos la edición de clienta y seña (eso no debería cambiar acá)
         document.getElementById('selectClientaTurno').value = turno.Id_Clienta;
         document.getElementById('inputBuscarClientaTurno').value = turno.NombreClienta;
         document.getElementById('inputBuscarClientaTurno').disabled = true;
         document.getElementById('btnNuevaClientaExpress').style.display = 'none';
         document.getElementById('senaTurnoInput').disabled = true;
 
-        // Autocompletamos Fecha y Hora
         const fechaObj = new Date(turno.Fecha_Hora);
         document.getElementById('fechaTurnoInput').value = formatoFechaSQL(fechaObj);
         document.getElementById('horaTurnoInput').value = `${String(fechaObj.getHours()).padStart(2, '0')}:${String(fechaObj.getMinutes()).padStart(2, '0')}`;
 
-        // Autocompletamos los desplegables en cascada
         document.getElementById('areaTurno').value = turno.Id_Area;
-        filtrarServiciosPorAreaEnModal(); // Sincrónico
+        filtrarServiciosPorAreaEnModal(); 
         
         document.getElementById('servicioTurno').value = turno.Id_Servicio;
-        await filtrarProfesionalesPorServicio(); // Asincrónico, hay que esperarlo
+        await filtrarProfesionalesPorServicio(); 
         
         document.getElementById('empleadaTurno').value = turno.Id_Empleada;
 
@@ -570,6 +593,66 @@ async function abrirEdicionTurno() {
         console.error(error);
         mostrarNotificacion("Error al abrir la edición", "error");
     }
+}
+
+async function cargarServicios() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/servicios');
+        listaServiciosGlobal = await respuesta.json(); 
+        await cargarAreasEnModalTurno();
+    } catch (error) {
+        console.error("Error conectando con la API de servicios:", error);
+    }
+}
+
+async function cargarAreasEnModalTurno() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const areas = await respuesta.json();
+        
+        const selectArea = document.getElementById('areaTurno');
+        if (selectArea) {
+            selectArea.innerHTML = '<option value="">Seleccione un área...</option>';
+            areas.forEach(area => {
+                const opcion = document.createElement('option');
+                opcion.value = area.Id_Area;
+                opcion.textContent = area.Nombre || area.Nombre_Area || area.Area || area.Descripcion || "Área sin nombre"; 
+                selectArea.appendChild(opcion);
+            });
+        }
+    } catch (error) {
+        console.error("Error cargando áreas:", error);
+    }
+}
+
+function filtrarServiciosPorAreaEnModal() {
+    const idAreaSeleccionada = document.getElementById('areaTurno').value;
+    const selectServicio = document.getElementById('servicioTurno');
+    const selectEmpleada = document.getElementById('empleadaTurno');
+    
+    selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
+    selectEmpleada.innerHTML = '<option value="">Primero elija un servicio...</option>';
+    
+    selectEmpleada.disabled = true;
+    selectEmpleada.style.backgroundColor = '#f8f9fa';
+
+    if (!idAreaSeleccionada) {
+        selectServicio.disabled = true;
+        selectServicio.style.backgroundColor = '#f8f9fa';
+        return;
+    }
+
+    const serviciosFiltrados = listaServiciosGlobal.filter(s => s.Id_Area == idAreaSeleccionada);
+
+    serviciosFiltrados.forEach(servicio => {
+        const opcion = document.createElement('option');
+        opcion.value = servicio.Id_Servicio;
+        opcion.textContent = servicio.Nombre;
+        selectServicio.appendChild(opcion);
+    });
+
+    selectServicio.disabled = false;
+    selectServicio.style.backgroundColor = 'white';
 }
 
 async function filtrarProfesionalesPorServicio() {
@@ -664,7 +747,6 @@ async function guardarTurno() {
         return;
     }
 
-    // --- VALIDACIÓN DINÁMICA DE HORARIOS ---
     try {
         const resHorarios = await fetch('http://localhost:3000/api/horarios');
         const horariosVal = await resHorarios.json();
@@ -707,7 +789,6 @@ async function guardarTurno() {
     } catch (err) {
         console.error("Error al validar horarios dinámicos:", err);
     }
-    // ----------------------------------------------
 
     const idAEditar = document.getElementById('idTurnoAEditarOculto').value;
     const inputSenaTurno = document.getElementById('senaTurnoInput');
@@ -715,7 +796,6 @@ async function guardarTurno() {
 
     const fechaHoraCompleta = `${fecha}T${hora}:00`;
     
-    // Armamos el "paquete" de datos según si estamos creando o editando
     const datosFinales = idAEditar ? {
         Id_Servicio: parseInt(idServicio),
         Id_Empleada: parseInt(idEmpleada),
@@ -771,107 +851,22 @@ function agendarTurnoRapido(idClienta, nombre, apellido) {
     abrirModalTurno();
 }
 
-// 1. Variable global para guardar los servicios en memoria
-let listaServiciosGlobal = [];
-
-// 2. Reemplazamos tu cargarServicios original
-async function cargarServicios() {
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/servicios');
-        listaServiciosGlobal = await respuesta.json(); // Guardamos TODOS los servicios acá
-        
-        // Llenamos el primer select (Áreas)
-        await cargarAreasEnModalTurno();
-    } catch (error) {
-        console.error("Error conectando con la API de servicios:", error);
-    }
-}
-
-// 3. NUEVA FUNCIÓN: Trae las áreas para el primer select
-async function cargarAreasEnModalTurno() {
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/areas');
-        const areas = await respuesta.json();
-        
-        const selectArea = document.getElementById('areaTurno');
-        if (selectArea) {
-            selectArea.innerHTML = '<option value="">Seleccione un área...</option>';
-            areas.forEach(area => {
-                // Imprimimos el fantasma en la consola para ver su verdadera identidad
-                console.log("Datos del área recibida:", area); 
-
-                const opcion = document.createElement('option');
-                opcion.value = area.Id_Area;
-                
-                // Le decimos que intente con las variaciones más comunes de tu DB
-                opcion.textContent = area.Nombre || area.Nombre_Area || area.Area || area.Descripcion || "Área sin nombre"; 
-                
-                selectArea.appendChild(opcion);
-            });
-        }
-    } catch (error) {
-        console.error("Error cargando áreas:", error);
-    }
-}
-
-// 4. NUEVA FUNCIÓN: Se ejecuta al elegir un Área y desbloquea los Servicios
-function filtrarServiciosPorAreaEnModal() {
-    const idAreaSeleccionada = document.getElementById('areaTurno').value;
-    const selectServicio = document.getElementById('servicioTurno');
-    const selectEmpleada = document.getElementById('empleadaTurno');
-    
-    // Reseteamos los selects dependientes
-    selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
-    selectEmpleada.innerHTML = '<option value="">Primero elija un servicio...</option>';
-    
-    // Bloqueamos a la profesional por seguridad
-    selectEmpleada.disabled = true;
-    selectEmpleada.style.backgroundColor = '#f8f9fa';
-
-    // Si vuelve a la opción vacía, bloqueamos el servicio y cortamos acá
-    if (!idAreaSeleccionada) {
-        selectServicio.disabled = true;
-        selectServicio.style.backgroundColor = '#f8f9fa';
-        return;
-    }
-
-    // Filtramos la lista global buscando solo los servicios de esa área
-    const serviciosFiltrados = listaServiciosGlobal.filter(s => s.Id_Area == idAreaSeleccionada);
-
-    // Llenamos el select con el resultado
-    serviciosFiltrados.forEach(servicio => {
-        const opcion = document.createElement('option');
-        opcion.value = servicio.Id_Servicio;
-        opcion.textContent = servicio.Nombre;
-        selectServicio.appendChild(opcion);
-    });
-
-    // ¡Habilitamos el select de servicios para que puedan elegir!
-    selectServicio.disabled = false;
-    selectServicio.style.backgroundColor = 'white';
-}
-
 async function cargarBotonesAreasAgenda() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/areas');
         const areas = await respuesta.json();
-        
         const contenedorFiltros = document.getElementById('filtrosEspecialidad');
         
         if (!contenedorFiltros) return;
 
-        // Por cada área que venga de la base de datos, creamos un botón
         areas.forEach(area => {
             const nombreArea = area.Nombre || area.Nombre_Area || area.Area || "Área sin nombre";
             
             const boton = document.createElement('button');
             boton.className = 'btn-secundario filtro-btn';
-            
-            // Le damos el estilo de "inactivo" por defecto (fondo blanco, borde gris)
             boton.style.cssText = 'border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;';
             boton.textContent = nombreArea;
             
-            // Le conectamos tu función que ya funciona perfecto
             boton.onclick = function() { 
                 filtrarAgendaPorArea(nombreArea, this); 
             };
@@ -883,21 +878,13 @@ async function cargarBotonesAreasAgenda() {
     }
 }
 
-// ==========================================================================
-// VARIABLES GLOBALES Y HELPERS DE LA NUEVA AGENDA DINÁMICA
-// ==========================================================================
-let empleadasAgendaGlobal = [];
-let horariosAgendaGlobal = [];
-
-// Helper para saber qué día de la semana es en la fecha seleccionada
 function obtenerIdDiaSemana(fechaStr) {
     const [y, m, d] = fechaStr.split('-');
     const fecha = new Date(y, m - 1, d);
-    let diaJS = fecha.getDay(); // JS nos dice: 0 = Domingo, 1 = Lunes
-    return diaJS === 0 ? 7 : diaJS; // Lo pasamos al formato de nuestra base (1 al 7)
+    let diaJS = fecha.getDay(); 
+    return diaJS === 0 ? 7 : diaJS; 
 }
 
-// Helper para generar los intervalos de 30 minutos
 function generarBloques(apertura, cierre) {
     if (!apertura || !cierre) return [];
     let bloques = [];
@@ -911,26 +898,20 @@ function generarBloques(apertura, cierre) {
         let h = Math.floor(minActual / 60).toString().padStart(2, '0');
         let m = (minActual % 60).toString().padStart(2, '0');
         bloques.push(`${h}:${m}`);
-        minActual += 30; // Saltos de a media hora
+        minActual += 30; 
     }
     return bloques;
 }
 
-// ==========================================================================
-// INICIALIZACIÓN DE LA AGENDA
-// ==========================================================================
 async function inicializarAgendaDiaria() {
     try {
         await cargarBotonesAreasAgenda();
-        // 1. Traemos las profesionales
         const resEmp = await fetch('http://localhost:3000/api/empleadas');
         empleadasAgendaGlobal = await resEmp.json();
 
-        // 2. Traemos la configuración de los horarios (El "Cerebro")
         const resHor = await fetch('http://localhost:3000/api/horarios');
         horariosAgendaGlobal = await resHor.json();
 
-        // 3. Dibujamos el encabezado de las profesionales
         const agendaHeader = document.getElementById('agendaHeader');
         if (agendaHeader) {
             agendaHeader.innerHTML = '<div class="hora-col">Hora</div>';
@@ -939,7 +920,6 @@ async function inicializarAgendaDiaria() {
             });
         }
 
-        // 4. Configuramos los botones de las fechas
         const inputFecha = document.getElementById('fechaAgendaInput');
         const btnAnterior = document.getElementById('btnDiaAnterior');
         const btnSiguiente = document.getElementById('btnDiaSiguiente');
@@ -948,7 +928,6 @@ async function inicializarAgendaDiaria() {
             inputFecha.addEventListener('change', actualizarGrillaDiaria);
             
             if (btnAnterior) {
-                // Borramos eventos viejos clonando el botón para evitar que salte 2 días seguidos
                 const newBtnAnterior = btnAnterior.cloneNode(true);
                 btnAnterior.parentNode.replaceChild(newBtnAnterior, btnAnterior);
                 newBtnAnterior.addEventListener('click', () => {
@@ -977,16 +956,12 @@ async function inicializarAgendaDiaria() {
             }
         }
 
-        // 5. Arrancamos el dibujo del día de hoy
         actualizarGrillaDiaria();
     } catch (error) {
         console.error("Error al cargar la agenda diaria:", error);
     }
 }
 
-// ==========================================
-// AUTO-SCROLL A LA HORA ACTUAL (V.2)
-// ==========================================
 function enfocarHoraActual() {
     const ahora = new Date();
     let hora = ahora.getHours();
@@ -995,7 +970,6 @@ function enfocarHoraActual() {
     const minStr = minutos < 30 ? '00' : '30';
     const horaStr = `${String(hora).padStart(2, '0')}:${minStr}`;
 
-    // 1. Lógica para la Vista Diaria
     const vistaDiaria = document.getElementById('vistaDiaria');
     if (vistaDiaria && vistaDiaria.style.display !== 'none') {
         const contenedorDiario = document.querySelector('#vistaDiaria .agenda-container');
@@ -1012,29 +986,26 @@ function enfocarHoraActual() {
         }
     }
 
-    // 2. Lógica para la Vista Semanal
     const vistaSemanal = document.getElementById('vistaSemanal');
     if (vistaSemanal && vistaSemanal.style.display !== 'none') {
         const contenedorSemanal = document.querySelector('#vistaSemanal .agenda-container');
-        const filasSemanales = document.querySelectorAll('#agendaSemanalBody > div'); // Las filas de la semana
+        const filasSemanales = document.querySelectorAll('#agendaSemanalBody > div'); 
         
         for (let fila of filasSemanales) {
             const colHora = fila.querySelector('.hora-col');
             if (colHora && colHora.textContent.trim() === horaStr) {
                 contenedorSemanal.scrollTo({ top: fila.offsetTop - 50, behavior: 'smooth' });
-                fila.style.backgroundColor = '#fffaf0'; // Le damos un fondito cálido
+                fila.style.backgroundColor = '#fffaf0'; 
                 break;
             }
         }
     }
 }
 
-// LA MAGIA DE LA GRILLA DINÁMICA
 async function actualizarGrillaDiaria() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (!inputFecha || !inputFecha.value) return;
 
-    // Buscamos las reglas del día elegido
     const idDia = obtenerIdDiaSemana(inputFecha.value);
     const horarioHoy = horariosAgendaGlobal.find(h => h.Id_Horario === idDia);
 
@@ -1042,7 +1013,6 @@ async function actualizarGrillaDiaria() {
     if (!agendaBody) return;
     agendaBody.innerHTML = ''; 
 
-    // Regla 1: ¿Está cerrado?
     if (!horarioHoy || !horarioHoy.Laborable) {
         agendaBody.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: #dc3545; background: #fff8f8; border-radius: 8px; width: 100%; border: 1px dashed #f5c6cb;">
@@ -1053,13 +1023,11 @@ async function actualizarGrillaDiaria() {
         return;
     }
 
-    // Regla 2: Extraemos y limpiamos las horas (usando tu función del Módulo 9)
     let ap1 = limpiarHoraSQL(horarioHoy.Hora_Apertura_1);
     let ci1 = limpiarHoraSQL(horarioHoy.Hora_Cierre_1);
     let ap2 = limpiarHoraSQL(horarioHoy.Hora_Apertura_2);
     let ci2 = limpiarHoraSQL(horarioHoy.Hora_Cierre_2);
 
-    // Regla 3: Generamos los bloques combinados
     let bloques = [
         ...generarBloques(ap1, ci1),
         ...generarBloques(ap2, ci2)
@@ -1067,12 +1035,10 @@ async function actualizarGrillaDiaria() {
 
     let ultimoMinuto = -1;
 
-    // Regla 4: Dibujamos las filas
     bloques.forEach(horaStr => {
         let [h, m] = horaStr.split(':').map(Number);
         let minActual = h * 60 + m;
 
-        // ¡DETALLE PREMIUM! Si detectamos un salto mayor a 30 min, dibujamos la Siesta
         if (ultimoMinuto !== -1 && (minActual - ultimoMinuto) > 30) {
             let divSiesta = document.createElement('div');
             divSiesta.style.padding = '20px';
@@ -1107,48 +1073,37 @@ async function actualizarGrillaDiaria() {
         agendaBody.appendChild(fila);
     });
 
-    // 5. Inyectamos los turnos sobre la nueva grilla flexible
     await cargarTurnosAgenda();
 
-    // 6. Si la fecha que estamos viendo es HOY, hacemos el auto-scroll
     const fechaHoy = new Date().toISOString().split('T')[0];
     if (inputFecha.value === fechaHoy) {
-        // Le damos un respiro de 100ms para asegurar que el DOM terminó de pintar los turnos
         setTimeout(enfocarHoraActual, 100); 
     }
 }
 
-let filtroAgendaActual = 'Todo';
-
 function filtrarAgendaPorArea(areaSeleccionada, btnPulsado) {
     filtroAgendaActual = areaSeleccionada;
 
-    // 1. Efecto visual: despintamos todos los botones y pintamos el que tocaste
     if (btnPulsado) {
         const botones = document.querySelectorAll('#filtrosEspecialidad .filtro-btn');
         botones.forEach(b => {
-            // Volvemos todos al estado inactivo (fondo blanco, texto oscuro)
             b.style.background = 'white';
             b.style.border = '1px solid #ccc';
             b.style.color = '#333';
         });
         
-        // Pintamos el botón presionado con el color de EMME
         btnPulsado.style.background = 'var(--mostaza, #d4af37)'; 
         btnPulsado.style.border = '1px solid var(--mostaza, #d4af37)';
         btnPulsado.style.color = 'white';
     }
 
-    // 2. Lógica de filtrado: recorremos a las chicas
     if (typeof empleadasAgendaGlobal !== 'undefined') {
         empleadasAgendaGlobal.forEach(emp => {
             const areasDeLaEmpleada = (emp.Areas || '').toLowerCase();
             const areaBuscada = areaSeleccionada.toLowerCase();
             
-            // Chequeamos si pasa el filtro
             const debeMostrar = (areaSeleccionada === 'Todo' || areasDeLaEmpleada.includes(areaBuscada));
 
-            // 3. Ocultamos o mostramos TODAS sus celdas (las de arriba y las de abajo)
             const celdas = document.querySelectorAll(`.col-emp-${emp.Id_Empleada}`);
             
             celdas.forEach(celda => {
@@ -1175,7 +1130,7 @@ function cambiarVistaAgenda(vista) {
     const vistaSemanal = document.getElementById('vistaSemanal');
     const btnDiaria = document.getElementById('btnVistaDiaria');
     const btnSemanal = document.getElementById('btnVistaSemanal');
-    const filtros = document.getElementById('filtrosEspecialidad'); // Capturamos el div de filtros
+    const filtros = document.getElementById('filtrosEspecialidad'); 
 
     if (vista === 'diaria') {
         vistaDiaria.style.display = 'block';
@@ -1183,14 +1138,14 @@ function cambiarVistaAgenda(vista) {
         btnDiaria.classList.add('active');
         btnSemanal.classList.remove('active');
         
-        filtros.style.display = 'flex'; // Mostramos los filtros
+        filtros.style.display = 'flex'; 
     } else if (vista === 'semanal') {
         vistaDiaria.style.display = 'none';
         vistaSemanal.style.display = 'block';
         btnSemanal.classList.add('active');
         btnDiaria.classList.remove('active');
         
-        filtros.style.display = 'none'; // Ocultamos los filtros para no confundir
+        filtros.style.display = 'none'; 
         
         inicializarAgendaSemanal();
         cargarTurnosSemana();
@@ -1198,12 +1153,10 @@ function cambiarVistaAgenda(vista) {
     }
 }
 
-// LÓGICA DE TURNOS SEMANALES Y MODAL AGRUPADO
 async function cargarTurnosSemana() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (!inputFecha || !inputFecha.value) return;
 
-    // --- MAGIA DE SEGURIDAD ---
     const rolUsuario = localStorage.getItem('emme_rol');
     const token = localStorage.getItem('emme_token');
     let idEmpleadaLogueada = null;
@@ -1247,7 +1200,6 @@ async function cargarTurnosSemana() {
             }
         }
 
-        // Filtramos si es Empleada
         if (rolUsuario === 'Empleada' && idEmpleadaLogueada) {
             todosLosTurnos = todosLosTurnos.filter(t => t.Id_Empleada === idEmpleadaLogueada);
         }
@@ -1274,12 +1226,10 @@ async function cargarTurnosSemana() {
             
             if (cantidad > 0) {
                 if (rolUsuario === 'Empleada') {
-                    // VISTA EMPLEADA: Tarjetas estiradas
                     turnos.forEach(turno => {
                         const tarjeta = document.createElement('div');
                         tarjeta.className = 'tarjeta-turno-empleada'; 
                         
-                        // Calculamos la altura dinámica (Cada bloque son 30 min)
                         const duracionMinutos = turno.Duracion_Minutos || 60;
                         const cantidadBloques = duracionMinutos / 30;
                         
@@ -1288,8 +1238,6 @@ async function cargarTurnosSemana() {
                         tarjeta.style.left = '4px';
                         tarjeta.style.width = 'calc(100% - 8px)';
                         tarjeta.style.zIndex = '10';
-                        
-                        // Estiramos la altura para que tape las celdas vacías de abajo
                         tarjeta.style.height = `calc(${cantidadBloques * 100}% + ${cantidadBloques - 1}px)`;
 
                         if (turno.Color && turno.Color !== 'null') {
@@ -1319,7 +1267,6 @@ async function cargarTurnosSemana() {
                         celda.appendChild(tarjeta);
                     });
                 } else {
-                    // VISTA ADMIN: Botón amarillo compacto
                     const boton = document.createElement('button');
                     boton.style.width = '90%';
                     boton.style.padding = '5px';
@@ -1386,7 +1333,7 @@ function abrirModalTurnosAgrupados(turnos) {
                 turno.Color,
                 senaPagada,
                 turno.Comentario_Admin,
-                turno.Nombre_Area || '' // 👉 ¡ACÁ SUMAMOS EL ÁREA QUE FALTABA!
+                turno.Nombre_Area || '' 
             );
         };
         
@@ -1417,12 +1364,9 @@ function abrirModalTurnosAgrupados(turnos) {
     modal.style.display = 'flex';
 }
 
-// Cerrar modal de turnos agrupados al hacer clic afuera
 const modalTurnosAgrupados = document.getElementById('modalTurnos');
 if (modalTurnosAgrupados) {
     modalTurnosAgrupados.addEventListener('click', function(e) {
-        // e.target es exactamente el elemento que recibió el clic.
-        // Si es el fondo oscuro (el modal-overlay en sí) y no la tarjeta blanca de adentro, lo cerramos.
         if (e.target === this) {
             this.style.display = 'none';
         }
@@ -1432,27 +1376,18 @@ if (modalTurnosAgrupados) {
 async function inicializarAgendaSemanal() {
     const agendaBody = document.getElementById('agendaSemanalBody');
     const headerSemanal = document.getElementById('agendaSemanalHeader');
-    const fechaCalendario = document.getElementById('fechaAgendaInput').value; // Tomamos la fecha del control central
+    const fechaCalendario = document.getElementById('fechaAgendaInput').value; 
 
     if (!agendaBody || !headerSemanal || !fechaCalendario) return;
     
     agendaBody.innerHTML = ''; 
 
-    // --- MAGIA PARA CALCULAR LOS DÍAS DE LA SEMANA ---
-    // 1. Convertimos la fecha del input a objeto Date (usando la T para que no haya timezone bug)
     let fechaBase = new Date(fechaCalendario + 'T00:00:00'); 
-    
-    // 2. Averiguamos qué día de la semana es (0=Domingo, 1=Lunes, 6=Sábado)
     let diaDeLaSemana = fechaBase.getDay();
-    
-    // 3. Calculamos la distancia hasta el Lunes previo (Si es domingo, retrocedemos 6 días)
     let diferenciaAlLunes = diaDeLaSemana === 0 ? -6 : 1 - diaDeLaSemana;
-    
-    // 4. Establecemos el "Lunes" de esta semana
     let lunesDeEstaSemana = new Date(fechaBase);
     lunesDeEstaSemana.setDate(fechaBase.getDate() + diferenciaAlLunes);
 
-    // 5. Dibujamos el encabezado con las fechas calculadas (Lunes a Sábado)
     let htmlHeader = `<div class="hora-col" style="color: #999;">Hora</div>`;
     const nombresDias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     
@@ -1460,7 +1395,6 @@ async function inicializarAgendaSemanal() {
         let diaIterado = new Date(lunesDeEstaSemana);
         diaIterado.setDate(lunesDeEstaSemana.getDate() + i);
         
-        // Formateamos para que diga "Lunes 14/09"
         let diaNum = diaIterado.getDate().toString().padStart(2, '0');
         let mesNum = (diaIterado.getMonth() + 1).toString().padStart(2, '0');
         
@@ -1473,7 +1407,6 @@ async function inicializarAgendaSemanal() {
     }
     headerSemanal.innerHTML = htmlHeader;
 
-    // --- FIN DE MAGIA, EMPIEZA LA CONSTRUCCIÓN DE FILAS ---
     try {
         const resHor = await fetch('http://localhost:3000/api/horarios');
         const horarios = await resHor.json();
@@ -1572,7 +1505,6 @@ async function cargarTurnosAgenda() {
 
             if (celdaDestino) {
                 celdaDestino.style.position = 'relative'; 
-
                 const alturaPixeles = (turno.Duracion_Minutos || 30) * 2; 
 
                 const tarjeta = document.createElement('div');
@@ -1592,12 +1524,40 @@ async function cargarTurnosAgenda() {
                         turno.Color || '',
                         senaPagada,
                         turno.Comentario_Admin || '',
-                        turno.Nombre_Area || '' // 👉 ¡ACÁ ESTÁ EL DATO MÁGICO AGREGADO!
+                        turno.Nombre_Area || '' 
                     );
                 };
+
+                // --- NUEVA LÓGICA DE SEMÁFORO VISUAL ---
+                let badgeColorBg = '#ffeeba'; // Amarillo por defecto (Pendiente)
+                let badgeColorText = '#856404';
+                let textoEstado = turno.Estado || 'Pendiente';
+
+                if (textoEstado === 'Pagado') {
+                    badgeColorBg = '#d4edda'; // Verde
+                    badgeColorText = '#155724';
+                } else if (textoEstado === 'En progreso') {
+                    badgeColorBg = '#cce5ff'; // Azul
+                    badgeColorText = '#004085';
+                } else if (textoEstado === 'Cancelado') {
+                    badgeColorBg = '#f8d7da'; // Rojo
+                    badgeColorText = '#721c24';
+                }
+
+                // Armamos el HTML del globito de estado
+                const badgeHTML = `
+                    <div style="margin-top: 5px;">
+                        <span style="display: inline-block; font-size: 10px; font-weight: 700; background: ${badgeColorBg}; color: ${badgeColorText}; padding: 3px 8px; border-radius: 12px; border: 1px solid ${badgeColorText}40; letter-spacing: 0.3px;">
+                            ${textoEstado}
+                        </span>
+                    </div>
+                `;
+
+                // Inyectamos el título, el detalle y ahora el nuevo badge
                 tarjeta.innerHTML = `
-                    <div class="turno-titulo">${turno.Nombre_Clienta}</div>
-                    <div class="turno-detalle">${turno.Nombre_Servicio}</div>
+                    <div class="turno-titulo" style="font-weight: 600; color: #333; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${turno.Nombre_Clienta}</div>
+                    <div class="turno-detalle" style="color: #666; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${turno.Nombre_Servicio}</div>
+                    ${badgeHTML}
                 `;
 
                 celdaDestino.appendChild(tarjeta);
@@ -1605,41 +1565,6 @@ async function cargarTurnosAgenda() {
         });
     } catch (error) {
         console.error("Error inyectando turnos en la agenda:", error);
-    }
-}
-
-async function guardarSenaIndependiente() {
-    const idTurno = document.getElementById('idTurnoCobroOculto').value;
-    const inputSena = document.getElementById('senaDetalleInput');
-    const nuevaSena = parseFloat(inputSena.value) || 0;
-    
-    let nombreClienta = document.getElementById('nombreClientaCobro').textContent;
-    nombreClienta = nombreClienta.replace('Clienta: ', '').trim();
-
-    if (!idTurno) return;
-
-    try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/sena`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                Sena_Monto: nuevaSena, 
-                Nombre_Clienta: nombreClienta 
-            })
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion("¡Seña actualizada y registrada en Ingresos!", "success");
-            
-            const textoSena = document.getElementById('textoDetalleSena');
-            if(textoSena) textoSena.textContent = `Seña abonada: -$${nuevaSena.toLocaleString('es-AR')}`;
-            
-        } else {
-            mostrarNotificacion("Error al guardar la seña.", "error");
-        }
-    } catch (error) {
-        console.error("Error guardando la seña:", error);
-        mostrarNotificacion("Error de conexión.", "error");
     }
 }
 
@@ -1672,8 +1597,6 @@ async function cargarHorariosDisponibles() {
             return;
         }
 
-        // --- LA MAGIA QUE SIEMPRE FUNCIONÓ ---
-        // Le pasamos el texto feo (ej: 12:30Z) a new Date(), y tu compu lo traduce a 09:30 local solito.
         const extraerMinutos = (fechaSql) => {
             if (!fechaSql) return null;
             const fecha = new Date(fechaSql);
@@ -1728,11 +1651,393 @@ async function cargarHorariosDisponibles() {
     }
 }
 
+
 // ==========================================================================
-// 4. MÓDULO DE CLIENTAS
+// 5. MÓDULO DE COBROS Y CHECK-OUT (Señas, Extras, Descuentos)
 // ==========================================================================
 
+let precioBaseActual = 0;
+const modalDetalleTurno = document.getElementById('modalDetalleTurno');
+
+if (modalDetalleTurno) {
+    modalDetalleTurno.addEventListener('click', function(e) {
+        if(e.target === modalDetalleTurno) cerrarModalDetalleTurno();
+    });
+}
+
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '') {
+    precioBaseActual = parseFloat(precioBase) || 0;
+    const senaActual = parseFloat(sena) || 0;
+    
+    document.getElementById('idTurnoCobroOculto').value = idTurno;
+    document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
+    
+    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${nombreServicio}`;
+    document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
+    
+    const inputSena = document.getElementById('senaDetalleInput');
+    if (inputSena) inputSena.value = senaActual;
+    
+    const textoDetalleSena = document.getElementById('textoDetalleSena');
+    if (textoDetalleSena) {
+        textoDetalleSena.textContent = `Seña abonada: -$${senaActual.toLocaleString('es-AR')}`;
+    }
+
+    let areaDefinitiva = nombreArea;
+    
+    if (!areaDefinitiva || areaDefinitiva === 'null' || areaDefinitiva === 'undefined') {
+        if (typeof listaServiciosGlobal !== 'undefined') {
+            const srv = listaServiciosGlobal.find(s => s.Nombre === nombreServicio);
+            if (srv) {
+                areaDefinitiva = srv.Area || srv.area || srv.Nombre_Area || '';
+            }
+        }
+    }
+    
+    const nombreSrvLow = (nombreServicio || '').toLowerCase();
+    const esUñas = nombreSrvLow.includes('kapping') || nombreSrvLow.includes('esmaltado') || nombreSrvLow.includes('soft') || nombreSrvLow.includes('esculpidas');
+
+    const divExtras = document.getElementById('seccionExtras');
+    if (divExtras) {
+        if (areaDefinitiva === 'Manicura' || areaDefinitiva === 'Pedicura' || esUñas) {
+            divExtras.style.display = 'flex'; 
+        } else {
+            divExtras.style.display = 'none'; 
+        }
+    }
+
+    document.getElementById('inputNuevoColor').value = '';
+    const contenedorColores = document.getElementById('contenedorChipsColores');
+    const inputOcultoColores = document.getElementById('coloresGuardados');
+    
+    contenedorColores.innerHTML = ''; 
+    inputOcultoColores.value = '';
+
+    if (color && color !== 'null') {
+        const arrayColores = color.split('|');
+        arrayColores.forEach(c => {
+            if(c.trim()) agregarChipColor(c.trim());
+        });
+    }
+
+    const inputComentario = document.getElementById('comentarioAdminInput');
+    if (inputComentario) {
+        inputComentario.value = (comentarioAdmin && comentarioAdmin !== 'null') ? comentarioAdmin : '';
+    }
+    
+    const badgeEstado = document.getElementById('estadoTurnoBadge');
+    badgeEstado.textContent = estado || 'Pendiente';
+    
+    const btnCobrar = document.getElementById('btnConfirmarCobro'); 
+    const btnGuardar = document.getElementById('btnGuardarDetalles');
+    const inputColor = document.getElementById('inputNuevoColor'); 
+    const inputDescuento = document.getElementById('descuentoCobroInput');
+    const inputRecargo = document.getElementById('recargoCobroInput'); 
+    const checkboxes = document.querySelectorAll('.check-extra');
+    
+    const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
+    const btnEditar = document.getElementById('btnEditarDatosTurno');
+    
+    if (estado === 'Pagado') {
+        badgeEstado.style.background = '#d4edda';
+        badgeEstado.style.color = '#155724';
+        
+        btnCobrar.disabled = true;
+        btnCobrar.style.background = '#ccc';
+        btnCobrar.textContent = 'Turno ya cobrado';
+        btnCobrar.style.cursor = 'not-allowed';
+        
+        btnGuardar.style.display = 'none';
+        inputColor.disabled = true;
+        inputDescuento.disabled = true;
+        if (inputRecargo) inputRecargo.disabled = true;
+        if (inputComentario) inputComentario.disabled = true; 
+        if (inputSena) inputSena.disabled = true;
+        if (btnActualizarSena) btnActualizarSena.disabled = true;
+        checkboxes.forEach(chk => chk.disabled = true);
+        
+        if (btnEditar) btnEditar.style.display = 'none'; 
+    } else {
+        badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
+        badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
+        
+        btnCobrar.disabled = false;
+        btnCobrar.style.background = '#28a745'; 
+        btnCobrar.textContent = 'Confirmar y Cobrar';
+        btnCobrar.style.cursor = 'pointer';
+        
+        btnGuardar.style.display = 'inline-block';
+        inputColor.disabled = false;
+        inputDescuento.disabled = false;
+        if (inputRecargo) inputRecargo.disabled = false;
+        if (inputComentario) inputComentario.disabled = false; 
+        if (inputSena) inputSena.disabled = false;
+        if (btnActualizarSena) btnActualizarSena.disabled = false;
+        checkboxes.forEach(chk => chk.disabled = false);
+        
+        if (btnEditar) btnEditar.style.display = 'block'; 
+    }
+
+    document.getElementById('descuentoCobroInput').value = 0;
+    if(inputRecargo) inputRecargo.value = 0;
+    checkboxes.forEach(chk => chk.checked = false);
+    
+    if (typeof recalcularTotalCobro === 'function') {
+        recalcularTotalCobro();
+    }
+    
+    if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
+}
+
+async function guardarDetallesTurno() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const coloresFinales = document.getElementById('coloresGuardados').value; 
+    const comentario = document.getElementById('comentarioAdminInput').value;
+    
+    if (!coloresFinales.trim() && !comentario.trim()) {
+        mostrarNotificacion("Escribí un color o comentario para guardar", "warning");
+        return;
+    }
+    
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                Color: coloresFinales,
+                Comentario_Admin: comentario 
+            })
+        });
+        
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Detalles guardados!", "success");
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            mostrarNotificacion("Hubo un error al guardar.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+function cerrarModalDetalleTurno() {
+    if (modalDetalleTurno) modalDetalleTurno.classList.remove('active');
+}
+
+function manejarEnterColor(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); 
+        const input = document.getElementById('inputNuevoColor');
+        const color = input.value.trim();
+        
+        if (color) {
+            agregarChipColor(color);
+            input.value = ''; 
+        }
+    }
+}
+
+function agregarChipColor(color) {
+    const contenedor = document.getElementById('contenedorChipsColores');
+    const chip = document.createElement('div');
+    chip.className = 'chip-color';
+    chip.style.cssText = 'background: #e9ecef; color: #333; padding: 5px 12px; border-radius: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
+    
+    chip.innerHTML = `
+        ${color}
+        <span style="cursor: pointer; font-weight: bold; color: #999; font-size: 16px; line-height: 1;" onclick="eliminarChipColor(this)">×</span>
+    `;
+    
+    contenedor.appendChild(chip);
+    actualizarInputOcultoColores();
+}
+
+function eliminarChipColor(cruzElement) {
+    cruzElement.parentElement.remove(); 
+    actualizarInputOcultoColores(); 
+}
+
+function actualizarInputOcultoColores() {
+    const chips = document.querySelectorAll('#contenedorChipsColores .chip-color');
+    const colores = Array.from(chips).map(chip => chip.innerText.replace('×', '').trim());
+    document.getElementById('coloresGuardados').value = colores.join(' | ');
+}
+
+async function cargarExtrasDisponibles() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/extras');
+        const extras = await respuesta.json();
+
+        const contenedor = document.getElementById('contenedorExtras');
+        if (!contenedor) return;
+
+        contenedor.innerHTML = ''; 
+
+        extras.forEach(extra => {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+            div.style.padding = '8px 0';
+            div.style.borderBottom = '1px solid #f9f9f9';
+
+            div.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                    <input type="checkbox" class="check-extra" value="${extra.Precio}" data-id="${extra.Id_Extra}" onchange="recalcularTotalCobro()" style="cursor: pointer;">
+                    ${extra.Nombre}
+                </label>
+                <span style="color: #888; font-size: 13px;">+$${extra.Precio.toLocaleString('es-AR')}</span>
+            `;
+            contenedor.appendChild(div);
+        });
+    } catch (error) {
+        console.error("Error cargando extras:", error);
+    }
+}
+
+function recalcularTotalCobro() {
+    let sumaExtras = 0;
+    
+    const checkboxes = document.querySelectorAll('.check-extra:checked');
+    checkboxes.forEach(chk => {
+        sumaExtras += parseFloat(chk.value);
+    });
+
+    const descuentoInput = document.getElementById('descuentoCobroInput').value;
+    const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
+
+    const recargoInput = document.getElementById('recargoCobroInput').value; 
+    const recargo = recargoInput ? parseFloat(recargoInput) : 0; 
+
+    const senaInput = document.getElementById('senaDetalleInput').value;
+    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
+
+    let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
+    
+    if (totalFinal < 0) totalFinal = 0;
+
+    document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
+}
+
+const inputDescuento = document.getElementById('descuentoCobroInput');
+if (inputDescuento) {
+    inputDescuento.addEventListener('input', recalcularTotalCobro);
+}
+
+const inputSenaDetalle = document.getElementById('senaDetalleInput');
+if (inputSenaDetalle) {
+    inputSenaDetalle.addEventListener('input', recalcularTotalCobro);
+}
+
+async function confirmarCobroTurno() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const medioPago = document.getElementById('selectMedioPago').value;
+    
+    const descuentoInput = document.getElementById('descuentoCobroInput').value;
+    const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
+
+    const recargoInput = document.getElementById('recargoCobroInput').value; 
+    const recargo = recargoInput ? parseFloat(recargoInput) : 0; 
+    
+    const senaInput = document.getElementById('senaDetalleInput').value;
+    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
+    
+    const extrasSeleccionados = [];
+    let sumaExtras = 0;
+    
+    const checkboxes = document.querySelectorAll('.check-extra:checked');
+    checkboxes.forEach(chk => {
+        extrasSeleccionados.push(parseInt(chk.getAttribute('data-id')));
+        sumaExtras += parseFloat(chk.value);
+    });
+
+    let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
+    if (totalFinal < 0) totalFinal = 0;
+
+    const datosCobro = {
+        idTurno: parseInt(idTurno),
+        montoTotal: totalFinal,
+        medioPago: medioPago,
+        descuento: descuento,
+        recargo: recargo, 
+        extras: extrasSeleccionados
+    };
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datosCobro)
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Cobro registrado con éxito!", "success"); 
+            cerrarModalDetalleTurno();
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            mostrarNotificacion("Hubo un error al intentar cobrar.", "error");
+        }
+    } catch (error) {
+        console.error("Error conectando con el servidor:", error);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
+async function guardarSenaIndependiente() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const inputSena = document.getElementById('senaDetalleInput');
+    const nuevaSena = parseFloat(inputSena.value) || 0;
+    
+    let nombreClienta = document.getElementById('nombreClientaCobro').textContent;
+    nombreClienta = nombreClienta.replace('Clienta: ', '').trim();
+
+    if (!idTurno) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/sena`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                Sena_Monto: nuevaSena, 
+                Nombre_Clienta: nombreClienta 
+            })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Seña actualizada y registrada en Ingresos!", "success");
+            
+            const textoSena = document.getElementById('textoDetalleSena');
+            if(textoSena) textoSena.textContent = `Seña abonada: -$${nuevaSena.toLocaleString('es-AR')}`;
+            
+        } else {
+            mostrarNotificacion("Error al guardar la seña.", "error");
+        }
+    } catch (error) {
+        console.error("Error guardando la seña:", error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+
+// ==========================================================================
+// 6. MÓDULO DE CLIENTAS (CRM e Historial)
+// ==========================================================================
+
+let listaGlobalClientas = []; 
 const modal = document.getElementById('modalNuevaClienta');
+const inputBuscador = document.getElementById('buscadorClientas');
+
+if (modal) {
+    modal.addEventListener('click', function(e) {
+        if(e.target === modal) cerrarModal();
+    });
+}
 
 function abrirModal() {
     if (modal) modal.classList.add('active');
@@ -1740,12 +2045,6 @@ function abrirModal() {
 
 function cerrarModal() {
     if (modal) modal.classList.remove('active');
-}
-
-if (modal) {
-    modal.addEventListener('click', function(e) {
-        if(e.target === modal) cerrarModal();
-    });
 }
 
 function prepararNuevaClienta() {
@@ -1780,7 +2079,6 @@ function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, obser
     abrirModal();
 }
 
-// --- Lógica del Historial Estético (Modal Perfil) ---
 function cerrarModalPerfil() {
     const modalPerfil = document.getElementById('modalPerfilClienta');
     if (modalPerfil) {
@@ -1824,7 +2122,6 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
 
             let tagsHTML = '';
             if (turno.Color) {
-                // Pequeña corrección acá: separamos por ' | ' que es lo que guarda la nueva ruta
                 const detalles = turno.Color.split(' | ');
                 detalles.forEach(detalle => {
                     if(detalle.trim() !== '') {
@@ -1833,7 +2130,6 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
                 });
             }
 
-            // NUEVO: Dibujamos la nota interna si existe
             let notaHTML = '';
             if (turno.Comentario_Admin) {
                 notaHTML = `
@@ -1889,15 +2185,12 @@ async function cargarClientas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
         listaGlobalClientas = await respuesta.json();
-        
-        // Llamamos a la función que dibuja el HTML por primera vez con TODAS las clientas
         renderizarClientas(listaGlobalClientas);
     } catch (error) {
         console.error("Error conectando con la API de clientas:", error);
     }
 }
 
-// Sacamos toda la lógica de dibujo a una función separada para poder reutilizarla
 function renderizarClientas(clientasParaMostrar) {
     const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
     const tbodyLista = document.getElementById('tablaClientasBody');
@@ -1905,7 +2198,6 @@ function renderizarClientas(clientasParaMostrar) {
     if (contenedorTarjetas) contenedorTarjetas.innerHTML = '';
     if (tbodyLista) tbodyLista.innerHTML = '';
 
-    // Si el filtro no encuentra a nadie, mostramos un mensajito amigable
     if (clientasParaMostrar.length === 0) {
         const trVacio = document.createElement('tr');
         trVacio.innerHTML = `<td colspan="5" style="text-align:center; padding:30px; color:#888;">No hay clientas que coincidan con este filtro.</td>`;
@@ -1917,10 +2209,7 @@ function renderizarClientas(clientasParaMostrar) {
     clientasParaMostrar.forEach(clienta => {
         let fechaNac = '-';
         if (clienta.Fecha_Nac) {
-            // Cortamos la fecha para quedarnos solo con el "YYYY-MM-DD"
             const fechaLimpia = clienta.Fecha_Nac.split('T')[0];
-            
-            // Configuramos para que solo muestre el día y el mes (Ej: "04 de mayo")
             const opcionesFecha = { day: '2-digit', month: 'long' };
             fechaNac = new Date(fechaLimpia + 'T12:00:00').toLocaleDateString('es-AR', opcionesFecha);
         }
@@ -1965,27 +2254,20 @@ function renderizarClientas(clientasParaMostrar) {
     });
 }
 
-// La función mágica del CRM
 function aplicarFiltroClientas() {
     const filtroElegido = document.getElementById('filtroRetencionClientas').value;
     const hoy = new Date();
     
-    // Si elige "todas", mandamos la lista global entera
     if (filtroElegido === 'todas') {
         renderizarClientas(listaGlobalClientas);
         return;
     }
 
     const clientasFiltradas = listaGlobalClientas.filter(clienta => {
-        // Asegurate de que este nombre (Fecha_Ultimo_Turno) sea el que manda tu backend. 
-        // Si se llama Ultimo_Turno o Fecha, cambialo acá abajo:
         const fechaUltimoVisita = clienta.Fecha_Ultimo_Turno;
-        // Si la clienta es nueva y nunca tuvo un turno, la filtramos para que no rompa la matemática
         if (!fechaUltimoVisita) return false;
 
         const fechaObj = new Date(fechaUltimoVisita);
-        
-        // Calculamos cuántos días de diferencia hay entre hoy y su último turno
         const milisegundos = hoy.getTime() - fechaObj.getTime();
         const diasPasados = Math.floor(milisegundos / (1000 * 60 * 60 * 24));
 
@@ -1993,22 +2275,18 @@ function aplicarFiltroClientas() {
             return fechaObj.getMonth() === hoy.getMonth() && fechaObj.getFullYear() === hoy.getFullYear();
         } 
         else if (filtroElegido === '15_dias') {
-            // Vino hace más de 15 días, pero menos de 30
             return diasPasados >= 15 && diasPasados < 30;
         } 
         else if (filtroElegido === '30_dias') {
-            // Vino hace más de un mes, pero menos de dos
             return diasPasados >= 30 && diasPasados < 60;
         } 
         else if (filtroElegido === '60_dias') {
-            // Colgada total, hace más de dos meses que no viene
             return diasPasados >= 60;
         }
         
         return true;
     });
 
-    // Dibujamos solo las que pasaron el filtro
     renderizarClientas(clientasFiltradas);
 }
 
@@ -2060,11 +2338,9 @@ async function guardarClienta() {
     }
 }
 
-const inputBuscador = document.getElementById('buscadorClientas');
 if (inputBuscador) {
     inputBuscador.addEventListener('input', function(evento) {
         const textoBuscado = evento.target.value.toLowerCase();
-        
         const elementosClienta = document.querySelectorAll('.item-clienta-busqueda');
         
         elementosClienta.forEach(elemento => {
@@ -2077,8 +2353,6 @@ if (inputBuscador) {
         });
     });
 }
-
-let listaGlobalClientas = []; 
 
 document.addEventListener('DOMContentLoaded', () => {
     const inputBuscarClienta = document.getElementById('inputBuscarClientaTurno');
@@ -2135,11 +2409,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+
 // ==========================================================================
-// 5. MÓDULO DE EMPLEADAS
+// 7. MÓDULO DE EMPLEADAS Y LIQUIDACIONES
 // ==========================================================================
 
+let memoriaLiquidaciones = [];
 const modalEmpleada = document.getElementById('modalNuevaEmpleada');
+
+if (modalEmpleada) {
+    modalEmpleada.addEventListener('click', function(e) {
+        if(e.target === modalEmpleada) cerrarModalEmpleada();
+    });
+}
 
 function abrirModalEmpleada() {
     if (modalEmpleada) modalEmpleada.classList.add('active');
@@ -2147,12 +2429,6 @@ function abrirModalEmpleada() {
 
 function cerrarModalEmpleada() {
     if (modalEmpleada) modalEmpleada.classList.remove('active');
-}
-
-if (modalEmpleada) {
-    modalEmpleada.addEventListener('click', function(e) {
-        if(e.target === modalEmpleada) cerrarModalEmpleada();
-    });
 }
 
 function prepararNuevaEmpleada() {
@@ -2321,7 +2597,6 @@ async function eliminarEmpleada(id) {
     }
 }
 
-// --- Modal de Detalle de Sueldo ---
 function cerrarModalDetalleSueldo() {
     const modal = document.getElementById('modalDetalleSueldo');
     if (modal) modal.classList.remove('active');
@@ -2388,7 +2663,6 @@ async function liquidarSueldo(idEmpleada, nombre) {
     }
 }
 
-// --- Modal de Especialidades y Comisiones ---
 function cerrarModalEspecialidades() {
     const modal = document.getElementById('modalEspecialidades');
     if (modal) modal.classList.remove('active');
@@ -2498,18 +2772,12 @@ async function guardarEspecialidades() {
     }
 }
 
-// ==========================================
-// HISTORIAL DE COBROS (EMPLEADAS)
-// ==========================================
-let memoriaLiquidaciones = [];
-
 function cambiarVistaEmpleadas(vista) {
     const vistaSaldos = document.getElementById('vistaSaldosEmpleadas');
     const vistaCobros = document.getElementById('vistaCobrosEmpleadas');
     const btnSaldos = document.getElementById('btnVistaSaldos');
     const btnCobros = document.getElementById('btnVistaCobros');
     
-    // Agarramos los controles GLOBALES del header
     const buscadorPrincipal = document.getElementById('buscadorEmpleadas'); 
     const btnNueva = document.getElementById('btnNuevaEmpleada');
 
@@ -2519,7 +2787,6 @@ function cambiarVistaEmpleadas(vista) {
         btnSaldos.classList.add('active');
         btnCobros.classList.remove('active');
         
-        // Mostramos los controles globales
         if (buscadorPrincipal) buscadorPrincipal.style.display = 'inline-block';
         if (btnNueva) btnNueva.style.display = 'inline-block';
         
@@ -2529,7 +2796,6 @@ function cambiarVistaEmpleadas(vista) {
         btnCobros.classList.add('active');
         btnSaldos.classList.remove('active');
         
-        // Ocultamos los controles globales porque acá tenemos filtros propios
         if (buscadorPrincipal) buscadorPrincipal.style.display = 'none';
         if (btnNueva) btnNueva.style.display = 'none';
         
@@ -2541,7 +2807,7 @@ async function cargarHistorialCobros() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/liquidaciones');
         memoriaLiquidaciones = await respuesta.json();
-        aplicarFiltrosCobros(); // Dibuja la tabla inicial
+        aplicarFiltrosCobros(); 
     } catch (error) {
         console.error("Error al cargar historial:", error);
         document.getElementById('tablaHistorialCobrosBody').innerHTML = '<tr><td colspan="3" style="text-align:center; color:#d9534f; padding: 20px;">Error de conexión con el servidor.</td></tr>';
@@ -2586,7 +2852,6 @@ function dibujarTablaCobros(lista) {
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-        // Cambiamos a colspan="4" porque sumamos la columna de Detalles
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#888;">No se encontraron registros de cobro con esos filtros.</td></tr>';
         return;
     }
@@ -2617,12 +2882,10 @@ async function abrirDetalleCobro(idLiquidacion) {
     const modal = document.getElementById('modalDetalleHistorial');
     const tbody = document.getElementById('tablaDetalleHistorialBody');
     
-    // Mostramos el mensaje de carga y abrimos el modal
     tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #888;">Cargando detalles de los turnos...</td></tr>';
     modal.classList.add('active'); 
 
     try {
-        // Hacemos la petición al servidor (al nuevo endpoint)
         const respuesta = await fetch(`http://localhost:3000/api/liquidaciones/${idLiquidacion}/detalles`);
         
         if (!respuesta.ok) {
@@ -2631,19 +2894,15 @@ async function abrirDetalleCobro(idLiquidacion) {
         
         const detalles = await respuesta.json();
         
-        // Limpiamos el mensaje de carga
         tbody.innerHTML = '';
         
-        // Si es una liquidación vieja (antes de agregar la columna en SQL), va a venir vacío
         if (detalles.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #888; font-style: italic;">No se encontraron detalles para este cobro (posiblemente sea un registro antiguo).</td></tr>';
             return;
         }
         
-        // Dibujamos las filas con los turnos
         detalles.forEach(item => {
             const fechaObj = new Date(item.Fecha_Hora);
-            // Ajustamos la fecha para que no reste un día por la zona horaria
             const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
             
             tbody.innerHTML += `
@@ -2673,23 +2932,19 @@ async function cargarMisPagos() {
     const tbody = document.getElementById('tablaMisPagosBody');
     if (!tbody) return;
 
-    // 1. Agarramos la "pulsera VIP" que guardaste al iniciar sesión
     const token = localStorage.getItem('emme_token');
     if (!token) return;
 
     try {
-        // 2. Desencriptamos la pulsera para sacar el ID de la empleada
         const payload = JSON.parse(atob(token.split('.')[1]));
-        const idEmpleada = payload.Id_Empleada || payload.id; // Depende cómo lo llame tu backend
+        const idEmpleada = payload.Id_Empleada || payload.id; 
 
-        // 3. Vamos a buscar sus pagos al endpoint nuevo
         const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidaciones`);
         
         if (!respuesta.ok) throw new Error("Error al traer los pagos");
         
         const pagos = await respuesta.json();
         
-        // 4. Limpiamos el texto de "Buscando..."
         tbody.innerHTML = '';
         
         if (pagos.length === 0) {
@@ -2697,7 +2952,6 @@ async function cargarMisPagos() {
             return;
         }
         
-        // 5. Dibujamos las filas
         pagos.forEach(pago => {
             const fechaObj = new Date(pago.Fecha);
             const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
@@ -2707,7 +2961,6 @@ async function cargarMisPagos() {
                     <td style="padding: 15px; color: #555;">${fechaLimpia}</td>
                     <td style="padding: 15px; font-weight: 600; color: #28a745;">$${pago.Monto_Total.toLocaleString('es-AR')}</td>
                     <td style="padding: 15px; text-align: center;">
-                        <!-- Acá viene la magia: RECICLAMOS el mismo modal de las admins -->
                         <button class="btn-icon" onclick="abrirDetalleCobro(${pago.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -2725,11 +2978,36 @@ async function cargarMisPagos() {
     }
 }
 
+if (buscadorEmpleadas) {
+    buscadorEmpleadas.addEventListener('input', function(e) {
+        const textoBuscado = e.target.value.toLowerCase();
+        const tarjetas = document.querySelectorAll('#contenedorEmpleadas .card');
+        
+        tarjetas.forEach(tarjeta => {
+            const nombre = tarjeta.querySelector('h3').textContent.toLowerCase();
+            if (nombre.includes(textoBuscado)) {
+                tarjeta.style.display = '';
+            } else {
+                tarjeta.style.display = 'none';
+            }
+        });
+    });
+}
+
+
 // ==========================================================================
-// 6. MÓDULO DE GASTOS
+// 8. MÓDULO DE FINANZAS (Gastos e Ingresos)
 // ==========================================================================
 
+let memoriaGastos = [];
 const modalGasto = document.getElementById('modalNuevoGasto');
+const modalNuevoIngreso = document.getElementById('modalNuevoIngreso');
+
+if (modalGasto) {
+    modalGasto.addEventListener('click', function(e) {
+        if(e.target === modalGasto) cerrarModalGasto();
+    });
+}
 
 function abrirModalGasto() {
     if (modalGasto) modalGasto.classList.add('active');
@@ -2737,12 +3015,6 @@ function abrirModalGasto() {
 
 function cerrarModalGasto() {
     if (modalGasto) modalGasto.classList.remove('active');
-}
-
-if (modalGasto) {
-    modalGasto.addEventListener('click', function(e) {
-        if(e.target === modalGasto) cerrarModalGasto();
-    });
 }
 
 function prepararNuevoGasto() {
@@ -2760,8 +3032,6 @@ function prepararNuevoGasto() {
     document.getElementById('tituloModalGasto').textContent = 'Registrar Nuevo Gasto';
     abrirModalGasto();
 }
-
-let memoriaGastos = [];
 
 async function cargarCategoriasGasto() {
     try {
@@ -2792,6 +3062,22 @@ async function cargarGastos() {
     } catch (error) {
         console.error("Error conectando con la API de gastos:", error);
     }
+}
+
+// Filtros estandarizados de la UI
+const modoGastos = document.getElementById('modoFechaGastos');
+if (modoGastos) {
+    modoGastos.addEventListener('change', (e) => {
+        const inputRangoGastos = document.getElementById('rangoFechaGastos');
+        if (e.target.value === 'rango') {
+            document.getElementById('contenedorMesGastos').style.display = 'none';
+            inputRangoGastos.style.display = 'block';
+        } else {
+            document.getElementById('contenedorMesGastos').style.display = 'flex';
+            inputRangoGastos.style.display = 'none';
+            aplicarFiltrosGastos(); 
+        }
+    });
 }
 
 function aplicarFiltrosGastos() {
@@ -2930,11 +3216,6 @@ async function eliminarGasto(id) {
     }
 }
 
-
-// ==========================================================================
-// 7. MÓDULO DE INGRESOS
-// ==========================================================================
-
 async function cargarIngresos() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/ingresos');
@@ -2956,8 +3237,6 @@ async function cargarIngresos() {
             const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
 
             const clientaMostrar = ingreso.Nombre_Clienta ? ingreso.Nombre_Clienta : '<span style="color:#aaa;">- Mostrador -</span>';
-            
-            // Si hay concepto lo mostramos tal cual (ej: "Turno: Manicura"), sino usamos el nombre del servicio.
             const servicioMostrar = ingreso.Concepto ? ingreso.Concepto : (ingreso.Nombre_Servicio || '-');
 
             const filaHTML = `
@@ -2982,6 +3261,21 @@ async function cargarIngresos() {
         console.error("Error al cargar los ingresos:", error);
         document.getElementById('tablaIngresosBody').innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">Error al cargar los datos.</td></tr>`;
     }
+}
+
+const modoIngresos = document.getElementById('modoFechaIngresos');
+if (modoIngresos) {
+    modoIngresos.addEventListener('change', (e) => {
+        const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
+        if (e.target.value === 'rango') {
+            document.getElementById('contenedorMesIngresos').style.display = 'none';
+            inputRangoIngresos.style.display = 'block';
+        } else {
+            document.getElementById('contenedorMesIngresos').style.display = 'flex';
+            inputRangoIngresos.style.display = 'none';
+            filtrarIngresos(); 
+        }
+    });
 }
 
 function filtrarIngresos() {
@@ -3056,22 +3350,18 @@ async function cargarMediosDePago() {
         const respuesta = await fetch('http://localhost:3000/api/medios-pago');
         const medios = await respuesta.json();
         
-        // Buscamos los dos <select> que tenemos en el HTML
         const selectCobroTurno = document.getElementById('selectMedioPago');
         const selectNuevoIngreso = document.getElementById('pagoIngresoManual');
         
-        // Armamos las opciones en HTML
         let opcionesHTML = '';
         if (medios.length === 0) {
             opcionesHTML = '<option value="">No hay medios cargados</option>';
         } else {
             medios.forEach(medio => {
-                // Guardamos el Nombre en el value para no romper la lógica actual de guardado
                 opcionesHTML += `<option value="${medio.Nombre}">${medio.Nombre}</option>`;
             });
         }
         
-        // Inyectamos las opciones si los select existen
         if (selectCobroTurno) selectCobroTurno.innerHTML = opcionesHTML;
         if (selectNuevoIngreso) selectNuevoIngreso.innerHTML = opcionesHTML;
         
@@ -3099,7 +3389,6 @@ async function cargarTablaMediosPago() {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--borde)';
             
-            // Limpiamos el nombre por si tiene comillas (buena práctica que tenías en tu código)
             const nombreMedio = String(medio.Nombre ?? '').replace(/'/g, "\\'");
             
             tr.innerHTML = `
@@ -3122,375 +3411,18 @@ async function cargarTablaMediosPago() {
     }
 }
 
-// ==========================================================================
-// 8. MÓDULO DE COBRO Y EXTRAS
-// ==========================================================================
-
-const modalDetalleTurno = document.getElementById('modalDetalleTurno');
-let precioBaseActual = 0;
-
-// 1. Agregamos el parámetro comentarioAdmin al final
-function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '') {
-    precioBaseActual = parseFloat(precioBase) || 0;
-    const senaActual = parseFloat(sena) || 0;
-    
-    document.getElementById('idTurnoCobroOculto').value = idTurno;
-    document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
-    
-    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${nombreServicio}`;
-    document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
-    
-    const inputSena = document.getElementById('senaDetalleInput');
-    if (inputSena) inputSena.value = senaActual;
-    
-    const textoDetalleSena = document.getElementById('textoDetalleSena');
-    if (textoDetalleSena) {
-        textoDetalleSena.textContent = `Seña abonada: -$${senaActual.toLocaleString('es-AR')}`;
-    }
-
-    // --- MAGIA ANTI-FALLOS PARA EL ÁREA ---
-    let areaDefinitiva = nombreArea;
-    
-    // Si el backend no mandó el área en el turno, la buscamos en nuestra memoria global
-    if (!areaDefinitiva || areaDefinitiva === 'null' || areaDefinitiva === 'undefined') {
-        if (typeof listaServiciosGlobal !== 'undefined') {
-            const srv = listaServiciosGlobal.find(s => s.Nombre === nombreServicio);
-            if (srv) {
-                areaDefinitiva = srv.Area || srv.area || srv.Nombre_Area || '';
-            }
-        }
-    }
-    
-    // Plan B de rescate extremo: deducir por el nombre del servicio
-    const nombreSrvLow = (nombreServicio || '').toLowerCase();
-    const esUñas = nombreSrvLow.includes('kapping') || nombreSrvLow.includes('esmaltado') || nombreSrvLow.includes('soft') || nombreSrvLow.includes('esculpidas');
-
-    // --- LÓGICA DE EXTRAS ---
-    const divExtras = document.getElementById('seccionExtras');
-    if (divExtras) {
-        if (areaDefinitiva === 'Manicura' || areaDefinitiva === 'Pedicura' || esUñas) {
-            divExtras.style.display = 'flex'; // Lo mostramos
-        } else {
-            divExtras.style.display = 'none'; // Lo ocultamos
-        }
-    }
-
-    // --- NUEVA LÓGICA DE COLORES (CHIPS) ---
-    document.getElementById('inputNuevoColor').value = '';
-    const contenedorColores = document.getElementById('contenedorChipsColores');
-    const inputOcultoColores = document.getElementById('coloresGuardados');
-    
-    contenedorColores.innerHTML = ''; 
-    inputOcultoColores.value = '';
-
-    if (color && color !== 'null') {
-        const arrayColores = color.split('|');
-        arrayColores.forEach(c => {
-            if(c.trim()) agregarChipColor(c.trim());
-        });
-    }
-
-    const inputComentario = document.getElementById('comentarioAdminInput');
-    if (inputComentario) {
-        inputComentario.value = (comentarioAdmin && comentarioAdmin !== 'null') ? comentarioAdmin : '';
-    }
-    
-    const badgeEstado = document.getElementById('estadoTurnoBadge');
-    badgeEstado.textContent = estado || 'Pendiente';
-    
-    const btnCobrar = document.getElementById('btnConfirmarCobro'); 
-    const btnGuardar = document.getElementById('btnGuardarDetalles');
-    const inputColor = document.getElementById('inputNuevoColor'); 
-    const inputDescuento = document.getElementById('descuentoCobroInput');
-    const inputRecargo = document.getElementById('recargoCobroInput'); 
-    const checkboxes = document.querySelectorAll('.check-extra');
-    
-    const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
-    const btnEditar = document.getElementById('btnEditarDatosTurno');
-    
-    if (estado === 'Pagado') {
-        badgeEstado.style.background = '#d4edda';
-        badgeEstado.style.color = '#155724';
-        
-        btnCobrar.disabled = true;
-        btnCobrar.style.background = '#ccc';
-        btnCobrar.textContent = 'Turno ya cobrado';
-        btnCobrar.style.cursor = 'not-allowed';
-        
-        btnGuardar.style.display = 'none';
-        inputColor.disabled = true;
-        inputDescuento.disabled = true;
-        if (inputRecargo) inputRecargo.disabled = true;
-        if (inputComentario) inputComentario.disabled = true; 
-        if (inputSena) inputSena.disabled = true;
-        if (btnActualizarSena) btnActualizarSena.disabled = true;
-        checkboxes.forEach(chk => chk.disabled = true);
-        
-        if (btnEditar) btnEditar.style.display = 'none'; 
-    } else {
-        badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
-        badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
-        
-        btnCobrar.disabled = false;
-        btnCobrar.style.background = '#28a745'; 
-        btnCobrar.textContent = 'Confirmar y Cobrar';
-        btnCobrar.style.cursor = 'pointer';
-        
-        btnGuardar.style.display = 'inline-block';
-        inputColor.disabled = false;
-        inputDescuento.disabled = false;
-        if (inputRecargo) inputRecargo.disabled = false;
-        if (inputComentario) inputComentario.disabled = false; 
-        if (inputSena) inputSena.disabled = false;
-        if (btnActualizarSena) btnActualizarSena.disabled = false;
-        checkboxes.forEach(chk => chk.disabled = false);
-        
-        if (btnEditar) btnEditar.style.display = 'block'; 
-    }
-
-    document.getElementById('descuentoCobroInput').value = 0;
-    if(inputRecargo) inputRecargo.value = 0;
-    checkboxes.forEach(chk => chk.checked = false);
-    
-    if (typeof recalcularTotalCobro === 'function') {
-        recalcularTotalCobro();
-    }
-    
-    const modalDetalleTurno = document.getElementById('modalDetalleTurno');
-    if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
-}
-
-// 2. Leemos los colores desde el input oculto
-async function guardarDetallesTurno() {
-    const idTurno = document.getElementById('idTurnoCobroOculto').value;
-    const coloresFinales = document.getElementById('coloresGuardados').value; // Actualizado
-    const comentario = document.getElementById('comentarioAdminInput').value;
-    
-    if (!coloresFinales.trim() && !comentario.trim()) {
-        mostrarNotificacion("Escribí un color o comentario para guardar", "warning");
-        return;
-    }
-    
-    try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                Color: coloresFinales,
-                Comentario_Admin: comentario 
-            })
-        });
-        
-        if (respuesta.ok) {
-            mostrarNotificacion("¡Detalles guardados!", "success");
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            mostrarNotificacion("Hubo un error al guardar.", "error");
-        }
-    } catch (error) {
-        console.error(error);
-        mostrarNotificacion("Error de conexión.", "error");
-    }
-}
-
-function cerrarModalDetalleTurno() {
-    if (modalDetalleTurno) modalDetalleTurno.classList.remove('active');
-}
-
-if (modalDetalleTurno) {
-    modalDetalleTurno.addEventListener('click', function(e) {
-        if(e.target === modalDetalleTurno) cerrarModalDetalleTurno();
-    });
-}
-
-function manejarEnterColor(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault(); // Evita que el formulario intente enviarse
-        const input = document.getElementById('inputNuevoColor');
-        const color = input.value.trim();
-        
-        if (color) {
-            agregarChipColor(color);
-            input.value = ''; // Limpiamos el input para escribir otro
-        }
-    }
-}
-
-function agregarChipColor(color) {
-    const contenedor = document.getElementById('contenedorChipsColores');
-    const chip = document.createElement('div');
-    chip.className = 'chip-color';
-    // Estilos de la píldora gris
-    chip.style.cssText = 'background: #e9ecef; color: #333; padding: 5px 12px; border-radius: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);';
-    
-    chip.innerHTML = `
-        ${color}
-        <span style="cursor: pointer; font-weight: bold; color: #999; font-size: 16px; line-height: 1;" onclick="eliminarChipColor(this)">×</span>
-    `;
-    
-    contenedor.appendChild(chip);
-    actualizarInputOcultoColores();
-}
-
-function eliminarChipColor(cruzElement) {
-    cruzElement.parentElement.remove(); // Borra el chip de la pantalla
-    actualizarInputOcultoColores(); // Recalcula los colores guardados
-}
-
-function actualizarInputOcultoColores() {
-    const chips = document.querySelectorAll('#contenedorChipsColores .chip-color');
-    // Toma todos los chips, les saca la "×" de texto, limpia espacios y los une con "|"
-    const colores = Array.from(chips).map(chip => chip.innerText.replace('×', '').trim());
-    document.getElementById('coloresGuardados').value = colores.join(' | ');
-}
-
-async function cargarExtrasDisponibles() {
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/extras');
-        const extras = await respuesta.json();
-
-        const contenedor = document.getElementById('contenedorExtras');
-        if (!contenedor) return;
-
-        contenedor.innerHTML = ''; 
-
-        extras.forEach(extra => {
-            const div = document.createElement('div');
-            div.style.display = 'flex';
-            div.style.justifyContent = 'space-between';
-            div.style.alignItems = 'center';
-            div.style.padding = '8px 0';
-            div.style.borderBottom = '1px solid #f9f9f9';
-
-            div.innerHTML = `
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
-                    <input type="checkbox" class="check-extra" value="${extra.Precio}" data-id="${extra.Id_Extra}" onchange="recalcularTotalCobro()" style="cursor: pointer;">
-                    ${extra.Nombre}
-                </label>
-                <span style="color: #888; font-size: 13px;">+$${extra.Precio.toLocaleString('es-AR')}</span>
-            `;
-            contenedor.appendChild(div);
-        });
-    } catch (error) {
-        console.error("Error cargando extras:", error);
-    }
-}
-
-function recalcularTotalCobro() {
-    let sumaExtras = 0;
-    
-    const checkboxes = document.querySelectorAll('.check-extra:checked');
-    checkboxes.forEach(chk => {
-        sumaExtras += parseFloat(chk.value);
-    });
-
-    const descuentoInput = document.getElementById('descuentoCobroInput').value;
-    const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
-
-    const recargoInput = document.getElementById('recargoCobroInput').value; // Nuevo
-    const recargo = recargoInput ? parseFloat(recargoInput) : 0; // Nuevo
-
-    const senaInput = document.getElementById('senaDetalleInput').value;
-    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
-
-    // Fórmula: Precio + Extras + Recargo - Descuento - Seña
-    let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
-    
-    if (totalFinal < 0) totalFinal = 0;
-
-    document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
-}
-
-const inputDescuento = document.getElementById('descuentoCobroInput');
-if (inputDescuento) {
-    inputDescuento.addEventListener('input', recalcularTotalCobro);
-}
-
-const inputSenaDetalle = document.getElementById('senaDetalleInput');
-if (inputSenaDetalle) {
-    inputSenaDetalle.addEventListener('input', recalcularTotalCobro);
-}
-
-async function confirmarCobroTurno() {
-    const idTurno = document.getElementById('idTurnoCobroOculto').value;
-    const medioPago = document.getElementById('selectMedioPago').value;
-    
-    const descuentoInput = document.getElementById('descuentoCobroInput').value;
-    const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
-
-    const recargoInput = document.getElementById('recargoCobroInput').value; // Nuevo
-    const recargo = recargoInput ? parseFloat(recargoInput) : 0; // Nuevo
-    
-    const senaInput = document.getElementById('senaDetalleInput').value;
-    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
-    
-    const extrasSeleccionados = [];
-    let sumaExtras = 0;
-    
-    const checkboxes = document.querySelectorAll('.check-extra:checked');
-    checkboxes.forEach(chk => {
-        extrasSeleccionados.push(parseInt(chk.getAttribute('data-id')));
-        sumaExtras += parseFloat(chk.value);
-    });
-
-    let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
-    if (totalFinal < 0) totalFinal = 0;
-
-    const datosCobro = {
-        idTurno: parseInt(idTurno),
-        montoTotal: totalFinal,
-        medioPago: medioPago,
-        descuento: descuento,
-        recargo: recargo, // Opcional: lo mandamos por si tu backend lo quiere guardar
-        extras: extrasSeleccionados
-    };
-
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(datosCobro)
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion("¡Cobro registrado con éxito!", "success"); 
-            cerrarModalDetalleTurno();
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        } else {
-            mostrarNotificacion("Hubo un error al intentar cobrar.", "error");
-        }
-    } catch (error) {
-        console.error("Error conectando con el servidor:", error);
-        mostrarNotificacion("Error de conexión con el servidor.", "error");
-    }
-}
-
-const modalNuevoIngreso = document.getElementById('modalNuevoIngreso');
-
 function abrirModalNuevoIngreso() {
     document.getElementById('conceptoIngresoManual').value = '';
     document.getElementById('montoIngresoManual').value = '';
     
-    const modal = document.getElementById('modalNuevoIngreso');
-    
-    if (modal) {
-        modal.classList.add('active');
-    } else {
-        console.error("¡Ojo! No encontré el modal. Revisá que el ID en el HTML sea 'modalNuevoIngreso'.");
+    if (modalNuevoIngreso) {
+        modalNuevoIngreso.classList.add('active');
     }
 }
 
 function cerrarModalNuevoIngreso() {
-    const modal = document.getElementById('modalNuevoIngreso');
-    if (modal) {
-        modal.classList.remove('active');
+    if (modalNuevoIngreso) {
+        modalNuevoIngreso.classList.remove('active');
     }
 }
 
@@ -3504,6 +3436,13 @@ async function guardarIngresoManual() {
         return;
     }
 
+    // 👉 NUEVO: Calculamos la fecha de hoy para mandársela a la Base de Datos
+    const hoy = new Date();
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    const fechaActual = `${yyyy}-${mm}-${dd}`;
+
     try {
         const respuesta = await fetch('http://localhost:3000/api/ingresos/manual', {
             method: 'POST',
@@ -3511,7 +3450,8 @@ async function guardarIngresoManual() {
             body: JSON.stringify({
                 Concepto: concepto,
                 Monto_Total: parseFloat(monto),
-                Medio_Pago: medioPago
+                Medio_Pago: medioPago,
+                Fecha: fechaActual // 👉 Le sumamos la fecha al paquete
             })
         });
 
@@ -3528,23 +3468,257 @@ async function guardarIngresoManual() {
     }
 }
 
+
 // ==========================================================================
-// 9. MÓDULO DE CONFIGURACIÓN
+// 9. MÓDULO DE DASHBOARD Y MÉTRICAS
 // ==========================================================================
 
-// --- NAVEGACIÓN INTERNA DE CONFIGURACIÓN ---
+let graficoIngresosInstancia = null;
+let graficoTurnosInstancia = null;
+let graficoServiciosInstancia = null;
+let graficoEmpleadasInstancia = null;
+
+const formatoFechaSQL = (fecha) => {
+    const yyyy = fecha.getFullYear();
+    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dd = String(fecha.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
+function obtenerFechasFiltroRapido(tipoFiltro) {
+    const hoy = new Date();
+    let desde = new Date();
+    let hasta = new Date();
+
+    if (tipoFiltro === 'hoy') {
+    } else if (tipoFiltro === 'ultimos_7_dias') {
+        desde.setDate(hoy.getDate() - 7);
+    } else if (tipoFiltro === 'este_mes') {
+        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    } else if (tipoFiltro === 'ultimo_mes') {
+        desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+        hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0); 
+    }
+    
+    return { desde: formatoFechaSQL(desde), hasta: formatoFechaSQL(hasta) };
+}
+
+async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
+    let desde, hasta;
+
+    if (desdeCustom && hastaCustom) {
+        desde = desdeCustom;
+        hasta = hastaCustom;
+    } else {
+        const selectFiltro = document.getElementById('filtroRapidoDash');
+        if (selectFiltro && selectFiltro.value !== 'personalizado') {
+            const fechas = obtenerFechasFiltroRapido(selectFiltro.value);
+            desde = fechas.desde;
+            hasta = fechas.hasta;
+        } else {
+            return; 
+        }
+    }
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
+        const kpis = await respuesta.json();
+
+        document.getElementById('dashIngresos').textContent = `$${kpis.Ingresos.toLocaleString('es-AR')}`;
+        document.getElementById('dashGastos').textContent = `$${kpis.Gastos.toLocaleString('es-AR')}`;
+        document.getElementById('dashSueldos').textContent = `$${kpis.Sueldos.toLocaleString('es-AR')}`;
+        document.getElementById('dashGanancia').textContent = `$${kpis.GananciaNeta.toLocaleString('es-AR')}`;
+
+        cargarGraficoDashboard(desde, hasta);
+
+    } catch (error) {
+        console.error("Error cargando métricas del dashboard:", error);
+    }
+}
+
+async function cargarGraficoDashboard(desde, hasta) {
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
+        
+        if (!respuesta.ok) return;
+
+        const datos = await respuesta.json();
+
+        const etiquetasIngresos = datos.map(d => d.Dia);
+        const valoresIngresos = datos.map(d => d.Total);
+
+        const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        const valoresTurnos = [0, 0, 0, 0, 0, 0, 0]; 
+
+        datos.forEach(d => {
+            if (d.Turnos > 0) {
+                const fechaObj = new Date(d.FechaCompleta + 'T00:00:00');
+                let diaIdx = fechaObj.getDay(); 
+                diaIdx = diaIdx === 0 ? 6 : diaIdx - 1;
+                valoresTurnos[diaIdx] += d.Turnos;
+            }
+        });
+
+        // 1. GRÁFICO DE INGRESOS
+        const ctxIngresos = document.getElementById('graficoIngresos').getContext('2d');
+        if (graficoIngresosInstancia) graficoIngresosInstancia.destroy();
+
+        graficoIngresosInstancia = new Chart(ctxIngresos, {
+            type: 'line', 
+            data: {
+                labels: etiquetasIngresos,
+                datasets: [{
+                    label: 'Ingresos ($)',
+                    data: valoresIngresos,
+                    borderColor: '#D4A347', 
+                    backgroundColor: 'rgba(212, 163, 71, 0.2)', 
+                    borderWidth: 3,
+                    tension: 0.4, 
+                    fill: true, 
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#D4A347',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: { callback: function(value) { return '$' + value.toLocaleString('es-AR'); } }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // 2. GRÁFICO DE TURNOS
+        const ctxTurnos = document.getElementById('graficoTurnos').getContext('2d');
+        if (graficoTurnosInstancia) graficoTurnosInstancia.destroy();
+
+        graficoTurnosInstancia = new Chart(ctxTurnos, {
+            type: 'bar', 
+            data: {
+                labels: diasSemana, 
+                datasets: [{
+                    label: 'Cantidad de Turnos',
+                    data: valoresTurnos, 
+                    backgroundColor: '#daab53', 
+                    borderRadius: 6 
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: { stepSize: 1 } 
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // 3. GRÁFICO DE SERVICIOS ESTRELLA
+        const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
+        if (respServicios.ok) {
+            const datosServicios = await respServicios.json();
+            
+            const etiquetasServicios = datosServicios.map(d => d.Nombre);
+            const valoresCantidades = datosServicios.map(d => d.Cantidad);
+
+            const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
+            if (graficoServiciosInstancia) graficoServiciosInstancia.destroy();
+
+            graficoServiciosInstancia = new Chart(ctxServicios, {
+                type: 'bar', 
+                data: {
+                    labels: etiquetasServicios,
+                    datasets: [{
+                        label: 'Veces realizado',
+                        data: valoresCantidades,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)', 
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', 
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: '#f0f0f0' },
+                            ticks: { stepSize: 1 }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. GRÁFICO DE TOP EMPLEADAS
+        const respEmp = await fetch(`http://localhost:3000/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
+        if (respEmp.ok) {
+            const datosEmp = await respEmp.json();
+            const ctxEmpleadas = document.getElementById('graficoEmpleadas').getContext('2d');
+            
+            if (graficoEmpleadasInstancia) graficoEmpleadasInstancia.destroy();
+            
+            graficoEmpleadasInstancia = new Chart(ctxEmpleadas, {
+                type: 'doughnut', 
+                data: {
+                    labels: datosEmp.map(d => d.Nombre),
+                    datasets: [{ 
+                        data: datosEmp.map(d => d.Cantidad), 
+                        backgroundColor: ['#d4af37', '#17a2b8', '#28a745', '#e6c875', '#6c757d'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } 
+                    },
+                    cutout: '65%' 
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error("Error cargando los gráficos:", error);
+    }
+}
+
+
+// ==========================================================================
+// 10. MÓDULO DE CONFIGURACIÓN GENERAL (Config / Ajustes)
+// ==========================================================================
+
 function cambiarVistaConfig(vista) {
     const vistaGastos = document.getElementById('vistaConfigGastos');
     const vistaServicios = document.getElementById('vistaConfigServicios');
     const vistaHorarios = document.getElementById('vistaConfigHorarios');
-    const vistaPagos = document.getElementById('vistaConfigPagos'); // Agregamos la nueva
+    const vistaPagos = document.getElementById('vistaConfigPagos'); 
     
     const btnGastos = document.getElementById('btnVistaConfigGastos');
     const btnServicios = document.getElementById('btnVistaConfigServicios');
     const btnHorarios = document.getElementById('btnVistaConfigHorarios');
-    const btnPagos = document.getElementById('btnVistaConfigPagos'); // Agregamos el nuevo
+    const btnPagos = document.getElementById('btnVistaConfigPagos'); 
 
-    // Apagamos todo de forma segura
     if (vistaGastos) vistaGastos.style.display = 'none';
     if (vistaServicios) vistaServicios.style.display = 'none';
     if (vistaHorarios) vistaHorarios.style.display = 'none';
@@ -3555,7 +3729,6 @@ function cambiarVistaConfig(vista) {
     if (btnHorarios) btnHorarios.classList.remove('active');
     if (btnPagos) btnPagos.classList.remove('active');
 
-    // Prendemos solo lo que toca
     if (vista === 'gastos') {
         if (vistaGastos) vistaGastos.style.display = 'block';
         if (btnGastos) btnGastos.classList.add('active');
@@ -3574,14 +3747,11 @@ function cambiarVistaConfig(vista) {
     } else if (vista === 'pagos') {
         if (vistaPagos) vistaPagos.style.display = 'block';
         if (btnPagos) btnPagos.classList.add('active');
-        // ¡Acá llamamos a la función que vamos a crear ya mismo!
         cargarTablaMediosPago(); 
     }
 }
 
-// ==========================================
-// CONFIGURACIÓN DE GASTOS (CATEGORÍAS)
-// ==========================================
+// --- CONFIG: CATEGORÍAS GASTOS ---
 const modalCategoria = document.getElementById('modalNuevaCategoria');
 
 async function cargarTablaConfigCategorias() {
@@ -3694,10 +3864,7 @@ async function eliminarCategoriaGasto(id) {
     }
 }
 
-
-// ==========================================
-// CONFIGURACIÓN DE SERVICIOS
-// ==========================================
+// --- CONFIG: SERVICIOS ---
 const modalServicio = document.getElementById('modalNuevoServicio');
 
 async function cargarTablaConfigServicios() {
@@ -3834,9 +4001,7 @@ async function eliminarServicio(id) {
     }
 }
 
-// ==========================================
-// CONFIGURACIÓN DE ÁREAS (CATEGORÍAS)
-// ==========================================
+// --- CONFIG: ÁREAS ---
 const modalArea = document.getElementById('modalNuevaArea');
 
 async function cargarTablaConfigAreas() {
@@ -3949,14 +4114,9 @@ async function eliminarArea(id) {
     }
 }
 
-// ==========================================
-// CONFIGURACIÓN DE HORARIOS DE ATENCIÓN
-// ==========================================
-
+// --- CONFIG: HORARIOS DE ATENCIÓN ---
 function limpiarHoraSQL(valor) {
     if (!valor) return '';
-    // La BD manda "1970-01-01T12:30:00.000Z" (que en Salta es 09:30 local).
-    // Al crear new Date(), JS aplica el offset de tu zona horaria y devuelve la hora correcta.
     const fecha = new Date(valor);
     if (!isNaN(fecha.getTime())) {
         const horas = String(fecha.getHours()).padStart(2, '0');
@@ -4073,10 +4233,7 @@ async function guardarHorarioEnLote() {
     }
 }
 
-// ==========================================
-// CONFIGURACIÓN DE MEDIOS DE PAGO
-// ==========================================
-
+// --- CONFIG: MEDIOS DE PAGO ---
 function abrirModalMedioPago(id = '', nombre = '') {
     document.getElementById('idMedioPagoOculto').value = id;
     document.getElementById('nombreMedioPagoInput').value = nombre;
@@ -4086,12 +4243,10 @@ function abrirModalMedioPago(id = '', nombre = '') {
         titulo.textContent = id ? 'Editar Medio de Pago' : 'Nuevo Medio de Pago';
     }
 
-    // ARREGLO 1: Usamos classList.add('active') en vez de display flex
     const modal = document.getElementById('modalMedioPago');
     if (modal) modal.classList.add('active');
 }
 
-// Agregamos la función para cerrar correctamente
 function cerrarModalMedioPago() {
     const modal = document.getElementById('modalMedioPago');
     if (modal) modal.classList.remove('active');
@@ -4118,7 +4273,7 @@ async function guardarMedioPago() {
 
         if (respuesta.ok) {
             mostrarNotificacion(id ? 'Método actualizado con éxito' : 'Nuevo método guardado', 'success');
-            cerrarModalMedioPago(); // Usamos la nueva función
+            cerrarModalMedioPago(); 
             cargarTablaMediosPago(); 
             cargarMediosDePago(); 
         } else {
@@ -4131,7 +4286,6 @@ async function guardarMedioPago() {
 }
 
 async function eliminarMedioPago(id) {
-    // ARREGLO 2: Usamos tu cartel de confirmación lindo en vez de confirm()
     const confirmacion = await pedirConfirmacion('¿Estás segura de que querés borrar este método de pago?');
     if (!confirmacion) return;
 
@@ -4151,414 +4305,4 @@ async function eliminarMedioPago(id) {
         console.error(error);
         mostrarNotificacion('No se pudo conectar con el servidor', 'error');
     }
-}
-
-// ==========================================================================
-// 10. SECCIÓN: DASHBOARD Y MÉTRICAS
-// ==========================================================================
-
-// Helper: Formatea una fecha de JS a 'YYYY-MM-DD'
-const formatoFechaSQL = (fecha) => {
-    const yyyy = fecha.getFullYear();
-    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dd = String(fecha.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-};
-
-// Obtiene las fechas de inicio y fin según el filtro rápido seleccionado
-function obtenerFechasFiltroRapido(tipoFiltro) {
-    const hoy = new Date();
-    let desde = new Date();
-    let hasta = new Date();
-
-    if (tipoFiltro === 'hoy') {
-        // 'desde' y 'hasta' ya son hoy
-    } else if (tipoFiltro === 'ultimos_7_dias') {
-        desde.setDate(hoy.getDate() - 7);
-    } else if (tipoFiltro === 'este_mes') {
-        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    } else if (tipoFiltro === 'ultimo_mes') {
-        desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
-        hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0); // El día 0 es el último día del mes anterior
-    }
-    
-    return { desde: formatoFechaSQL(desde), hasta: formatoFechaSQL(hasta) };
-}
-
-// Llama al servidor y actualiza las tarjetitas
-async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
-    let desde, hasta;
-
-    if (desdeCustom && hastaCustom) {
-        // Si usamos el calendario de rango (Flatpickr)
-        desde = desdeCustom;
-        hasta = hastaCustom;
-    } else {
-        // Si usamos el menú desplegable rápido
-        const selectFiltro = document.getElementById('filtroRapidoDash');
-        if (selectFiltro && selectFiltro.value !== 'personalizado') {
-            const fechas = obtenerFechasFiltroRapido(selectFiltro.value);
-            desde = fechas.desde;
-            hasta = fechas.hasta;
-        } else {
-            return; // Está en 'personalizado' pero aún no eligió fechas, no hacemos nada
-        }
-    }
-
-    try {
-        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
-        const kpis = await respuesta.json();
-
-        // Actualizamos el HTML formateando los números con separadores de miles
-        document.getElementById('dashIngresos').textContent = `$${kpis.Ingresos.toLocaleString('es-AR')}`;
-        document.getElementById('dashGastos').textContent = `$${kpis.Gastos.toLocaleString('es-AR')}`;
-        document.getElementById('dashSueldos').textContent = `$${kpis.Sueldos.toLocaleString('es-AR')}`;
-        document.getElementById('dashGanancia').textContent = `$${kpis.GananciaNeta.toLocaleString('es-AR')}`;
-
-        // Llamamos a que se dibuje el gráfico con las mismas fechas
-        cargarGraficoDashboard(desde, hasta);
-
-    } catch (error) {
-        console.error("Error cargando métricas del dashboard:", error);
-    }
-}
-
-// Variables globales para guardar los gráficos
-let graficoIngresosInstancia = null;
-let graficoTurnosInstancia = null;
-let graficoServiciosInstancia = null;
-let graficoEmpleadasInstancia = null;
-
-// Llama al servidor y dibuja AMBOS gráficos
-async function cargarGraficoDashboard(desde, hasta) {
-    try {
-        const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
-        
-        if (!respuesta.ok) return;
-
-        const datos = await respuesta.json();
-
-        // ==========================================
-        // DATOS PARA GRÁFICO 1 (Ingresos por fecha)
-        // ==========================================
-        const etiquetasIngresos = datos.map(d => d.Dia);
-        const valoresIngresos = datos.map(d => d.Total);
-
-        // ==========================================
-        // DATOS PARA GRÁFICO 2 (Turnos por Día Fijo)
-        // ==========================================
-        const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-        const valoresTurnos = [0, 0, 0, 0, 0, 0, 0]; // Empezamos todo en cero
-
-        // Recorremos los datos de la base de datos y los acomodamos en su día correspondiente
-        datos.forEach(d => {
-            if (d.Turnos > 0) {
-                // Le agregamos la hora T00:00:00 para evitar que JavaScript se confunda con la zona horaria
-                const fechaObj = new Date(d.FechaCompleta + 'T00:00:00');
-                let diaIdx = fechaObj.getDay(); // JS nos devuelve: 0 = Domingo, 1 = Lunes, etc.
-                
-                // Lo acomodamos para que encaje con nuestro array (Lunes = 0, Domingo = 6)
-                diaIdx = diaIdx === 0 ? 6 : diaIdx - 1;
-                
-                // Sumamos los turnos de esa fecha a la cajita de su día
-                valoresTurnos[diaIdx] += d.Turnos;
-            }
-        });
-
-        // ==========================================
-        // 1. GRÁFICO DE INGRESOS (Ola Mostaza)
-        // ==========================================
-        const ctxIngresos = document.getElementById('graficoIngresos').getContext('2d');
-        if (graficoIngresosInstancia) graficoIngresosInstancia.destroy();
-
-        graficoIngresosInstancia = new Chart(ctxIngresos, {
-            type: 'line', 
-            data: {
-                labels: etiquetasIngresos,
-                datasets: [{
-                    label: 'Ingresos ($)',
-                    data: valoresIngresos,
-                    borderColor: '#D4A347', 
-                    backgroundColor: 'rgba(212, 163, 71, 0.2)', 
-                    borderWidth: 3,
-                    tension: 0.4, 
-                    fill: true, 
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#D4A347',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#f0f0f0' },
-                        ticks: { callback: function(value) { return '$' + value.toLocaleString('es-AR'); } }
-                    },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        // ==========================================
-        // 2. GRÁFICO DE TURNOS (Barras Fijas L a D)
-        // ==========================================
-        const ctxTurnos = document.getElementById('graficoTurnos').getContext('2d');
-        if (graficoTurnosInstancia) graficoTurnosInstancia.destroy();
-
-        graficoTurnosInstancia = new Chart(ctxTurnos, {
-            type: 'bar', 
-            data: {
-                labels: diasSemana, 
-                datasets: [{
-                    label: 'Cantidad de Turnos',
-                    data: valoresTurnos, 
-                    backgroundColor: '#daab53', 
-                    borderRadius: 6 
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#f0f0f0' },
-                        ticks: { stepSize: 1 } 
-                    },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        // ==========================================
-        // 3. GRÁFICO DE SERVICIOS ESTRELLA (Horizontal)
-        // ==========================================
-        const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
-        if (respServicios.ok) {
-            const datosServicios = await respServicios.json();
-            
-            const etiquetasServicios = datosServicios.map(d => d.Nombre);
-            const valoresCantidades = datosServicios.map(d => d.Cantidad);
-
-            const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
-            if (graficoServiciosInstancia) graficoServiciosInstancia.destroy();
-
-            graficoServiciosInstancia = new Chart(ctxServicios, {
-                type: 'bar', 
-                data: {
-                    labels: etiquetasServicios,
-                    datasets: [{
-                        label: 'Veces realizado',
-                        data: valoresCantidades,
-                        backgroundColor: 'rgba(40, 167, 69, 0.7)', 
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    indexAxis: 'y', 
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: { color: '#f0f0f0' },
-                            ticks: { stepSize: 1 }
-                        },
-                        y: {
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
-
-        // ==========================================
-        // 4. GRÁFICO DE TOP EMPLEADAS (Dona)
-        // ==========================================
-        const respEmp = await fetch(`http://localhost:3000/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
-        if (respEmp.ok) {
-            const datosEmp = await respEmp.json();
-            const ctxEmpleadas = document.getElementById('graficoEmpleadas').getContext('2d');
-            
-            if (graficoEmpleadasInstancia) graficoEmpleadasInstancia.destroy();
-            
-            graficoEmpleadasInstancia = new Chart(ctxEmpleadas, {
-                type: 'doughnut', 
-                data: {
-                    labels: datosEmp.map(d => d.Nombre),
-                    datasets: [{ 
-                        data: datosEmp.map(d => d.Cantidad), 
-                        // Colores variados y armónicos para la marca
-                        backgroundColor: ['#d4af37', '#17a2b8', '#28a745', '#e6c875', '#6c757d'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                }, 
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } 
-                    },
-                    cutout: '65%' // Qué tan ancho es el agujero de la dona
-                }
-            });
-        }
-
-    } catch (error) {
-        console.error("Error cargando los gráficos:", error);
-    }
-}
-
-// ==========================================
-// LÓGICA DEL MENÚ DESPLEGABLE / HAMBURGUESA
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    const btnMenu = document.getElementById('btnToggleMenu');
-    const sidebar = document.getElementById('sidebar');
-
-    if (btnMenu && sidebar) {
-        btnMenu.addEventListener('click', () => {
-            // Si estamos en celular, abrimos/cerramos tipo cajón
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
-            } else {
-                // Si estamos en la compu, colapsamos/expandimos la barra
-                sidebar.classList.toggle('collapsed');
-            }
-        });
-    }
-});
-
-// ==========================================================================
-// MÓDULO DE SEGURIDAD
-// ==========================================================================
-async function iniciarSesion() {
-    const inputUsuario = document.getElementById('loginUsuario').value.trim();
-    const inputPassword = document.getElementById('loginPassword').value.trim();
-    const btn = event.currentTarget;
-
-    if (!inputUsuario || !inputPassword) {
-        mostrarNotificacion("Completá todos los campos", "warning");
-        return;
-    }
-
-    const textoOriginal = btn.textContent;
-    btn.textContent = 'Verificando...';
-    btn.style.opacity = '0.7';
-
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Username: inputUsuario, Password: inputPassword })
-        });
-
-        const datos = await respuesta.json();
-
-        if (respuesta.ok) {
-            // Guardamos la pulsera VIP y el Rol
-            localStorage.setItem('emme_token', datos.token);
-            localStorage.setItem('emme_rol', datos.rol);
-            
-            mostrarNotificacion("¡Bienvenida al sistema!", "success");
-
-            // Le damos medio segundo para que se vea la notificación y recargamos la página 
-            // para que el sistema (el DOMContentLoaded) cargue todos los datos.
-            setTimeout(() => {
-                window.location.reload();
-            }, 800);
-
-        } else {
-            mostrarNotificacion(datos.error || "Error al iniciar sesión", "error");
-        }
-    } catch (error) {
-        console.error("Error:", error);
-        mostrarNotificacion("Error de conexión con el servidor", "error");
-    } finally {
-        btn.textContent = textoOriginal;
-        btn.style.opacity = '1';
-    }
-}
-
-// Esta función esconde o muestra partes del HTML según quién entró
-function aplicarPermisos(rol) {
-    console.log("Configurando interfaz para rol:", rol);
-
-    const botonesMenu = document.querySelectorAll('.menu-item');
-    const btnNuevoTurno = document.getElementById('btnNuevoTurno'); 
-
-    // 1. Etiqueta global para CSS (Blindaje extra)
-    if (rol === 'Empleada') {
-        document.body.classList.add('is-empleada');
-    } else {
-        document.body.classList.remove('is-empleada');
-    }
-
-    // 2. Filtro del Menú Lateral
-    botonesMenu.forEach(boton => {
-        const textoMenu = boton.textContent.trim();
-
-        if (rol === 'Empleada') {
-            // Modulos prohibidos para empleadas
-            if (['Clientas', 'Gastos', 'Ingresos', 'Configuración', 'Empleados', 'Empleadas'].includes(textoMenu)) {
-                boton.style.display = 'none';
-            } else {
-                boton.style.display = 'flex'; // Los permitidos (Turnos, Resúmenes y Mis Pagos) se ven
-            }
-        } else {
-            // Si es Admin (Mili), mostramos todo EXCEPTO la vista individual de empleadas
-            if (textoMenu === 'Mis Pagos') {
-                boton.style.display = 'none';
-            } else {
-                boton.style.display = 'flex';
-            }
-        }
-    });
-
-    // 3. Permisos de acciones (Ej: Crear turnos)
-    if (rol === 'Empleada') {
-        if (btnNuevoTurno) btnNuevoTurno.style.display = 'none';
-    } else {
-        if (btnNuevoTurno) btnNuevoTurno.style.display = 'block';
-    }
-
-    // 4. Forzar Vista Semanal para empleadas y ocultar la Diaria
-    if (rol === 'Empleada') {
-        // Buscamos las pestañas por su clase CSS
-        const botonesTabs = document.querySelectorAll('.btn-tab');
-        
-        botonesTabs.forEach(btn => {
-            const textoBoton = btn.textContent.trim();
-            
-            if (textoBoton === 'Agenda Diaria') {
-                // Desaparecemos el botón por completo
-                btn.style.display = 'none'; 
-            }
-            
-            if (textoBoton === 'Agenda Semanal') {
-                // Le damos 100 milisegundos de ventaja al HTML para que termine de cargar
-                // y recién ahí simulamos el clic
-                setTimeout(() => {
-                    btn.click();
-                }, 100);
-            }
-        });
-    }
-}
-
-// Función para salir del sistema
-function cerrarSesion() {
-    localStorage.removeItem('emme_token');
-    localStorage.removeItem('emme_rol');
-    localStorage.removeItem('emme_seccion_activa');
-    window.location.reload(); // Recargamos la página para que salte el Login
 }
