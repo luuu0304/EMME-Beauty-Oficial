@@ -112,3 +112,23 @@ CREATE TABLE Usuario (
     Rol VARCHAR(20) NOT NULL CHECK (Rol IN ('Admin', 'Empleada')), -- Restringimos los tipos
     Id_Empleada INT NULL FOREIGN KEY REFERENCES Empleada(Id_Empleada) -- Si es Admin, esto queda en NULL
 );
+
+-- Creamos la tabla para guardar los mensajes del bot
+CREATE TABLE Plantillas_Bot (
+    Id_Plantilla INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre_Funcion VARCHAR(50) NOT NULL,
+    Texto_Mensaje NVARCHAR(MAX) NOT NULL
+);
+
+-- Insertamos el mensaje de recordatorio con comodines {}
+INSERT INTO Plantillas_Bot (Nombre_Funcion, Texto_Mensaje)
+VALUES (
+    'Recordatorio_24hs', 
+    '¡Hola {Nombre_Clienta}! 💅 Te escribimos desde *EMME Beauty* para recordarte tu turno de *{Nombre_Servicio}* para mañana a las *{Hora} hs*.\n\nPor favor, confirmá tu asistencia con un "Sí" o avisanos con tiempo si necesitás reprogramar. ¡Te esperamos! ✨'
+);
+
+UPDATE Plantillas_Bot
+SET Texto_Mensaje = N'¡Hola {Nombre_Clienta}! 💅 Te escribimos desde *EMME Beauty* para recordarte tu turno de *{Nombre_Servicio}* para mañana a las *{Hora} hs*.
+
+Por favor, confirmá tu asistencia con un "Sí" o avisanos con tiempo si necesitás reprogramar. ¡Te esperamos! ✨'
+WHERE Nombre_Funcion = 'Recordatorio_24hs';

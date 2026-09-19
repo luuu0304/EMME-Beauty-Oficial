@@ -4,6 +4,8 @@ const cors = require('cors');
 const sql = require('mssql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const cron = require('node-cron');
+const { iniciarBot, enviarMensaje, getEstadoBot } = require('./whatsappBot');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -42,6 +44,43 @@ const dbConfig = {
         useUTC: false
     }
 };
+
+// RUTA PARA EL PANEL DE CONFIGURACIÓN DEL BOT (FRONTEND)
+app.get('/api/bot/status', (req, res) => {
+    const estado = getEstadoBot();
+    res.json(estado);
+});
+
+// RUTA PARA OBTENER LAS PLANTILLAS DEL BOT
+app.get('/api/bot/plantillas', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT Id_Plantilla, Nombre_Funcion, Texto_Mensaje FROM Plantillas_Bot');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error obteniendo plantillas:', error);
+        res.status(500).json({ error: 'Error al obtener plantillas' });
+    }
+});
+
+// RUTA PARA ACTUALIZAR UNA PLANTILLA DEL BOT
+app.put('/api/bot/plantillas/:id', async (req, res) => {
+    const { id } = req.params;
+    const { texto } = req.body;
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('texto', sql.NVarChar, texto)
+            .query('UPDATE Plantillas_Bot SET Texto_Mensaje = @texto WHERE Id_Plantilla = @id');
+            
+        res.json({ success: true, message: 'Plantilla actualizada correctamente' });
+    } catch (error) {
+        console.error('Error actualizando plantilla:', error);
+        res.status(500).json({ error: 'Error al actualizar la plantilla en la base de datos' });
+    }
+});
 
 // ==========================================================================
 // 2. MÓDULO DE SEGURIDAD (AUTH)
@@ -1129,6 +1168,71 @@ app.get('/api/dashboard/top-empleadas', async (req, res) => {
 // ==========================================================================
 // 10. INICIO DEL SERVIDOR
 // ==========================================================================
+
+// =========================================================================
+// RUTINA DE RECORDATORIOS AUTOMÁTICOS (CRON JOB)
+// =========================================================================
+const programarRecordatorios = () => {
+    cron.schedule('0 10 * * *', async () => {
+        console.log('Ejecutando rutina de recordatorios diarios (Turnos de mañana)...');
+        
+        try {
+            let pool = await sql.connect(dbConfig);
+            
+            // 1. Buscamos la plantilla del mensaje en la base de datos
+            const resultPlantilla = await pool.request()
+                .input('funcion', sql.VarChar, 'Recordatorio_24hs')
+                .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
+            
+            if (resultPlantilla.recordset.length === 0) {
+                console.log('Error: No se encontró la plantilla del mensaje en la base de datos.');
+                return;
+            }
+            const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
+
+            // 2. Buscamos los turnos de mañana
+            const resultTurnos = await pool.request().query(`
+                SELECT t.Id_Turno, c.Nombre AS Nombre_Clienta, c.Telefono, s.Nombre AS Nombre_Servicio, t.Fecha_Hora
+                FROM Turno t
+                INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, 1, GETDATE()) AS DATE)
+                AND t.Estado = 'Pendiente'
+            `);
+
+            const turnosManana = resultTurnos.recordset;
+
+            if (turnosManana.length === 0) {
+                console.log('No hay turnos pendientes para mañana. Nada que enviar.');
+                return;
+            }
+
+            // 3. Recorremos los turnos, armamos el mensaje final y enviamos
+            for (let turno of turnosManana) {
+                if (turno.Telefono && turno.Telefono.length >= 10) {
+                    const fechaTurno = new Date(turno.Fecha_Hora);
+                    const horaFormateada = fechaTurno.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+                    // Reemplazamos los comodines por los datos reales de la clienta
+                    let mensajeFinal = textoBase
+                        .replace('{Nombre_Clienta}', turno.Nombre_Clienta)
+                        .replace('{Nombre_Servicio}', turno.Nombre_Servicio)
+                        .replace('{Hora}', horaFormateada);
+
+                    await enviarMensaje(turno.Telefono, mensajeFinal);
+                }
+            }
+            console.log('Rutina de recordatorios finalizada con éxito.');
+        } catch (error) {
+            console.error('Error al ejecutar la rutina de recordatorios:', error);
+        }
+    });
+};
+
+// Arrancamos los motores
+iniciarBot();
+programarRecordatorios();
+
 app.listen(port, () => {
     console.log(`Servidor corriendo impecable en http://localhost:${port} `);
 });

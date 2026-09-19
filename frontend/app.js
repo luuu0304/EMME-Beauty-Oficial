@@ -11,6 +11,7 @@
 // 8. MÓDULO DE FINANZAS (Registro de Gastos e Ingresos manuales)
 // 9. MÓDULO DE DASHBOARD Y MÉTRICAS (Gráficos)
 // 10. MÓDULO DE CONFIGURACIÓN (Servicios, Áreas, Horarios, Pagos)
+// 11. MÓDULO DE WHATSAPP BOT (Estado, QR y Envío de Mensajes)
 // ==========================================================================
 
 // ==========================================================================
@@ -3709,26 +3710,32 @@ async function cargarGraficoDashboard(desde, hasta) {
 // ==========================================================================
 
 function cambiarVistaConfig(vista) {
+    // 1. Agregamos las variables para la sección del bot
     const vistaGastos = document.getElementById('vistaConfigGastos');
     const vistaServicios = document.getElementById('vistaConfigServicios');
     const vistaHorarios = document.getElementById('vistaConfigHorarios');
     const vistaPagos = document.getElementById('vistaConfigPagos'); 
+    const vistaBot = document.getElementById('seccion-bot'); // <-- Contenedor del bot
     
     const btnGastos = document.getElementById('btnVistaConfigGastos');
     const btnServicios = document.getElementById('btnVistaConfigServicios');
     const btnHorarios = document.getElementById('btnVistaConfigHorarios');
     const btnPagos = document.getElementById('btnVistaConfigPagos'); 
+    const btnBot = document.getElementById('btnVistaConfigBot');
 
     if (vistaGastos) vistaGastos.style.display = 'none';
     if (vistaServicios) vistaServicios.style.display = 'none';
     if (vistaHorarios) vistaHorarios.style.display = 'none';
     if (vistaPagos) vistaPagos.style.display = 'none';
+    if (vistaBot) vistaBot.style.display = 'none';
     
     if (btnGastos) btnGastos.classList.remove('active');
     if (btnServicios) btnServicios.classList.remove('active');
     if (btnHorarios) btnHorarios.classList.remove('active');
     if (btnPagos) btnPagos.classList.remove('active');
+    if (btnBot) btnBot.classList.remove('active');
 
+    // 3. Mostramos solo la vista que el usuario seleccionó
     if (vista === 'gastos') {
         if (vistaGastos) vistaGastos.style.display = 'block';
         if (btnGastos) btnGastos.classList.add('active');
@@ -3748,6 +3755,13 @@ function cambiarVistaConfig(vista) {
         if (vistaPagos) vistaPagos.style.display = 'block';
         if (btnPagos) btnPagos.classList.add('active');
         cargarTablaMediosPago(); 
+        
+    } else if (vista === 'bot') {
+        if (vistaBot) vistaBot.style.display = 'block';
+        if (btnBot) btnBot.classList.add('active');
+        
+        if (typeof chequearEstadoBot === 'function') chequearEstadoBot();
+        if (typeof cargarTablaPlantillasBot === 'function') cargarTablaPlantillasBot(); // <-- ¡LÍNEA NUEVA!
     }
 }
 
@@ -4306,3 +4320,126 @@ async function eliminarMedioPago(id) {
         mostrarNotificacion('No se pudo conectar con el servidor', 'error');
     }
 }
+
+// ==========================================================================
+// 11. MÓDULO DE WHATSAPP BOT (Estado, QR y Envío de Mensajes)
+// ==========================================================================
+
+// CONTROLADOR DEL PANEL DEL BOT DE WHATSAPP (FRONTEND)
+const chequearEstadoBot = async () => {
+    try {
+        // Consultamos la ruta que creamos en el backend
+        const respuesta = await fetch('http://localhost:3000/api/bot/status');
+        const data = await respuesta.json();
+        
+        const spanEstado = document.getElementById('bot-estado-texto');
+        const contenedorQr = document.getElementById('bot-qr-container');
+        const imgQr = document.getElementById('bot-qr-img');
+
+        if (!spanEstado || !contenedorQr || !imgQr) return; // Por si no estamos en la pestaña de configuración
+
+        spanEstado.innerText = data.estado;
+
+        // Si está esperando QR, usamos una API gratuita para dibujar la imagen
+        if (data.estado === 'Esperando QR' && data.qr) {
+            imgQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qr)}`;
+            contenedorQr.style.display = 'block';
+            spanEstado.style.color = '#e67e22'; // Naranja
+        } 
+        // Si el bot ya está conectado, escondemos el QR
+        else if (data.estado === 'Conectado') {
+            contenedorQr.style.display = 'none';
+            spanEstado.style.color = '#27ae60'; // Verde
+        } 
+        // Si está desconectado o apagado
+        else {
+            contenedorQr.style.display = 'none';
+            spanEstado.style.color = '#e74c3c'; // Rojo
+        }
+    } catch (error) {
+        console.error('Error al consultar el estado del bot:', error);
+        document.getElementById('bot-estado-texto').innerText = 'Backend apagado';
+    }
+};
+
+// Hacemos que la página chequee el estado automáticamente cada 3 segundos
+setInterval(chequearEstadoBot, 3000);
+
+// Ejecutamos la primera consulta apenas carga la página
+chequearEstadoBot();
+
+// CONTROLADORES DEL MODAL DE PLANTILLAS DEL BOT
+let plantillasEnMemoria = []; // Guardamos los datos temporalmente para no volver a consultar
+
+// Modificamos sutilmente la función anterior para guardar los datos en memoria
+const cargarTablaPlantillasBot = async () => {
+    const tbody = document.getElementById('tablaPlantillasBotBody');
+    if (!tbody) return;
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/bot/plantillas');
+        const plantillas = await respuesta.json();
+        
+        plantillasEnMemoria = plantillas; // Guardamos en la variable global
+        tbody.innerHTML = ''; 
+
+        if (plantillas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--texto-claro);">No hay plantillas configuradas.</td></tr>';
+            return;
+        }
+
+        plantillas.forEach(plan => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--borde)';
+            
+            tr.innerHTML = `
+                <td style="padding: 12px 15px; color: var(--texto-oscuro); font-weight: 500;">${plan.Nombre_Funcion}</td>
+                <td style="padding: 12px 15px; color: var(--texto-claro); max-width: 400px; white-space: pre-wrap;">${plan.Texto_Mensaje}</td>
+                <td style="padding: 12px 15px; text-align: center;">
+                    <button onclick="abrirModalEditarPlantilla(${plan.Id_Plantilla})" style="background: none; border: none; cursor: pointer; color: #666;" title="Editar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Error al cargar plantillas:', error);
+    }
+};
+
+const abrirModalEditarPlantilla = (id) => {
+    const plantilla = plantillasEnMemoria.find(p => p.Id_Plantilla === id);
+    if (!plantilla) return;
+    
+    document.getElementById('idPlantillaEdit').value = plantilla.Id_Plantilla;
+    document.getElementById('textoPlantillaEdit').value = plantilla.Texto_Mensaje;
+    
+    document.getElementById('modalEditarPlantillaBot').style.display = 'flex';
+};
+
+const cerrarModalPlantillaBot = () => {
+    document.getElementById('modalEditarPlantillaBot').style.display = 'none';
+};
+
+const guardarPlantillaBot = async () => {
+    const id = document.getElementById('idPlantillaEdit').value;
+    const nuevoTexto = document.getElementById('textoPlantillaEdit').value;
+    
+    try {
+        const response = await fetch(`http://localhost:3000/api/bot/plantillas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texto: nuevoTexto })
+        });
+        
+        if (response.ok) {
+            cerrarModalPlantillaBot();
+            cargarTablaPlantillasBot(); // Recargamos la tabla para ver el texto nuevo
+        } else {
+            console.error('Error al guardar en el servidor');
+        }
+    } catch (error) {
+        console.error('Error de conexión:', error);
+    }
+};
