@@ -2436,6 +2436,7 @@ function prepararNuevaEmpleada() {
     document.getElementById('idEmpleadaOculto').value = ''; 
     document.getElementById('nombreEmpleadaInput').value = '';
     document.getElementById('dniEmpleadaInput').value = '';
+    document.getElementById('telefonoEmpleadaInput').value = ''; // <-- Limpiamos el teléfono
     
     document.getElementById('tituloModalEmpleada').textContent = 'Registrar Nueva Profesional';
     document.getElementById('btnGuardarEmpleada').textContent = 'Registrar';
@@ -2443,10 +2444,11 @@ function prepararNuevaEmpleada() {
     abrirModalEmpleada();
 }
 
-function abrirModalEditarEmpleada(id, nombre, dni) {
+function abrirModalEditarEmpleada(id, nombre, dni, telefono) {
     document.getElementById('idEmpleadaOculto').value = id; 
     document.getElementById('nombreEmpleadaInput').value = nombre;
     document.getElementById('dniEmpleadaInput').value = (dni === '-' || !dni) ? '' : dni;
+    document.getElementById('telefonoEmpleadaInput').value = telefono && telefono !== '-' ? telefono : '';
     
     document.getElementById('tituloModalEmpleada').textContent = 'Editar Profesional';
     document.getElementById('btnGuardarEmpleada').textContent = 'Actualizar';
@@ -2458,6 +2460,7 @@ async function guardarEmpleada() {
     const idOculto = document.getElementById('idEmpleadaOculto').value;
     const nombre = document.getElementById('nombreEmpleadaInput').value.trim();
     const dni = document.getElementById('dniEmpleadaInput').value.trim();
+    const telefono = document.getElementById('telefonoEmpleadaInput').value.trim(); // <-- Leemos el valor ingresado
 
     if (!nombre) {
         mostrarNotificacion("¡Por favor ingresá el nombre de la profesional!", "warning");
@@ -2482,7 +2485,11 @@ async function guardarEmpleada() {
         const response = await fetch(url, {
             method: metodoElegido,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Nombre_Ap: nombre, Dni: dni || null })
+            body: JSON.stringify({ 
+                Nombre_Ap: nombre, 
+                Dni: dni || null,
+                Telefono: telefono || null
+            })
         });
 
         if (response.ok) {
@@ -2490,7 +2497,7 @@ async function guardarEmpleada() {
             mostrarNotificacion(mensajeExito, "success");
             
             cerrarModalEmpleada();
-            cargarEmpleadas(); 
+            // cargarEmpleadas(); <-- Asegurate de que esta función exista en tu código
         } else {
             mostrarNotificacion("Hubo un error al guardar en el servidor.", "error");
         }
@@ -2524,7 +2531,8 @@ async function cargarEmpleadas() {
         empleadas.forEach(empleada => {
             const inicial = empleada.Nombre_Ap[0].toUpperCase();
             const dniText = empleada.DNI || empleada.dni || '-';
-
+            const telefonoText = empleada.Telefono || '-'; // <-- NUEVA VARIABLE
+            
             let infoUltimaLiq = '<span style="font-size: 12px; color: #aaa; font-style: italic;">Sin pagos previos registrados</span>';
             
             if (empleada.Ultima_Fecha_Liq) {
@@ -2542,6 +2550,7 @@ async function cargarEmpleadas() {
                         <div class="client-info">
                             <h3>${empleada.Nombre_Ap}</h3>
                             <span>DNI: ${dniText}</span>
+                            <span style="display: block; font-size: 12px; color: #888; margin-top: 2px;">Tel: ${telefonoText}</span> <!-- Lo agregamos a la vista -->
                         </div>
                     </div>
                     
@@ -2563,7 +2572,8 @@ async function cargarEmpleadas() {
                     </div>
 
                     <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center;">
-                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}')"> Editar</button>
+                        <!-- Le pasamos la cuarta variable a la función -->
+                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}', '${telefonoText}')"> Editar</button>
                         <button class="btn-icon" style="color: #d9534f;" onclick="eliminarEmpleada(${empleada.Id_Empleada})">Dar de baja</button>
                         <button class="btn-icon" onclick="abrirModalEspecialidades(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Configurar Áreas</button>
                     </div>

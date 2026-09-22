@@ -1,2 +1,3 @@
-2026/09/19-16:12:25.257 90db95 Creating DB /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb since it was missing.
-2026/09/19-16:12:25.282 90db95 Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2026/09/22-12:26:34.628 1dffd Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2026/09/22-12:26:34.629 1dffd Recovering log #4
+2026/09/22-12:26:34.630 1dffd Reusing old log /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/000004.log 

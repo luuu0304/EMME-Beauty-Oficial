@@ -132,3 +132,17 @@ SET Texto_Mensaje = N'¡Hola {Nombre_Clienta}! 💅 Te escribimos desde *EMME Be
 
 Por favor, confirmá tu asistencia con un "Sí" o avisanos con tiempo si necesitás reprogramar. ¡Te esperamos! ✨'
 WHERE Nombre_Funcion = 'Recordatorio_24hs';
+
+-- Plantilla 1: Retorno a los 15 días
+INSERT INTO Plantillas_Bot (Nombre_Funcion, Texto_Mensaje)
+VALUES (
+    'Retorno_15_Dias', 
+    N'¡Hola {Nombre_Clienta}! 💅 Notamos que pasaron un par de semanas desde tu servicio de *{Nombre_Servicio}*. ¿Te gustaría agendar un nuevo turno para mantenerlas impecables? ✨ Podés responder este mensaje para reservar. ¡Te esperamos en EMME Beauty!'
+);
+
+-- Plantilla 2: Aviso a empleadas a las 22:00 hs
+INSERT INTO Plantillas_Bot (Nombre_Funcion, Texto_Mensaje)
+VALUES (
+    'Aviso_Empleadas', 
+    N'¡Hola {Nombre_Empleada}! 👋 Te compartimos tu agenda de turnos programados para mañana:\n\n{Lista_Turnos}\n\n¡Que descanses! ✨'
+);

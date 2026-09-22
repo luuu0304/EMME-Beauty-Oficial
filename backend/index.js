@@ -313,36 +313,43 @@ app.get('/api/empleadas/servicio/:idServicio', async (req, res) => {
     }
 });
 
-// Operaciones CRUD básicas de Empleadas
-app.post('/api/empleadas', async (req, res) => {
-    try {
-        const { Nombre_Ap, Dni } = req.body;
-        let pool = await sql.connect(dbConfig);
-        await pool.request()
-            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
-            .input('Dni', sql.VarChar, Dni || null)
-            .query(`INSERT INTO Empleada (Nombre_Ap, Dni) VALUES (@Nombre_Ap, @Dni)`);
-        res.status(201).send("Empleada creada correctamente");
-    } catch (error) {
-        console.error("Error al insertar empleada:", error);
-        res.status(500).send("Error interno al guardar la empleada");
-    }
-});
-
+// Actualizar (Editar) Empleada
 app.put('/api/empleadas/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { Nombre_Ap, Dni } = req.body;
+        const { Nombre_Ap, Dni, Telefono } = req.body; // <-- Leemos las 3 variables
+
         let pool = await sql.connect(dbConfig);
         await pool.request()
             .input('Id_Empleada', sql.Int, id)
             .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
-            .input('Dni', sql.VarChar, Dni || null)
-            .query(`UPDATE Empleada SET Nombre_Ap = @Nombre_Ap, Dni = @Dni WHERE Id_Empleada = @Id_Empleada`);
+            .input('Dni', sql.VarChar, Dni)
+            .input('Telefono', sql.VarChar, Telefono)
+            .query(`UPDATE Empleada SET Nombre_Ap = @Nombre_Ap, Dni = @Dni, Telefono = @Telefono WHERE Id_Empleada = @Id_Empleada`);
+            
         res.status(200).send("Profesional actualizada correctamente");
     } catch (error) {
         console.error("Error al actualizar empleada:", error);
         res.status(500).send("Error interno al actualizar");
+    }
+});
+
+// Registrar (Nueva) Empleada (Revisá si ya tenías un POST y actualizalo a esto)
+app.post('/api/empleadas', async (req, res) => {
+    try {
+        const { Nombre_Ap, Dni, Telefono } = req.body;
+        
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
+            .input('Dni', sql.VarChar, Dni)
+            .input('Telefono', sql.VarChar, Telefono)
+            .query(`INSERT INTO Empleada (Nombre_Ap, DNI, Telefono, Saldo_Acumulado) VALUES (@Nombre_Ap, @Dni, @Telefono, 0)`);
+            
+        res.status(200).send("Profesional creada correctamente");
+    } catch (error) {
+        console.error("Error al crear empleada:", error);
+        res.status(500).send("Error interno al crear");
     }
 });
 
@@ -1211,7 +1218,8 @@ const programarRecordatorios = () => {
             for (let turno of turnosManana) {
                 if (turno.Telefono && turno.Telefono.length >= 10) {
                     const fechaTurno = new Date(turno.Fecha_Hora);
-                    const horaFormateada = fechaTurno.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                    // Acá aplicamos el formato militar 24 hs
+                    const horaFormateada = fechaTurno.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
 
                     // Reemplazamos los comodines por los datos reales de la clienta
                     let mensajeFinal = textoBase
@@ -1229,9 +1237,102 @@ const programarRecordatorios = () => {
     });
 };
 
+const programarRetorno15Dias = () => {
+    cron.schedule('0 11 * * *', async () => {
+        console.log('Ejecutando rutina de fidelizacion: 15 dias...');
+        try {
+            let pool = await sql.connect(dbConfig);
+            
+            const resultPlantilla = await pool.request()
+                .input('funcion', sql.VarChar, 'Retorno_15_Dias')
+                .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
+            
+            if (resultPlantilla.recordset.length === 0) return;
+            const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
+
+            // Busca turnos de hace exactamente 15 días (Ajustá 'Completado' a cómo figure en tu BD)
+            const resultTurnos = await pool.request().query(`
+                SELECT c.Telefono, c.Nombre AS Nombre_Clienta, s.Nombre AS Nombre_Servicio
+                FROM Turno t
+                INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, -15, GETDATE()) AS DATE)
+                AND t.Estado = 'Completado' 
+            `);
+
+            for (let turno of resultTurnos.recordset) {
+                if (turno.Telefono && turno.Telefono.length >= 10) {
+                    let mensajeFinal = textoBase
+                        .replace('{Nombre_Clienta}', turno.Nombre_Clienta)
+                        .replace('{Nombre_Servicio}', turno.Nombre_Servicio);
+                    await enviarMensaje(turno.Telefono, mensajeFinal);
+                }
+            }
+        } catch (error) {
+            console.error('Error en rutina 15 dias:', error);
+        }
+    });
+};
+
+const programarAvisoEmpleadas = () => {
+    cron.schedule('0 22 * * *', async () => {
+        console.log('Ejecutando envío de agenda a empleadas (Turnos de mañana)...');
+        try {
+            let pool = await sql.connect(dbConfig);
+            
+            const resultPlantilla = await pool.request()
+                .input('funcion', sql.VarChar, 'Aviso_Empleadas')
+                .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
+            
+            if (resultPlantilla.recordset.length === 0) return;
+            const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
+
+            // Busca todos los turnos de mañana y los agrupa por empleada
+            // Busca todos los turnos de mañana y los agrupa por empleada
+            const resultTurnos = await pool.request().query(`
+                SELECT e.Nombre_Ap AS Nombre_Empleada, e.Telefono, c.Nombre AS Nombre_Clienta, 
+                       s.Nombre AS Nombre_Servicio, t.Fecha_Hora
+                FROM Turno t
+                INNER JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada 
+                INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, 1, GETDATE()) AS DATE)
+                AND t.Estado = 'Pendiente'
+                ORDER BY e.Id_Empleada, t.Fecha_Hora
+            `);
+
+            // Agrupamos los turnos por el teléfono de cada empleada
+            const agendaPorEmpleada = {};
+            for (let row of resultTurnos.recordset) {
+                if (!agendaPorEmpleada[row.Telefono]) {
+                    agendaPorEmpleada[row.Telefono] = { nombre: row.Nombre_Empleada, turnos: [] };
+                }
+                const hora = new Date(row.Fecha_Hora).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                agendaPorEmpleada[row.Telefono].turnos.push(`- ${hora} hs: ${row.Nombre_Clienta} (${row.Nombre_Servicio})`);
+            }
+
+            // Armamos y enviamos un solo mensaje por empleada
+            for (let telefono in agendaPorEmpleada) {
+                const datos = agendaPorEmpleada[telefono];
+                const listaTexto = datos.turnos.join('\n'); // Une todos los turnos con saltos de línea
+                
+                let mensajeFinal = textoBase
+                    .replace('{Nombre_Empleada}', datos.nombre)
+                    .replace('{Lista_Turnos}', listaTexto);
+                
+                await enviarMensaje(telefono, mensajeFinal);
+            }
+        } catch (error) {
+            console.error('Error enviando agenda a empleadas:', error);
+        }
+    });
+};
+
 // Arrancamos los motores
 iniciarBot();
 programarRecordatorios();
+programarRetorno15Dias();
+programarAvisoEmpleadas();
 
 app.listen(port, () => {
     console.log(`Servidor corriendo impecable en http://localhost:${port} `);

@@ -1,2 +1,3 @@
-2026/09/19-16:12:25.413 90db95 Creating DB /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Session Storage since it was missing.
-2026/09/19-16:12:25.418 90db95 Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
+2026/09/22-12:26:35.683 1dffd Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
+2026/09/22-12:26:35.684 1dffd Recovering log #3
+2026/09/22-12:26:35.685 1dffd Reusing old log /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Session Storage/000003.log 
