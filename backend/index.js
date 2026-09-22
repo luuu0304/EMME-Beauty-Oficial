@@ -1104,22 +1104,38 @@ app.delete('/api/medios-pago/:id', async (req, res) => {
 // 9. MÓDULO DE ESTADÍSTICAS (DASHBOARD)
 // ==========================================================================
 app.get('/api/dashboard/kpis', async (req, res) => {
-    const { desde, hasta } = req.query;
+    const { desde, hasta, idEmpleada } = req.query;
     try {
         let pool = await sql.connect(dbConfig);
         const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
         const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
-        const query = `
-            DECLARE @TotalIngresos DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto_Total), 0) FROM Ingreso WHERE Fecha >= @Desde AND Fecha <= @Hasta);
-            DECLARE @TotalGastos DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto), 0) FROM Gasto WHERE Fecha >= @Desde AND Fecha <= @Hasta);
-            DECLARE @TotalSueldos DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto_Total), 0) FROM Liquidacion_Sueldo WHERE Fecha >= @Desde AND Fecha <= @Hasta);
-            SELECT @TotalIngresos AS Ingresos, @TotalGastos AS Gastos, @TotalSueldos AS Sueldos, (@TotalIngresos - @TotalGastos - @TotalSueldos) AS GananciaNeta;
-        `;
-        let result = await pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta).query(query);
-        res.json(result.recordset[0]);
+        
+        if (idEmpleada) {
+            // Lógica exclusiva para la Profesional
+            const query = `
+                DECLARE @MisGanancias DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto_Total), 0) FROM Liquidacion_Sueldo WHERE Id_Empleada = @Id AND Fecha >= @Desde AND Fecha <= @Hasta);
+                DECLARE @MisTurnos INT = (SELECT COUNT(*) FROM Turno WHERE Id_Empleada = @Id AND Estado IN ('Completado', 'Pagado') AND Fecha_Hora >= @Desde AND Fecha_Hora <= @Hasta);
+                DECLARE @DiasTrabajados INT = (SELECT COUNT(DISTINCT CAST(Fecha_Hora AS DATE)) FROM Turno WHERE Id_Empleada = @Id AND Estado IN ('Completado', 'Pagado') AND Fecha_Hora >= @Desde AND Fecha_Hora <= @Hasta);
+                DECLARE @MiPromedio DECIMAL(5,2) = CASE WHEN @DiasTrabajados > 0 THEN CAST(@MisTurnos AS DECIMAL(5,2)) / @DiasTrabajados ELSE 0 END;
+                SELECT @MisGanancias AS MisGanancias, @MisTurnos AS MisTurnos, @MiPromedio AS MiPromedio;
+            `;
+            let result = await pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta).input('Id', sql.Int, idEmpleada).query(query);
+            res.json(result.recordset[0]);
+        } else {
+            // Lógica original para la Administradora
+            const query = `
+                DECLARE @TotalIngresos DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto_Total), 0) FROM Ingreso WHERE Fecha >= @Desde AND Fecha <= @Hasta);
+                DECLARE @TotalGastos DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto), 0) FROM Gasto WHERE Fecha >= @Desde AND Fecha <= @Hasta);
+                DECLARE @TotalSueldos DECIMAL(12,2) = (SELECT ISNULL(SUM(Monto_Total), 0) FROM Liquidacion_Sueldo WHERE Fecha >= @Desde AND Fecha <= @Hasta);
+                SELECT @TotalIngresos AS Ingresos, @TotalGastos AS Gastos, @TotalSueldos AS Sueldos, (@TotalIngresos - @TotalGastos - @TotalSueldos) AS GananciaNeta;
+            `;
+            let result = await pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta).query(query);
+            res.json(result.recordset[0]);
+        }
     } catch (err) { console.error(err); res.status(500).send("Error interno"); }
 });
 
+// Gráfico de Ingresos y Turnos (Solo Admin, queda igual)
 app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
     const { desde, hasta } = req.query;
     try {
@@ -1127,14 +1143,9 @@ app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
         const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
         const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
         const query = `
-            WITH IngresosDiarios AS (
-                SELECT CAST(Fecha AS DATE) as FechaDia, SUM(Monto_Total) as Total FROM Ingreso WHERE Fecha >= @Desde AND Fecha <= @Hasta GROUP BY CAST(Fecha AS DATE)
-            ),
-            TurnosDiarios AS (
-                SELECT CAST(Fecha_Hora AS DATE) as FechaDia, COUNT(Id_Turno) as Cantidad FROM Turno WHERE Fecha_Hora >= @Desde AND Fecha_Hora <= @Hasta GROUP BY CAST(Fecha_Hora AS DATE)
-            )
-            SELECT CONVERT(VARCHAR(5), ISNULL(i.FechaDia, t.FechaDia), 103) as Dia, CONVERT(VARCHAR(10), ISNULL(i.FechaDia, t.FechaDia), 23) as FechaCompleta, 
-                   ISNULL(i.Total, 0) as Total, ISNULL(t.Cantidad, 0) as Turnos
+            WITH IngresosDiarios AS (SELECT CAST(Fecha AS DATE) as FechaDia, SUM(Monto_Total) as Total FROM Ingreso WHERE Fecha >= @Desde AND Fecha <= @Hasta GROUP BY CAST(Fecha AS DATE)),
+            TurnosDiarios AS (SELECT CAST(Fecha_Hora AS DATE) as FechaDia, COUNT(Id_Turno) as Cantidad FROM Turno WHERE Fecha_Hora >= @Desde AND Fecha_Hora <= @Hasta GROUP BY CAST(Fecha_Hora AS DATE))
+            SELECT CONVERT(VARCHAR(5), ISNULL(i.FechaDia, t.FechaDia), 103) as Dia, CONVERT(VARCHAR(10), ISNULL(i.FechaDia, t.FechaDia), 23) as FechaCompleta, ISNULL(i.Total, 0) as Total, ISNULL(t.Cantidad, 0) as Turnos
             FROM IngresosDiarios i FULL OUTER JOIN TurnosDiarios t ON i.FechaDia = t.FechaDia ORDER BY ISNULL(i.FechaDia, t.FechaDia) ASC
         `;
         let result = await pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta).query(query);
@@ -1142,21 +1153,30 @@ app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: "Error interno" }); }
 });
 
+// Servicios Estrella (Adaptado para recibir IdEmpleada opcional)
 app.get('/api/dashboard/servicios-estrella', async (req, res) => {
-    const { desde, hasta } = req.query;
+    const { desde, hasta, idEmpleada } = req.query;
     try {
         let pool = await sql.connect(dbConfig);
         const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
         const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
-        const query = `
-            SELECT TOP 5 s.Nombre, COUNT(t.Id_Turno) as Cantidad FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-            WHERE t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta GROUP BY s.Nombre ORDER BY Cantidad DESC
-        `;
-        let result = await pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta).query(query);
+        
+        let request = pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta);
+        let query = '';
+        
+        if (idEmpleada) {
+            query = `SELECT TOP 5 s.Nombre, COUNT(t.Id_Turno) as Cantidad FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio WHERE t.Id_Empleada = @Id AND t.Estado IN ('Completado', 'Pagado') AND t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta GROUP BY s.Nombre ORDER BY Cantidad DESC`;
+            request.input('Id', sql.Int, idEmpleada);
+        } else {
+            query = `SELECT TOP 5 s.Nombre, COUNT(t.Id_Turno) as Cantidad FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio WHERE t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta GROUP BY s.Nombre ORDER BY Cantidad DESC`;
+        }
+        
+        let result = await request.query(query);
         res.json(result.recordset);
     } catch (err) { console.error(err); res.status(500).json({ error: "Error interno" }); }
 });
 
+// Top Empleadas (Solo Admin, queda igual)
 app.get('/api/dashboard/top-empleadas', async (req, res) => {
     const { desde, hasta } = req.query;
     try {
@@ -1165,9 +1185,33 @@ app.get('/api/dashboard/top-empleadas', async (req, res) => {
         const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
         const query = `
             SELECT TOP 5 e.Nombre_Ap AS Nombre, COUNT(t.Id_Turno) as Cantidad FROM Turno t JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
-            WHERE t.Estado = 'Pagado' AND t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta GROUP BY e.Nombre_Ap ORDER BY Cantidad DESC
+            WHERE t.Estado IN ('Completado', 'Pagado') AND t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta GROUP BY e.Nombre_Ap ORDER BY Cantidad DESC
         `;
         let result = await pool.request().input('Desde', sql.DateTime, fechaDesde).input('Hasta', sql.DateTime, fechaHasta).query(query);
+        res.json(result.recordset);
+    } catch (err) { console.error(err); res.status(500).json({ error: "Error interno" }); }
+});
+
+// NUEVA RUTA: Horarios Frecuentes (Exclusiva Empleada)
+app.get('/api/dashboard/horarios-frecuentes', async (req, res) => {
+    const { desde, hasta, idEmpleada } = req.query;
+    try {
+        let pool = await sql.connect(dbConfig);
+        const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
+        const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
+        
+        const query = `
+            SELECT TOP 5 CONVERT(VARCHAR(5), t.Fecha_Hora, 108) AS Horario, COUNT(t.Id_Turno) as Cantidad 
+            FROM Turno t
+            WHERE t.Id_Empleada = @Id AND t.Estado IN ('Completado', 'Pagado') AND t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta
+            GROUP BY CONVERT(VARCHAR(5), t.Fecha_Hora, 108)
+            ORDER BY Cantidad DESC
+        `;
+        let result = await pool.request()
+            .input('Desde', sql.DateTime, fechaDesde)
+            .input('Hasta', sql.DateTime, fechaHasta)
+            .input('Id', sql.Int, idEmpleada)
+            .query(query);
         res.json(result.recordset);
     } catch (err) { console.error(err); res.status(500).json({ error: "Error interno" }); }
 });

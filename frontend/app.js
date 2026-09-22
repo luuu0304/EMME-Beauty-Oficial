@@ -111,6 +111,11 @@ function aplicarPermisos(rol) {
 
     const botonesMenu = document.querySelectorAll('.menu-item');
     const btnNuevoTurno = document.getElementById('btnNuevoTurno'); 
+    
+    // Elementos del nuevo Dashboard
+    const dashboardAdmin = document.getElementById('dashboardAdmin');
+    const dashboardEmpleada = document.getElementById('dashboardEmpleada');
+    const subtituloDashboard = document.getElementById('subtituloDashboard');
 
     if (rol === 'Empleada') {
         document.body.classList.add('is-empleada');
@@ -152,6 +157,19 @@ function aplicarPermisos(rol) {
                 setTimeout(() => { btn.click(); }, 100);
             }
         });
+    }
+
+    // ==========================================
+    // NUEVO: Control de Vistas del Dashboard
+    // ==========================================
+    if (rol === 'Empleada') {
+        if (dashboardAdmin) dashboardAdmin.style.display = 'none';
+        if (dashboardEmpleada) dashboardEmpleada.style.display = 'block';
+        if (subtituloDashboard) subtituloDashboard.textContent = 'Métricas de tu rendimiento personal';
+    } else {
+        if (dashboardAdmin) dashboardAdmin.style.display = 'block';
+        if (dashboardEmpleada) dashboardEmpleada.style.display = 'none';
+        if (subtituloDashboard) subtituloDashboard.textContent = 'Métricas y rendimiento financiero del local';
     }
 }
 
@@ -3488,6 +3506,8 @@ let graficoIngresosInstancia = null;
 let graficoTurnosInstancia = null;
 let graficoServiciosInstancia = null;
 let graficoEmpleadasInstancia = null;
+let graficoMisServiciosInstancia = null;
+let graficoMisHorariosInstancia = null;
 
 const formatoFechaSQL = (fecha) => {
     const yyyy = fecha.getFullYear();
@@ -3531,182 +3551,164 @@ async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
         }
     }
 
+    // Leemos el token para saber quién inició sesión
+    const rol = localStorage.getItem('emme_rol');
+    const token = localStorage.getItem('emme_token');
+    let idEmpleada = '';
+    
+    if (token) {
+        try {
+            // Desencriptamos el token para sacar el Id de la Empleada
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            idEmpleada = payload.idEmpleada || '';
+        } catch(e) {}
+    }
+
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
+        const urlParams = new URLSearchParams({ desde, hasta });
+        if (rol === 'Empleada' && idEmpleada) {
+            urlParams.append('idEmpleada', idEmpleada);
+        }
+
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?${urlParams.toString()}`);
         const kpis = await respuesta.json();
 
-        document.getElementById('dashIngresos').textContent = `$${kpis.Ingresos.toLocaleString('es-AR')}`;
-        document.getElementById('dashGastos').textContent = `$${kpis.Gastos.toLocaleString('es-AR')}`;
-        document.getElementById('dashSueldos').textContent = `$${kpis.Sueldos.toLocaleString('es-AR')}`;
-        document.getElementById('dashGanancia').textContent = `$${kpis.GananciaNeta.toLocaleString('es-AR')}`;
+        // Rellenamos las tarjetas correctas según el rol
+        if (rol === 'Empleada') {
+            document.getElementById('dashMisGanancias').textContent = `$${(kpis.MisGanancias || 0).toLocaleString('es-AR')}`;
+            document.getElementById('dashMisTurnos').textContent = kpis.MisTurnos || 0;
+            document.getElementById('dashMiPromedio').textContent = kpis.MiPromedio || 0;
+        } else {
+            document.getElementById('dashIngresos').textContent = `$${(kpis.Ingresos || 0).toLocaleString('es-AR')}`;
+            document.getElementById('dashGastos').textContent = `$${(kpis.Gastos || 0).toLocaleString('es-AR')}`;
+            document.getElementById('dashSueldos').textContent = `$${(kpis.Sueldos || 0).toLocaleString('es-AR')}`;
+            document.getElementById('dashGanancia').textContent = `$${(kpis.GananciaNeta || 0).toLocaleString('es-AR')}`;
+        }
 
-        cargarGraficoDashboard(desde, hasta);
+        // Pasamos los datos extra a los gráficos
+        cargarGraficoDashboard(desde, hasta, rol, idEmpleada);
 
     } catch (error) {
         console.error("Error cargando métricas del dashboard:", error);
     }
 }
 
-async function cargarGraficoDashboard(desde, hasta) {
+async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
-        
-        if (!respuesta.ok) return;
+        if (rol === 'Empleada') {
+            // ==========================================
+            // GRÁFICOS EXCLUSIVOS PROFESIONAL
+            // ==========================================
 
-        const datos = await respuesta.json();
-
-        const etiquetasIngresos = datos.map(d => d.Dia);
-        const valoresIngresos = datos.map(d => d.Total);
-
-        const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-        const valoresTurnos = [0, 0, 0, 0, 0, 0, 0]; 
-
-        datos.forEach(d => {
-            if (d.Turnos > 0) {
-                const fechaObj = new Date(d.FechaCompleta + 'T00:00:00');
-                let diaIdx = fechaObj.getDay(); 
-                diaIdx = diaIdx === 0 ? 6 : diaIdx - 1;
-                valoresTurnos[diaIdx] += d.Turnos;
-            }
-        });
-
-        // 1. GRÁFICO DE INGRESOS
-        const ctxIngresos = document.getElementById('graficoIngresos').getContext('2d');
-        if (graficoIngresosInstancia) graficoIngresosInstancia.destroy();
-
-        graficoIngresosInstancia = new Chart(ctxIngresos, {
-            type: 'line', 
-            data: {
-                labels: etiquetasIngresos,
-                datasets: [{
-                    label: 'Ingresos ($)',
-                    data: valoresIngresos,
-                    borderColor: '#D4A347', 
-                    backgroundColor: 'rgba(212, 163, 71, 0.2)', 
-                    borderWidth: 3,
-                    tension: 0.4, 
-                    fill: true, 
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#D4A347',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#f0f0f0' },
-                        ticks: { callback: function(value) { return '$' + value.toLocaleString('es-AR'); } }
+            // 1. Gráfico Mis Servicios Más Pedidos
+            const respServ = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}&idEmpleada=${idEmpleada}`);
+            if (respServ.ok) {
+                const datosServ = await respServ.json();
+                const ctxMisServ = document.getElementById('graficoMisServicios').getContext('2d');
+                if (graficoMisServiciosInstancia) graficoMisServiciosInstancia.destroy();
+                
+                graficoMisServiciosInstancia = new Chart(ctxMisServ, {
+                    type: 'bar',
+                    data: {
+                        labels: datosServ.map(d => d.Nombre),
+                        datasets: [{
+                            label: 'Veces realizado',
+                            data: datosServ.map(d => d.Cantidad),
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderRadius: 4
+                        }]
                     },
-                    x: { grid: { display: false } }
-                }
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
+                });
             }
-        });
 
-        // 2. GRÁFICO DE TURNOS
-        const ctxTurnos = document.getElementById('graficoTurnos').getContext('2d');
-        if (graficoTurnosInstancia) graficoTurnosInstancia.destroy();
+            // 2. Gráfico Mis Horarios Frecuentes
+            const respHorarios = await fetch(`http://localhost:3000/api/dashboard/horarios-frecuentes?desde=${desde}&hasta=${hasta}&idEmpleada=${idEmpleada}`);
+            if (respHorarios.ok) {
+                const datosHorarios = await respHorarios.json();
+                const ctxHorarios = document.getElementById('graficoMisHorarios').getContext('2d');
+                if (graficoMisHorariosInstancia) graficoMisHorariosInstancia.destroy();
 
-        graficoTurnosInstancia = new Chart(ctxTurnos, {
-            type: 'bar', 
-            data: {
-                labels: diasSemana, 
-                datasets: [{
-                    label: 'Cantidad de Turnos',
-                    data: valoresTurnos, 
-                    backgroundColor: '#daab53', 
-                    borderRadius: 6 
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#f0f0f0' },
-                        ticks: { stepSize: 1 } 
+                graficoMisHorariosInstancia = new Chart(ctxHorarios, {
+                    type: 'doughnut',
+                    data: {
+                        labels: datosHorarios.map(d => d.Horario + ' hs'),
+                        datasets: [{
+                            data: datosHorarios.map(d => d.Cantidad),
+                            backgroundColor: ['#17a2b8', '#28a745', '#d4af37', '#e6c875', '#6c757d'],
+                            borderWidth: 2, borderColor: '#ffffff'
+                        }]
                     },
-                    x: { grid: { display: false } }
-                }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '65%' }
+                });
             }
-        });
 
-        // 3. GRÁFICO DE SERVICIOS ESTRELLA
-        const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
-        if (respServicios.ok) {
-            const datosServicios = await respServicios.json();
+        } else {
+            // ==========================================
+            // GRÁFICOS ADMINISTRADORA (Originales)
+            // ==========================================
             
-            const etiquetasServicios = datosServicios.map(d => d.Nombre);
-            const valoresCantidades = datosServicios.map(d => d.Cantidad);
+            const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
+            if (!respuesta.ok) return;
+            const datos = await respuesta.json();
 
-            const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
-            if (graficoServiciosInstancia) graficoServiciosInstancia.destroy();
+            const etiquetasIngresos = datos.map(d => d.Dia);
+            const valoresIngresos = datos.map(d => d.Total);
+            const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const valoresTurnos = [0, 0, 0, 0, 0, 0, 0]; 
 
-            graficoServiciosInstancia = new Chart(ctxServicios, {
+            datos.forEach(d => {
+                if (d.Turnos > 0) {
+                    const fechaObj = new Date(d.FechaCompleta + 'T00:00:00');
+                    let diaIdx = fechaObj.getDay(); 
+                    diaIdx = diaIdx === 0 ? 6 : diaIdx - 1;
+                    valoresTurnos[diaIdx] += d.Turnos;
+                }
+            });
+
+            // Gráfico Ingresos
+            const ctxIngresos = document.getElementById('graficoIngresos').getContext('2d');
+            if (graficoIngresosInstancia) graficoIngresosInstancia.destroy();
+            graficoIngresosInstancia = new Chart(ctxIngresos, {
+                type: 'line', 
+                data: { labels: etiquetasIngresos, datasets: [{ label: 'Ingresos ($)', data: valoresIngresos, borderColor: '#D4A347', backgroundColor: 'rgba(212, 163, 71, 0.2)', borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff', pointBorderColor: '#D4A347', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { callback: function(value) { return '$' + value.toLocaleString('es-AR'); } } }, x: { grid: { display: false } } } }
+            });
+
+            // Gráfico Turnos
+            const ctxTurnos = document.getElementById('graficoTurnos').getContext('2d');
+            if (graficoTurnosInstancia) graficoTurnosInstancia.destroy();
+            graficoTurnosInstancia = new Chart(ctxTurnos, {
                 type: 'bar', 
-                data: {
-                    labels: etiquetasServicios,
-                    datasets: [{
-                        label: 'Veces realizado',
-                        data: valoresCantidades,
-                        backgroundColor: 'rgba(40, 167, 69, 0.7)', 
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    indexAxis: 'y', 
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: { color: '#f0f0f0' },
-                            ticks: { stepSize: 1 }
-                        },
-                        y: {
-                            grid: { display: false }
-                        }
-                    }
-                }
+                data: { labels: diasSemana, datasets: [{ label: 'Cantidad de Turnos', data: valoresTurnos, backgroundColor: '#daab53', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
             });
-        }
 
-        // 4. GRÁFICO DE TOP EMPLEADAS
-        const respEmp = await fetch(`http://localhost:3000/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
-        if (respEmp.ok) {
-            const datosEmp = await respEmp.json();
-            const ctxEmpleadas = document.getElementById('graficoEmpleadas').getContext('2d');
-            
-            if (graficoEmpleadasInstancia) graficoEmpleadasInstancia.destroy();
-            
-            graficoEmpleadasInstancia = new Chart(ctxEmpleadas, {
-                type: 'doughnut', 
-                data: {
-                    labels: datosEmp.map(d => d.Nombre),
-                    datasets: [{ 
-                        data: datosEmp.map(d => d.Cantidad), 
-                        backgroundColor: ['#d4af37', '#17a2b8', '#28a745', '#e6c875', '#6c757d'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                }, 
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } 
-                    },
-                    cutout: '65%' 
-                }
-            });
+            // Gráfico Servicios Estrella (Admin)
+            const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
+            if (respServicios.ok) {
+                const datosServicios = await respServicios.json();
+                const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
+                if (graficoServiciosInstancia) graficoServiciosInstancia.destroy();
+                graficoServiciosInstancia = new Chart(ctxServicios, {
+                    type: 'bar', 
+                    data: { labels: datosServicios.map(d => d.Nombre), datasets: [{ label: 'Veces realizado', data: datosServicios.map(d => d.Cantidad), backgroundColor: 'rgba(40, 167, 69, 0.7)', borderRadius: 4 }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
+                });
+            }
+
+            // Gráfico Top Empleadas
+            const respEmp = await fetch(`http://localhost:3000/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
+            if (respEmp.ok) {
+                const datosEmp = await respEmp.json();
+                const ctxEmpleadas = document.getElementById('graficoEmpleadas').getContext('2d');
+                if (graficoEmpleadasInstancia) graficoEmpleadasInstancia.destroy();
+                graficoEmpleadasInstancia = new Chart(ctxEmpleadas, {
+                    type: 'doughnut', 
+                    data: { labels: datosEmp.map(d => d.Nombre), datasets: [{ data: datosEmp.map(d => d.Cantidad), backgroundColor: ['#d4af37', '#17a2b8', '#28a745', '#e6c875', '#6c757d'], borderWidth: 2, borderColor: '#ffffff' }] }, 
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '65%' }
+                });
+            }
         }
 
     } catch (error) {

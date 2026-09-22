@@ -1,3 +1,5 @@
-2026/09/22-12:26:34.628 1dffd Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2026/09/22-12:26:34.629 1dffd Recovering log #4
-2026/09/22-12:26:34.630 1dffd Reusing old log /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/000004.log 
+2026/09/22-16:48:30.034 cb9c Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2026/09/22-16:48:30.035 cb9c Recovering log #7
+2026/09/22-16:48:30.036 cb9c Level-0 table #10: started
+2026/09/22-16:48:30.043 cb9c Level-0 table #10: 16927 bytes OK
+2026/09/22-16:48:30.045 cb9c Delete type=0 #7
