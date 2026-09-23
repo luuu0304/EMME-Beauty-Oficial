@@ -103,3 +103,81 @@
 2026/09/23-12:10:22.509 3dcca Level-0 table #4377: started
 2026/09/23-12:10:22.522 3dcca Level-0 table #4377: 1208641 bytes OK
 2026/09/23-12:10:22.525 3dcca Delete type=0 #4354
+2026/09/23-12:11:30.411 3dccd Level-0 table #4379: started
+2026/09/23-12:11:30.433 3dccd Level-0 table #4379: 1205085 bytes OK
+2026/09/23-12:11:30.437 3dccd Delete type=0 #4376
+2026/09/23-12:12:26.845 3dccb Compacting 2@0 + 0@1 files
+2026/09/23-12:12:26.865 3dccb Generated table #4380@0: 23073 keys, 202793 bytes
+2026/09/23-12:12:26.876 3dccb Generated table #4381@0: 3778 keys, 261695 bytes
+2026/09/23-12:12:26.876 3dccb Compacted 2@0 + 0@1 files => 464488 bytes
+2026/09/23-12:12:26.877 3dccb compacted to: files[ 0 3 44 0 0 0 0 ]
+2026/09/23-12:12:27.223 3dcca Compacting 1@1 + 6@2 files
+2026/09/23-12:12:27.307 3dcca Generated table #4382@1: 88528 keys, 2241665 bytes
+2026/09/23-12:12:27.392 3dcca Generated table #4383@1: 106021 keys, 2260580 bytes
+2026/09/23-12:12:27.456 3dcca Generated table #4384@1: 101204 keys, 2252932 bytes
+2026/09/23-12:12:27.505 3dcca Generated table #4385@1: 72898 keys, 2324082 bytes
+2026/09/23-12:12:27.549 3dcca Generated table #4386@1: 54176 keys, 2217664 bytes
+2026/09/23-12:12:27.573 3dcca Generated table #4387@1: 19799 keys, 1963535 bytes
+2026/09/23-12:12:27.573 3dcca Compacted 1@1 + 6@2 files => 13260458 bytes
+2026/09/23-12:12:27.574 3dcca compacted to: files[ 0 2 44 0 0 0 0 ]
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4370
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4371
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4373
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4372
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4377
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4374
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4379
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4380
+2026/09/23-12:12:27.575 3dcca Delete type=2 #4369
+2026/09/23-12:14:35.570 3dccb Level-0 table #4389: started
+2026/09/23-12:14:35.585 3dccb Level-0 table #4389: 1366599 bytes OK
+2026/09/23-12:14:35.588 3dccb Delete type=0 #4378
+2026/09/23-12:14:35.592 3dccd Compacting 1@0 + 2@1 files
+2026/09/23-12:14:35.600 3dccd Generated table #4390@0: 16817 keys, 347247 bytes
+2026/09/23-12:14:35.607 3dccd Generated table #4391@0: 5024 keys, 383239 bytes
+2026/09/23-12:14:35.612 3dccd Generated table #4392@0: 9098 keys, 307766 bytes
+2026/09/23-12:14:35.612 3dccd Compacted 1@0 + 2@1 files => 1038252 bytes
+2026/09/23-12:14:35.615 3dccd compacted to: files[ 0 3 44 0 0 0 0 ]
+2026/09/23-12:14:35.615 3dccd Delete type=2 #4358
+2026/09/23-12:14:35.615 3dccd Delete type=2 #4389
+2026/09/23-12:14:35.615 3dccd Delete type=2 #4381
+2026/09/23-12:14:35.616 3dccb Compacting 1@1 + 10@2 files
+2026/09/23-12:14:35.639 3dccb Generated table #4393@1: 20447 keys, 2161790 bytes
+2026/09/23-12:14:35.660 3dccb Generated table #4394@1: 12168 keys, 2138357 bytes
+2026/09/23-12:14:35.683 3dccb Generated table #4395@1: 13264 keys, 2145767 bytes
+2026/09/23-12:14:35.709 3dccb Level-0 table #4398: started
+2026/09/23-12:14:35.724 3dccb Level-0 table #4398: 1361958 bytes OK
+2026/09/23-12:14:35.725 3dccb Delete type=0 #4388
+2026/09/23-12:14:35.747 3dccb Generated table #4396@1: 119744 keys, 2274161 bytes
+2026/09/23-12:14:35.787 3dccb Generated table #4399@1: 97696 keys, 2245581 bytes
+2026/09/23-12:14:35.831 3dccb Generated table #4400@1: 97527 keys, 2246513 bytes
+2026/09/23-12:14:35.866 3dccb Level-0 table #4403: started
+2026/09/23-12:14:35.887 3dccb Level-0 table #4403: 1506147 bytes OK
+2026/09/23-12:14:35.890 3dccb Delete type=0 #4397
+2026/09/23-12:14:35.898 3dccb Generated table #4401@1: 98102 keys, 2246641 bytes
+2026/09/23-12:14:35.936 3dccb Generated table #4404@1: 97565 keys, 2245783 bytes
+2026/09/23-12:14:35.977 3dccb Generated table #4405@1: 97542 keys, 2245803 bytes
+2026/09/23-12:14:36.011 3dccb Generated table #4406@1: 73374 keys, 2170337 bytes
+2026/09/23-12:14:36.011 3dccb Compacted 1@1 + 10@2 files => 22120733 bytes
+2026/09/23-12:14:36.012 3dccb compacted to: files[ 2 2 44 0 0 0 0 ]
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4349
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4348
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4392
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4345
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4351
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4350
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4352
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4346
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4347
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4353
+2026/09/23-12:14:36.013 3dccb Delete type=2 #4368
+2026/09/23-12:16:28.535 3dccb Compacting 2@0 + 2@1 files
+2026/09/23-12:16:28.571 3dccb Generated table #4407@0: 68076 keys, 719123 bytes
+2026/09/23-12:16:28.580 3dccb Generated table #4408@0: 5024 keys, 383239 bytes
+2026/09/23-12:16:28.605 3dccb Generated table #4409@0: 50913 keys, 1595342 bytes
+2026/09/23-12:16:28.605 3dccb Compacted 2@0 + 2@1 files => 2697704 bytes
+2026/09/23-12:16:28.607 3dccb compacted to: files[ 0 3 44 0 0 0 0 ]
+2026/09/23-12:16:28.608 3dccb Delete type=2 #4403
+2026/09/23-12:16:28.608 3dccb Delete type=2 #4398
+2026/09/23-12:16:28.608 3dccb Delete type=2 #4391
+2026/09/23-12:16:28.608 3dccb Delete type=2 #4390
