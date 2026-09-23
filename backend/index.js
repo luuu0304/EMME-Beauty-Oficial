@@ -792,11 +792,15 @@ app.post('/api/turnos', async (req, res) => {
             .query(`
                 INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto) 
                 VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora, @Sena_Monto);
+                
                 IF (@Sena_Monto > 0) BEGIN
                     DECLARE @NombreC VARCHAR(100);
                     SELECT @NombreC = Nombre + ' ' + Apellido FROM Clienta WHERE Id_Clienta = @Id_Clienta;
-                    INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Medio_Pago) 
-                    VALUES ('Seña abonada - ' + @NombreC, @Sena_Monto, GETDATE(), 'Transferencia');
+                    -- Buscamos dinámicamente el ID de 'Transferencia' en la nueva tabla
+                    DECLARE @IdTransferencia INT = (SELECT TOP 1 Id_Medio_Pago FROM Medio_Pago WHERE Nombre = 'Transferencia');
+                    
+                    INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Id_Medio_Pago) 
+                    VALUES ('Seña abonada - ' + @NombreC, @Sena_Monto, GETDATE(), @IdTransferencia);
                 END
             `);
         res.status(201).json({ message: "¡Turno creado exitosamente!" });
@@ -955,10 +959,15 @@ app.get('/api/gastos', async (req, res) => {
 
 app.post('/api/gastos', async (req, res) => {
     try {
-        const { Fecha, Descripcion, Monto, Id_Categoria } = req.body;
+        const { Fecha, Descripcion, Monto, Id_Categoria, Id_Medio_Pago } = req.body; // Agregamos Id_Medio_Pago
         let pool = await sql.connect(dbConfig);
-        await pool.request().input('Fecha', sql.Date, Fecha).input('Descripcion', sql.VarChar, Descripcion).input('Monto', sql.Decimal(12, 2), Monto).input('Id_Categoria', sql.Int, Id_Categoria || null)
-            .query(`INSERT INTO Gasto (Fecha, Descripcion, Monto, Id_Categoria) VALUES (@Fecha, @Descripcion, @Monto, @Id_Categoria)`);
+        await pool.request()
+            .input('Fecha', sql.Date, Fecha)
+            .input('Descripcion', sql.VarChar, Descripcion)
+            .input('Monto', sql.Decimal(12, 2), Monto)
+            .input('Id_Categoria', sql.Int, Id_Categoria || null)
+            .input('Id_Medio_Pago', sql.Int, Id_Medio_Pago || null) // Lo pasamos al query
+            .query(`INSERT INTO Gasto (Fecha, Descripcion, Monto, Id_Categoria, Id_Medio_Pago) VALUES (@Fecha, @Descripcion, @Monto, @Id_Categoria, @Id_Medio_Pago)`);
         res.status(201).send("Gasto registrado correctamente");
     } catch (error) { console.error(error); res.status(500).send("Error al registrar"); }
 });
@@ -987,13 +996,13 @@ app.get('/api/ingresos', async (req, res) => {
 
 app.post('/api/ingresos/manual', async (req, res) => {
     try {
-        const { Concepto, Monto_Total, Medio_Pago } = req.body; 
+        const { Concepto, Monto_Total, Id_Medio_Pago } = req.body; // Recibimos el ID numérico
         let pool = await sql.connect(dbConfig);
         await pool.request()
             .input('Concepto', sql.VarChar, Concepto)
             .input('Monto_Total', sql.Decimal(10,2), Monto_Total)
-            .input('Medio_Pago', sql.VarChar, Medio_Pago)
-            .query(`INSERT INTO Ingreso (Fecha, Monto_Total, Medio_Pago, Concepto) VALUES (GETDATE(), @Monto_Total, @Medio_Pago, @Concepto)`);
+            .input('Id_Medio_Pago', sql.Int, Id_Medio_Pago)
+            .query(`INSERT INTO Ingreso (Fecha, Monto_Total, Id_Medio_Pago, Concepto) VALUES (GETDATE(), @Monto_Total, @Id_Medio_Pago, @Concepto)`);
         
         res.status(201).json({ message: "Ingreso manual registrado" });
     } catch (err) { 
@@ -1004,7 +1013,7 @@ app.post('/api/ingresos/manual', async (req, res) => {
 
 app.post('/api/cobrar-turno', async (req, res) => {
     try {
-        const { idTurno, montoTotal, medioPago, descuento, extras } = req.body;
+        const { idTurno, montoTotal, idMedioPago, descuento, extras } = req.body; // Cambiamos medioPago por idMedioPago
         let pool = await sql.connect(dbConfig);
         
         const chequeo = await pool.request().input('Id_Turno', sql.Int, idTurno).query(`
@@ -1020,8 +1029,13 @@ app.post('/api/cobrar-turno', async (req, res) => {
         await transaction.begin();
         try {
             const requestIngreso = new sql.Request(transaction);
-            await requestIngreso.input('Id_Turno', sql.Int, idTurno).input('Concepto', sql.VarChar, conceptoDinamico).input('Monto_Total', sql.Decimal(12, 2), montoTotal).input('Medio_Pago', sql.VarChar, medioPago).input('Descuento', sql.Decimal(12, 2), descuento)
-                .query(`INSERT INTO Ingreso (Id_Turno, Fecha, Concepto, Monto_Total, Medio_Pago, Descuento) VALUES (@Id_Turno, GETDATE(), @Concepto, @Monto_Total, @Medio_Pago, @Descuento)`);
+            await requestIngreso
+                .input('Id_Turno', sql.Int, idTurno)
+                .input('Concepto', sql.VarChar, conceptoDinamico)
+                .input('Monto_Total', sql.Decimal(12, 2), montoTotal)
+                .input('Id_Medio_Pago', sql.Int, idMedioPago) // Usamos la columna nueva
+                .input('Descuento', sql.Decimal(12, 2), descuento)
+                .query(`INSERT INTO Ingreso (Id_Turno, Fecha, Concepto, Monto_Total, Id_Medio_Pago, Descuento) VALUES (@Id_Turno, GETDATE(), @Concepto, @Monto_Total, @Id_Medio_Pago, @Descuento)`);
             
             if (extras && extras.length > 0) {
                 for (let idEx of extras) {
@@ -1214,6 +1228,36 @@ app.get('/api/dashboard/horarios-frecuentes', async (req, res) => {
             .query(query);
         res.json(result.recordset);
     } catch (err) { console.error(err); res.status(500).json({ error: "Error interno" }); }
+});
+
+// Ingresos por Medio de Pago
+app.get('/api/dashboard/medios-pago-usados', async (req, res) => {
+    const { desde, hasta } = req.query;
+    try {
+        let pool = await sql.connect(dbConfig);
+        const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
+        const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
+        
+        // Sumamos los montos de la tabla Ingreso agrupados por medio de pago
+        const query = `
+            SELECT mp.Nombre, ISNULL(SUM(i.Monto_Total), 0) AS Total
+            FROM Ingreso i
+            JOIN Medio_Pago mp ON i.Id_Medio_Pago = mp.Id_Medio_Pago
+            WHERE i.Fecha >= @Desde AND i.Fecha <= @Hasta
+            GROUP BY mp.Nombre
+            ORDER BY Total DESC
+        `;
+        
+        let result = await pool.request()
+            .input('Desde', sql.DateTime, fechaDesde)
+            .input('Hasta', sql.DateTime, fechaHasta)
+            .query(query);
+            
+        res.json(result.recordset);
+    } catch (err) { 
+        console.error(err); 
+        res.status(500).json({ error: "Error interno" }); 
+    }
 });
 
 // ==========================================================================

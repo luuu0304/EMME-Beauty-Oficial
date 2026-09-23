@@ -67,5 +67,22 @@
 
 ALTER TABLE Turno ADD Id_Liquidacion INT NULL;
 
-SELECT * FROM Empleada
-    WHERE Id_Empleada = 2;
+-- 1. Agregamos las nuevas columnas numéricas
+ALTER TABLE Gasto ADD Id_Medio_Pago INT NULL;
+ALTER TABLE Ingreso ADD Id_Medio_Pago INT NULL;
+GO
+
+-- 2. "Traducimos" los datos previos en Ingreso (Texto a ID)
+UPDATE Ingreso
+SET Id_Medio_Pago = (SELECT TOP 1 Id_Medio_Pago FROM Medio_Pago WHERE Nombre = Ingreso.Medio_Pago);
+GO
+
+-- 3. Eliminamos la columna vieja de texto en Ingreso
+ALTER TABLE Ingreso DROP COLUMN Medio_Pago;
+GO
+
+-- 4. Creamos las conexiones formales (Foreign Keys)
+ALTER TABLE Gasto ADD CONSTRAINT FK_Gasto_MedioPago FOREIGN KEY (Id_Medio_Pago) REFERENCES Medio_Pago(Id_Medio_Pago);
+ALTER TABLE Ingreso ADD CONSTRAINT FK_Ingreso_MedioPago FOREIGN KEY (Id_Medio_Pago) REFERENCES Medio_Pago(Id_Medio_Pago);
+GO
+

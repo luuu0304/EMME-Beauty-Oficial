@@ -3387,7 +3387,8 @@ async function cargarMediosDePago() {
             opcionesHTML = '<option value="">No hay medios cargados</option>';
         } else {
             medios.forEach(medio => {
-                opcionesHTML += `<option value="${medio.Nombre}">${medio.Nombre}</option>`;
+                // ACÁ ESTÁ EL CAMBIO: value="${medio.Id_Medio_Pago}"
+                opcionesHTML += `<option value="${medio.Id_Medio_Pago}">${medio.Nombre}</option>`;
             });
         }
         
@@ -3508,6 +3509,7 @@ let graficoServiciosInstancia = null;
 let graficoEmpleadasInstancia = null;
 let graficoMisServiciosInstancia = null;
 let graficoMisHorariosInstancia = null;
+let graficoMediosPagoInstancia = null;
 
 const formatoFechaSQL = (fecha) => {
     const yyyy = fecha.getFullYear();
@@ -3707,6 +3709,44 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
                     type: 'doughnut', 
                     data: { labels: datosEmp.map(d => d.Nombre), datasets: [{ data: datosEmp.map(d => d.Cantidad), backgroundColor: ['#d4af37', '#17a2b8', '#28a745', '#e6c875', '#6c757d'], borderWidth: 2, borderColor: '#ffffff' }] }, 
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '65%' }
+                });
+            }
+
+            // Gráfico Ingresos por Medio de Pago (Admin)
+            const respMediosPago = await fetch(`http://localhost:3000/api/dashboard/medios-pago-usados?desde=${desde}&hasta=${hasta}`);
+            if (respMediosPago.ok) {
+                const datosMedios = await respMediosPago.json();
+                const ctxMedios = document.getElementById('graficoMediosPago').getContext('2d');
+                
+                if (graficoMediosPagoInstancia) graficoMediosPagoInstancia.destroy();
+                
+                graficoMediosPagoInstancia = new Chart(ctxMedios, {
+                    type: 'pie', 
+                    data: { 
+                        labels: datosMedios.map(d => d.Nombre), 
+                        datasets: [{ 
+                            data: datosMedios.map(d => d.Total), // Ahora mapeamos el Total de plata
+                            backgroundColor: ['#28a745', '#17a2b8', '#d4af37', '#e6c875', '#6c757d', '#dc3545'], 
+                            borderWidth: 2, 
+                            borderColor: '#ffffff' 
+                        }] 
+                    }, 
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+                            // Esto le da formato de plata al cartelito que aparece al pasar el mouse
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let value = context.raw || 0;
+                                        return ' $' + value.toLocaleString('es-AR');
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
             }
         }
