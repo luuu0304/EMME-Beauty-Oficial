@@ -1052,7 +1052,7 @@ app.post('/api/cobrar-turno', async (req, res) => {
 });
 
 // ==========================================================================
-// 8. MÓDULO DE CONFIGURACIÓN GENERAL (Horarios y Medios de Pago)
+// 8. MÓDULO DE CONFIGURACIÓN GENERAL (Horarios del local y Medios de Pago)
 // ==========================================================================
 
 // --- HORARIOS DE ATENCIÓN ---
@@ -1069,18 +1069,33 @@ app.put('/api/horarios/bulk', async (req, res) => {
         const { diasIds, Laborable, Hora_Apertura_1, Hora_Cierre_1, Hora_Apertura_2, Hora_Cierre_2 } = req.body;
         if (!diasIds || diasIds.length === 0) return res.status(400).send("No se seleccionaron días");
 
-        let pool = await sql.connect(dbConfig); const transaction = new sql.Transaction(pool); await transaction.begin();
+        let pool = await sql.connect(dbConfig); 
+        const transaction = new sql.Transaction(pool); 
+        await transaction.begin();
+        
         try {
             for (let id of diasIds) {
                 const request = new sql.Request(transaction);
-                await request.input('Id', sql.Int, id).input('Laborable', sql.Bit, Laborable).input('Apertura1', sql.Time, Hora_Apertura_1 || null).input('Cierre1', sql.Time, Hora_Cierre_1 || null).input('Apertura2', sql.Time, Hora_Apertura_2 || null).input('Cierre2', sql.Time, Hora_Cierre_2 || null)
+                await request
+                    .input('Id', sql.Int, id)
+                    .input('Laborable', sql.Bit, Laborable)
+                    .input('Apertura1', sql.VarChar, Hora_Apertura_1 || null) // Cambiado a VarChar
+                    .input('Cierre1', sql.VarChar, Hora_Cierre_1 || null)     // Cambiado a VarChar
+                    .input('Apertura2', sql.VarChar, Hora_Apertura_2 || null) // Cambiado a VarChar
+                    .input('Cierre2', sql.VarChar, Hora_Cierre_2 || null)     // Cambiado a VarChar
                     .query(`UPDATE Horario_Atencion SET Laborable = @Laborable, Hora_Apertura_1 = @Apertura1, Hora_Cierre_1 = @Cierre1, Hora_Apertura_2 = @Apertura2, Hora_Cierre_2 = @Cierre2 WHERE Id_Horario = @Id`);
             }
-            await transaction.commit(); res.status(200).send("Horarios actualizados exitosamente");
-        } catch (err) { await transaction.rollback(); throw err; }
-    } catch (err) { console.error(err); res.status(500).send("Error interno"); }
+            await transaction.commit(); 
+            res.status(200).send("Horarios actualizados exitosamente");
+        } catch (err) { 
+            await transaction.rollback(); 
+            throw err; 
+        }
+    } catch (err) { 
+        console.error(err); 
+        res.status(500).send("Error interno"); 
+    }
 });
-
 // --- MEDIOS DE PAGO ---
 app.get('/api/medios-pago', async (req, res) => {
     try {

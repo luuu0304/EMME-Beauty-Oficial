@@ -4242,7 +4242,8 @@ async function cargarTablaConfigHorarios() {
     }
 }
 
-async function guardarHorarioEnLote() {
+// En app.js, asegúrate de recibir el parámetro "event"
+async function guardarHorarioEnLote(event) {
     const botonesActivos = document.querySelectorAll('.btn-dia-horario.active');
     const diasIds = Array.from(botonesActivos).map(b => parseInt(b.getAttribute('data-id')));
 
@@ -4272,10 +4273,16 @@ async function guardarHorarioEnLote() {
     };
 
     try {
-        const btnGuardar = event.currentTarget; 
-        const textoOriginal = btnGuardar.textContent;
-        btnGuardar.textContent = 'Guardando...';
-        btnGuardar.style.opacity = '0.7';
+        let btnGuardar = null;
+        let textoOriginal = "Guardar cambios";
+        
+        // Validación de seguridad por si el evento falla
+        if (event && event.currentTarget) {
+            btnGuardar = event.currentTarget;
+            textoOriginal = btnGuardar.textContent;
+            btnGuardar.textContent = 'Guardando...';
+            btnGuardar.style.opacity = '0.7';
+        }
 
         const respuesta = await fetch('http://localhost:3000/api/horarios/bulk', {
             method: 'PUT',
@@ -4290,8 +4297,10 @@ async function guardarHorarioEnLote() {
             mostrarNotificacion("Error al actualizar la base de datos.", "error");
         }
 
-        btnGuardar.textContent = textoOriginal;
-        btnGuardar.style.opacity = '1';
+        if (btnGuardar) {
+            btnGuardar.textContent = textoOriginal;
+            btnGuardar.style.opacity = '1';
+        }
 
     } catch (error) {
         console.error(error);

@@ -1,183 +1,99 @@
-2026/09/23-12:08:25.586 3dccb Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/09/23-12:08:25.587 3dccb Recovering log #4317
-2026/09/23-12:08:25.594 3dccb Reusing old log /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/004317.log 
-2026/09/23-12:08:28.465 3dccb Compacting 1@1 + 10@2 files
-2026/09/23-12:08:28.493 3dccb Generated table #4334@1: 3497 keys, 2148181 bytes
-2026/09/23-12:08:28.520 3dccb Generated table #4335@1: 3793 keys, 2148972 bytes
-2026/09/23-12:08:28.560 3dccb Generated table #4336@1: 3368 keys, 2147417 bytes
-2026/09/23-12:08:28.582 3dccb Generated table #4337@1: 5143 keys, 2155034 bytes
-2026/09/23-12:08:28.621 3dccb Generated table #4338@1: 43650 keys, 2232694 bytes
-2026/09/23-12:08:28.663 3dccb Generated table #4339@1: 30779 keys, 2264115 bytes
-2026/09/23-12:08:28.703 3dccb Generated table #4340@1: 26517 keys, 2272572 bytes
-2026/09/23-12:08:28.762 3dccb Generated table #4341@1: 29744 keys, 2261898 bytes
-2026/09/23-12:08:28.851 3dccb Generated table #4342@1: 27686 keys, 2258369 bytes
-2026/09/23-12:08:28.918 3dccb Generated table #4343@1: 28601 keys, 2230059 bytes
-2026/09/23-12:08:28.918 3dccb Compacted 1@1 + 10@2 files => 22119311 bytes
-2026/09/23-12:08:28.920 3dccb compacted to: files[ 0 1 43 0 0 0 0 ]
-2026/09/23-12:08:28.926 3dccb Compacting 1@1 + 10@2 files
-2026/09/23-12:08:28.954 3dccb Generated table #4344@1: 20745 keys, 2161197 bytes
-2026/09/23-12:08:28.982 3dccb Generated table #4345@1: 12164 keys, 2138249 bytes
-2026/09/23-12:08:29.016 3dccb Generated table #4346@1: 16790 keys, 2145410 bytes
-2026/09/23-12:08:29.088 3dccb Generated table #4347@1: 121461 keys, 2276990 bytes
-2026/09/23-12:08:29.145 3dccb Generated table #4348@1: 98208 keys, 2247444 bytes
-2026/09/23-12:08:29.197 3dccb Generated table #4349@1: 97621 keys, 2247477 bytes
-2026/09/23-12:08:29.242 3dccb Generated table #4350@1: 98439 keys, 2246960 bytes
-2026/09/23-12:08:29.297 3dccb Generated table #4351@1: 98474 keys, 2247735 bytes
-2026/09/23-12:08:29.410 3dccb Generated table #4352@1: 97762 keys, 2246737 bytes
-2026/09/23-12:08:29.445 3dccb Generated table #4353@1: 56690 keys, 1784102 bytes
-2026/09/23-12:08:29.445 3dccb Compacted 1@1 + 10@2 files => 21742301 bytes
-2026/09/23-12:08:29.447 3dccb compacted to: files[ 0 0 43 0 0 0 0 ]
-2026/09/23-12:08:30.862 3dcca Level-0 table #4355: started
-2026/09/23-12:08:30.879 3dcca Level-0 table #4355: 1165132 bytes OK
-2026/09/23-12:08:30.881 3dcca Delete type=0 #4317
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4298
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4299
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4301
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4300
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4302
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4316
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4303
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4285
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4284
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4286
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4292
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4279
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4278
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4293
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4287
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4297
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4296
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4321
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4294
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4280
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4295
-2026/09/23-12:08:30.881 3dcca Delete type=2 #4322
-2026/09/23-12:08:34.037 3dccd Compacting 1@0 + 0@1 files
-2026/09/23-12:08:34.067 3dccd Generated table #4356@0: 27299 keys, 679696 bytes
-2026/09/23-12:08:34.070 3dccd Generated table #4357@0: 1409 keys, 110837 bytes
-2026/09/23-12:08:34.073 3dccd Generated table #4358@0: 29 keys, 2577 bytes
-2026/09/23-12:08:34.073 3dccd Compacted 1@0 + 0@1 files => 793110 bytes
-2026/09/23-12:08:34.075 3dccd compacted to: files[ 0 3 43 0 0 0 0 ]
-2026/09/23-12:08:34.075 3dccd Delete type=2 #4355
-2026/09/23-12:09:25.949 3dccb Compacting 1@1 + 10@2 files
-2026/09/23-12:09:25.982 3dccb Generated table #4359@1: 5145 keys, 2155100 bytes
-2026/09/23-12:09:26.031 3dccb Generated table #4360@1: 43652 keys, 2232874 bytes
-2026/09/23-12:09:26.074 3dccb Generated table #4361@1: 30779 keys, 2264115 bytes
-2026/09/23-12:09:26.116 3dccb Generated table #4362@1: 26502 keys, 2272062 bytes
-2026/09/23-12:09:26.161 3dccb Generated table #4363@1: 29745 keys, 2261810 bytes
-2026/09/23-12:09:26.202 3dccb Generated table #4364@1: 27693 keys, 2258492 bytes
-2026/09/23-12:09:26.242 3dccb Generated table #4365@1: 28659 keys, 2238714 bytes
-2026/09/23-12:09:26.272 3dccb Generated table #4366@1: 18763 keys, 2233298 bytes
-2026/09/23-12:09:26.284 3dccb Generated table #4367@1: 1927 keys, 2117541 bytes
-2026/09/23-12:09:26.308 3dccb Generated table #4368@1: 20751 keys, 2153139 bytes
-2026/09/23-12:09:26.308 3dccb Compacted 1@1 + 10@2 files => 22187145 bytes
-2026/09/23-12:09:26.309 3dccb compacted to: files[ 0 2 43 0 0 0 0 ]
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4338
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4339
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4319
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4283
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4337
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4344
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4357
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4343
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4342
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4340
-2026/09/23-12:09:26.310 3dccb Delete type=2 #4341
-2026/09/23-12:09:28.740 3dccb Compacting 1@1 + 6@2 files
-2026/09/23-12:09:28.818 3dccb Generated table #4369@1: 85623 keys, 2237578 bytes
-2026/09/23-12:09:28.865 3dccb Generated table #4370@1: 104864 keys, 2257466 bytes
-2026/09/23-12:09:28.903 3dccb Generated table #4371@1: 101668 keys, 2253530 bytes
-2026/09/23-12:09:28.943 3dccb Generated table #4372@1: 81356 keys, 2332132 bytes
-2026/09/23-12:09:28.985 3dccb Generated table #4373@1: 51261 keys, 2212322 bytes
-2026/09/23-12:09:29.009 3dccb Generated table #4374@1: 24567 keys, 2182653 bytes
-2026/09/23-12:09:29.010 3dccb Generated table #4375@1: 180 keys, 164753 bytes
-2026/09/23-12:09:29.010 3dccb Compacted 1@1 + 6@2 files => 13640434 bytes
-2026/09/23-12:09:29.011 3dccb compacted to: files[ 0 1 44 0 0 0 0 ]
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4328
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4326
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4327
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4325
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4324
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4323
-2026/09/23-12:09:29.012 3dccb Delete type=2 #4356
-2026/09/23-12:10:22.509 3dcca Level-0 table #4377: started
-2026/09/23-12:10:22.522 3dcca Level-0 table #4377: 1208641 bytes OK
-2026/09/23-12:10:22.525 3dcca Delete type=0 #4354
-2026/09/23-12:11:30.411 3dccd Level-0 table #4379: started
-2026/09/23-12:11:30.433 3dccd Level-0 table #4379: 1205085 bytes OK
-2026/09/23-12:11:30.437 3dccd Delete type=0 #4376
-2026/09/23-12:12:26.845 3dccb Compacting 2@0 + 0@1 files
-2026/09/23-12:12:26.865 3dccb Generated table #4380@0: 23073 keys, 202793 bytes
-2026/09/23-12:12:26.876 3dccb Generated table #4381@0: 3778 keys, 261695 bytes
-2026/09/23-12:12:26.876 3dccb Compacted 2@0 + 0@1 files => 464488 bytes
-2026/09/23-12:12:26.877 3dccb compacted to: files[ 0 3 44 0 0 0 0 ]
-2026/09/23-12:12:27.223 3dcca Compacting 1@1 + 6@2 files
-2026/09/23-12:12:27.307 3dcca Generated table #4382@1: 88528 keys, 2241665 bytes
-2026/09/23-12:12:27.392 3dcca Generated table #4383@1: 106021 keys, 2260580 bytes
-2026/09/23-12:12:27.456 3dcca Generated table #4384@1: 101204 keys, 2252932 bytes
-2026/09/23-12:12:27.505 3dcca Generated table #4385@1: 72898 keys, 2324082 bytes
-2026/09/23-12:12:27.549 3dcca Generated table #4386@1: 54176 keys, 2217664 bytes
-2026/09/23-12:12:27.573 3dcca Generated table #4387@1: 19799 keys, 1963535 bytes
-2026/09/23-12:12:27.573 3dcca Compacted 1@1 + 6@2 files => 13260458 bytes
-2026/09/23-12:12:27.574 3dcca compacted to: files[ 0 2 44 0 0 0 0 ]
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4370
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4371
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4373
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4372
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4377
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4374
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4379
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4380
-2026/09/23-12:12:27.575 3dcca Delete type=2 #4369
-2026/09/23-12:14:35.570 3dccb Level-0 table #4389: started
-2026/09/23-12:14:35.585 3dccb Level-0 table #4389: 1366599 bytes OK
-2026/09/23-12:14:35.588 3dccb Delete type=0 #4378
-2026/09/23-12:14:35.592 3dccd Compacting 1@0 + 2@1 files
-2026/09/23-12:14:35.600 3dccd Generated table #4390@0: 16817 keys, 347247 bytes
-2026/09/23-12:14:35.607 3dccd Generated table #4391@0: 5024 keys, 383239 bytes
-2026/09/23-12:14:35.612 3dccd Generated table #4392@0: 9098 keys, 307766 bytes
-2026/09/23-12:14:35.612 3dccd Compacted 1@0 + 2@1 files => 1038252 bytes
-2026/09/23-12:14:35.615 3dccd compacted to: files[ 0 3 44 0 0 0 0 ]
-2026/09/23-12:14:35.615 3dccd Delete type=2 #4358
-2026/09/23-12:14:35.615 3dccd Delete type=2 #4389
-2026/09/23-12:14:35.615 3dccd Delete type=2 #4381
-2026/09/23-12:14:35.616 3dccb Compacting 1@1 + 10@2 files
-2026/09/23-12:14:35.639 3dccb Generated table #4393@1: 20447 keys, 2161790 bytes
-2026/09/23-12:14:35.660 3dccb Generated table #4394@1: 12168 keys, 2138357 bytes
-2026/09/23-12:14:35.683 3dccb Generated table #4395@1: 13264 keys, 2145767 bytes
-2026/09/23-12:14:35.709 3dccb Level-0 table #4398: started
-2026/09/23-12:14:35.724 3dccb Level-0 table #4398: 1361958 bytes OK
-2026/09/23-12:14:35.725 3dccb Delete type=0 #4388
-2026/09/23-12:14:35.747 3dccb Generated table #4396@1: 119744 keys, 2274161 bytes
-2026/09/23-12:14:35.787 3dccb Generated table #4399@1: 97696 keys, 2245581 bytes
-2026/09/23-12:14:35.831 3dccb Generated table #4400@1: 97527 keys, 2246513 bytes
-2026/09/23-12:14:35.866 3dccb Level-0 table #4403: started
-2026/09/23-12:14:35.887 3dccb Level-0 table #4403: 1506147 bytes OK
-2026/09/23-12:14:35.890 3dccb Delete type=0 #4397
-2026/09/23-12:14:35.898 3dccb Generated table #4401@1: 98102 keys, 2246641 bytes
-2026/09/23-12:14:35.936 3dccb Generated table #4404@1: 97565 keys, 2245783 bytes
-2026/09/23-12:14:35.977 3dccb Generated table #4405@1: 97542 keys, 2245803 bytes
-2026/09/23-12:14:36.011 3dccb Generated table #4406@1: 73374 keys, 2170337 bytes
-2026/09/23-12:14:36.011 3dccb Compacted 1@1 + 10@2 files => 22120733 bytes
-2026/09/23-12:14:36.012 3dccb compacted to: files[ 2 2 44 0 0 0 0 ]
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4349
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4348
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4392
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4345
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4351
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4350
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4352
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4346
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4347
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4353
-2026/09/23-12:14:36.013 3dccb Delete type=2 #4368
-2026/09/23-12:16:28.535 3dccb Compacting 2@0 + 2@1 files
-2026/09/23-12:16:28.571 3dccb Generated table #4407@0: 68076 keys, 719123 bytes
-2026/09/23-12:16:28.580 3dccb Generated table #4408@0: 5024 keys, 383239 bytes
-2026/09/23-12:16:28.605 3dccb Generated table #4409@0: 50913 keys, 1595342 bytes
-2026/09/23-12:16:28.605 3dccb Compacted 2@0 + 2@1 files => 2697704 bytes
-2026/09/23-12:16:28.607 3dccb compacted to: files[ 0 3 44 0 0 0 0 ]
-2026/09/23-12:16:28.608 3dccb Delete type=2 #4403
-2026/09/23-12:16:28.608 3dccb Delete type=2 #4398
-2026/09/23-12:16:28.608 3dccb Delete type=2 #4391
-2026/09/23-12:16:28.608 3dccb Delete type=2 #4390
+2026/09/24-14:27:54.686 6daa1 Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/09/24-14:27:54.689 6daa1 Recovering log #4733
+2026/09/24-14:27:54.690 6daa1 Reusing old log /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/004733.log 
+2026/09/24-14:27:56.742 6daa2 Compacting 1@1 + 11@2 files
+2026/09/24-14:27:56.791 6daa2 Generated table #4757@1: 27749 keys, 2263333 bytes
+2026/09/24-14:27:56.825 6daa2 Generated table #4758@1: 20254 keys, 2238754 bytes
+2026/09/24-14:27:56.857 6daa2 Generated table #4759@1: 19908 keys, 2235234 bytes
+2026/09/24-14:27:56.879 6daa2 Generated table #4760@1: 10222 keys, 2140714 bytes
+2026/09/24-14:27:56.905 6daa2 Generated table #4761@1: 12321 keys, 2137415 bytes
+2026/09/24-14:27:56.931 6daa2 Generated table #4762@1: 12572 keys, 2139299 bytes
+2026/09/24-14:27:56.958 6daa2 Generated table #4763@1: 38110 keys, 2168889 bytes
+2026/09/24-14:27:57.012 6daa2 Generated table #4764@1: 115254 keys, 2272791 bytes
+2026/09/24-14:27:57.057 6daa2 Generated table #4765@1: 99586 keys, 2249159 bytes
+2026/09/24-14:27:57.105 6daa2 Generated table #4766@1: 99000 keys, 2247907 bytes
+2026/09/24-14:27:57.108 6daa2 Generated table #4767@1: 3437 keys, 80011 bytes
+2026/09/24-14:27:57.108 6daa2 Compacted 1@1 + 11@2 files => 22173506 bytes
+2026/09/24-14:27:57.110 6daa2 compacted to: files[ 0 1 46 0 0 0 0 ]
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4717
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4716
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4676
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4714
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4715
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4722
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4737
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4694
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4721
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4720
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4718
+2026/09/24-14:27:57.111 6daa2 Delete type=2 #4719
+2026/09/24-14:27:57.625 6daa2 Compacting 1@1 + 5@2 files
+2026/09/24-14:27:57.676 6daa2 Generated table #4768@1: 99180 keys, 2248370 bytes
+2026/09/24-14:27:57.728 6daa2 Generated table #4769@1: 99495 keys, 2247949 bytes
+2026/09/24-14:27:57.775 6daa2 Generated table #4770@1: 102261 keys, 2251513 bytes
+2026/09/24-14:27:57.819 6daa2 Generated table #4771@1: 99386 keys, 2249360 bytes
+2026/09/24-14:27:57.876 6daa2 Generated table #4772@1: 75313 keys, 2113765 bytes
+2026/09/24-14:27:57.876 6daa2 Compacted 1@1 + 5@2 files => 11110957 bytes
+2026/09/24-14:27:57.878 6daa2 compacted to: files[ 0 0 46 0 0 0 0 ]
+2026/09/24-14:28:00.309 6daa2 Level-0 table #4774: started
+2026/09/24-14:28:00.333 6daa2 Level-0 table #4774: 1096851 bytes OK
+2026/09/24-14:28:00.336 6daa2 Delete type=2 #4738
+2026/09/24-14:28:00.336 6daa2 Delete type=2 #4699
+2026/09/24-14:28:00.336 6daa2 Delete type=2 #4698
+2026/09/24-14:28:00.336 6daa2 Delete type=2 #4695
+2026/09/24-14:28:00.336 6daa2 Delete type=2 #4696
+2026/09/24-14:28:00.336 6daa2 Delete type=2 #4697
+2026/09/24-14:28:00.336 6daa2 Delete type=0 #4733
+2026/09/24-14:28:00.338 6daa2 Compacting 1@0 + 0@1 files
+2026/09/24-14:28:00.360 6daa2 Generated table #4775@0: 32729 keys, 791376 bytes
+2026/09/24-14:28:00.361 6daa2 Generated table #4776@0: 51 keys, 4072 bytes
+2026/09/24-14:28:00.362 6daa2 Generated table #4777@0: 55 keys, 3243 bytes
+2026/09/24-14:28:00.363 6daa2 Compacted 1@0 + 0@1 files => 798691 bytes
+2026/09/24-14:28:00.365 6daa2 compacted to: files[ 0 3 46 0 0 0 0 ]
+2026/09/24-14:28:00.365 6daa2 Delete type=2 #4774
+2026/09/24-14:28:00.396 6daa4 Compacting 1@1 + 10@2 files
+2026/09/24-14:28:00.454 6daa4 Generated table #4778@1: 96926 keys, 2251633 bytes
+2026/09/24-14:28:00.500 6daa4 Generated table #4779@1: 104469 keys, 2256308 bytes
+2026/09/24-14:28:00.545 6daa4 Generated table #4780@1: 52605 keys, 2234097 bytes
+2026/09/24-14:28:00.599 6daa4 Generated table #4781@1: 58458 keys, 2226385 bytes
+2026/09/24-14:28:00.625 6daa4 Generated table #4782@1: 11986 keys, 2167054 bytes
+2026/09/24-14:28:00.646 6daa4 Generated table #4783@1: 2272 keys, 2155041 bytes
+2026/09/24-14:28:00.668 6daa4 Generated table #4784@1: 2613 keys, 2160484 bytes
+2026/09/24-14:28:00.692 6daa4 Generated table #4785@1: 3355 keys, 2160155 bytes
+2026/09/24-14:28:00.701 6daa4 Generated table #4786@1: 1269 keys, 763226 bytes
+2026/09/24-14:28:00.701 6daa4 Compacted 1@1 + 10@2 files => 18374383 bytes
+2026/09/24-14:28:00.703 6daa4 compacted to: files[ 0 2 45 0 0 0 0 ]
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4775
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4711
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4712
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4713
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4594
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4755
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4754
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4753
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4752
+2026/09/24-14:28:00.703 6daa4 Delete type=2 #4750
+2026/09/24-14:28:00.704 6daa4 Delete type=2 #4751
+2026/09/24-14:28:05.382 6daa2 Compacting 1@1 + 10@2 files
+2026/09/24-14:28:05.446 6daa2 Generated table #4787@1: 41270 keys, 2239929 bytes
+2026/09/24-14:28:05.491 6daa2 Generated table #4788@1: 30340 keys, 2266420 bytes
+2026/09/24-14:28:05.534 6daa2 Generated table #4789@1: 27476 keys, 2268103 bytes
+2026/09/24-14:28:05.576 6daa2 Generated table #4790@1: 29698 keys, 2262589 bytes
+2026/09/24-14:28:05.619 6daa2 Generated table #4791@1: 29472 keys, 2255697 bytes
+2026/09/24-14:28:05.661 6daa2 Generated table #4792@1: 24237 keys, 2243258 bytes
+2026/09/24-14:28:05.701 6daa2 Generated table #4793@1: 20058 keys, 2245420 bytes
+2026/09/24-14:28:05.734 6daa2 Generated table #4794@1: 16327 keys, 2217334 bytes
+2026/09/24-14:28:05.753 6daa2 Generated table #4795@1: 10026 keys, 1612735 bytes
+2026/09/24-14:28:05.753 6daa2 Compacted 1@1 + 10@2 files => 19611485 bytes
+2026/09/24-14:28:05.754 6daa2 compacted to: files[ 0 1 44 0 0 0 0 ]
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4748
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4760
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4749
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4776
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4759
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4758
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4732
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4757
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4747
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4746
+2026/09/24-14:28:05.755 6daa2 Delete type=2 #4745
