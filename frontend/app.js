@@ -15,7 +15,7 @@
 // ==========================================================================
 
 // ==========================================================================
-// 1. UTILIDADES GLOBALES Y SEGURIDAD
+// 1. UTILIDADES GLOBALES Y SEGURIDAD (Login, Toasts, Confirmaciones)
 // ==========================================================================
 
 // --- Sistema de Notificaciones (Toasts) ---
@@ -180,9 +180,18 @@ function cerrarSesion() {
     window.location.reload(); 
 }
 
+// Cerrar el menú lateral en celulares después de hacer clic en una opción
+document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth <= 768 && sidebar.classList.contains('activa')) {
+            sidebar.classList.remove('activa');
+        }
+    });
+});
 
 // ==========================================================================
-// 2. INICIALIZACIÓN GLOBAL (Motor de arranque)
+// 2. INICIALIZACIÓN GLOBAL (Eventos de arranque de la SPA)
 // ==========================================================================
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -324,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ==========================================================================
-// 3. NAVEGACIÓN Y ROUTER (Control de Vistas)
+// 3. NAVEGACIÓN Y ROUTER (Menú Lateral y Cambio de Vistas)
 // ==========================================================================
 
 const botonesMenu = document.querySelectorAll('.menu-item');
@@ -516,7 +525,7 @@ botonesMenu.forEach(boton => {
 
 
 // ==========================================================================
-// 4. MÓDULO DE TURNOS Y AGENDA
+// 4. MÓDULO DE TURNOS Y AGENDA (Diaria, Semanal y Validaciones)
 // ==========================================================================
 
 let listaServiciosGlobal = [];
@@ -2045,7 +2054,7 @@ async function guardarSenaIndependiente() {
 
 
 // ==========================================================================
-// 6. MÓDULO DE CLIENTAS (CRM e Historial)
+// 6. MÓDULO DE CLIENTAS (CRM, Retención e Historial Estético)
 // ==========================================================================
 
 let listaGlobalClientas = []; 
@@ -2430,7 +2439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ==========================================================================
-// 7. MÓDULO DE EMPLEADAS Y LIQUIDACIONES
+// 7. MÓDULO DE EMPLEADAS (Liquidaciones, Saldos y Mis Pagos)
 // ==========================================================================
 
 let memoriaLiquidaciones = [];
@@ -3500,7 +3509,7 @@ async function guardarIngresoManual() {
 
 
 // ==========================================================================
-// 9. MÓDULO DE DASHBOARD Y MÉTRICAS
+// 9. MÓDULO DE DASHBOARD Y MÉTRICAS (Gráficos)
 // ==========================================================================
 
 let graficoIngresosInstancia = null;
@@ -3758,7 +3767,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
 
 
 // ==========================================================================
-// 10. MÓDULO DE CONFIGURACIÓN GENERAL (Config / Ajustes)
+// 10. MÓDULO DE CONFIGURACIÓN (Servicios, Áreas, Horarios, Pagos)
 // ==========================================================================
 
 function cambiarVistaConfig(vista) {

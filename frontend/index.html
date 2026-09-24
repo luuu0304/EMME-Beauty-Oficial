@@ -98,6 +98,9 @@
          Controla la navegación principal del sistema.
          ========================================================================= -->
     <aside class="sidebar" id="sidebar">
+        <button onclick="document.getElementById('sidebar').classList.remove('activa')" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; color: #555; cursor: pointer; display: block;" class="btn-cerrar-menu-movil">
+            &times;
+        </button>
         
         <!-- Grupo Superior: Logo y Menús de Navegación -->
         <div style="flex-grow: 1;">
@@ -172,6 +175,9 @@
         <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
             
             <div style="display: flex; align-items: center; gap: 15px;">
+                <button id="btnAbrirMenuMovil" onclick="document.getElementById('sidebar').classList.add('activa')" style="background: var(--mostaza); color: white; border: none; border-radius: 6px; padding: 8px 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    ☰
+                </button>
                 <h1 style="margin: 0;">Gestión de Turnos</h1>
             </div>
 

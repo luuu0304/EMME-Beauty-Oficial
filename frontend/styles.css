@@ -7,6 +7,7 @@
    5. VENTANAS MODALES Y FORMULARIOS
    6. VISTAS DE AGENDA (Grilla, Calendario)
    7. SISTEMA DE NOTIFICACIONES (Toasts)
+   8. DISEÑO RESPONSIVO (Móviles)
    ========================================================================== */
 
 /* ==========================================================================
@@ -39,6 +40,10 @@ body {
 /* ==========================================================================
    2. ESTRUCTURA PRINCIPAL (Barra lateral, Contenido)
    ========================================================================== */
+
+/* Botones exclusivos de celular (Ocultos en PC) */
+.btn-cerrar-menu-movil { display: none !important; }
+#btnAbrirMenuMovil { display: none !important; }
 
 /* BARRA LATERAL (Base) */
 .sidebar {
@@ -112,9 +117,7 @@ body:has(.sidebar.collapsed) .main-content {
     transition: transform 0.3s ease;
 }
 
-/* =========================================
-   MODO COLAPSADO (Computadora) 
-   ========================================= */
+/* MODO COLAPSADO (Computadora) */
 .sidebar.collapsed {
     width: 80px;
     padding: 20px 10px;
@@ -137,52 +140,8 @@ body:has(.sidebar.collapsed) .main-content {
     padding: 12px 0;
 }
 
-/* Rotar la flecha al colapsar */
 .sidebar.collapsed .btn-colapsar-sidebar svg {
     transform: rotate(180deg);
-}
-
-/* =========================================
-   MODO MÓVIL (Celular) 
-   ========================================= */
-@media (max-width: 768px) {
-    .sidebar {
-        left: -250px; 
-        width: 250px; 
-        box-shadow: 2px 0 15px rgba(0,0,0,0.1);
-    }
-
-    .sidebar.mobile-open {
-        left: 0;
-    }
-
-    .main-content {
-        margin-left: 0 !important;
-        width: 100% !important;
-        padding: 15px;
-    }
-
-    .sidebar.collapsed .menu-text {
-        opacity: 1;
-        visibility: visible;
-        width: auto;
-        height: auto;
-    }
-    
-    .sidebar.collapsed .menu-item {
-        justify-content: flex-start;
-        padding: 12px 15px;
-    }
-    
-    .sidebar.collapsed .logo-text {
-        font-size: 1.5rem;
-        letter-spacing: 4px;
-    }
-    
-    /* Evitar que rote en móvil */
-    .sidebar.collapsed .btn-colapsar-sidebar svg {
-        transform: rotate(0deg);
-    }
 }
 
 /* ==========================================================================
@@ -407,7 +366,6 @@ body:has(.sidebar.collapsed) .main-content {
     margin-bottom: 0.4rem;
 }
 
-/* Campos de Formulario Estandarizados */
 .modal-content input[type="text"],
 .modal-content input[type="tel"],
 .modal-content input[type="number"],
@@ -442,7 +400,6 @@ body:has(.sidebar.collapsed) .main-content {
     margin-top: 2rem;
 }
 
-/* Modificadores para Registro Rápido (Express) */
 #btnNuevaClientaExpress {
     background-color: #f5f5f5;
     border: 1px solid #ddd;
@@ -471,7 +428,6 @@ body:has(.sidebar.collapsed) .main-content {
     color: var(--mostaza) !important;
 }
 
-/* Ajuste de layout para los Extras del Modal */
 #contenedorExtras > div {
     display: flex;
     align-items: center;
@@ -483,7 +439,7 @@ body:has(.sidebar.collapsed) .main-content {
     display: flex;
     align-items: center;
     gap: 8px;
-    white-space: nowrap; /* ¡Esta es la regla mágica que evita el salto de línea! */
+    white-space: nowrap;
     margin: 0;
     font-size: 13px;
     color: #333;
@@ -492,8 +448,6 @@ body:has(.sidebar.collapsed) .main-content {
 /* ==========================================================================
    6. VISTAS DE AGENDA (Grilla, Calendario)
    ========================================================================== */
-
-/* Pestañas (Tabs) de Vistas */
 .btn-tab {
     padding: 8px 16px;
     background-color: transparent;
@@ -515,7 +469,6 @@ body:has(.sidebar.collapsed) .main-content {
     border-color: var(--mostaza);
 }
 
-/* Grilla de Agenda Diaria */
 .agenda-container {
     background: white;
     border-radius: 12px;
@@ -575,7 +528,6 @@ body:has(.sidebar.collapsed) .main-content {
     background-color: #fcfcfc; 
 }
 
-/* Tarjetas de Turno en la Grilla */
 .turno-card {
     position: absolute;
     top: 0;
@@ -651,19 +603,13 @@ body:has(.sidebar.collapsed) .main-content {
     }
 }
 
-/* =========================================
-   REGLAS DE SEGURIDAD (RBAC)
-   ========================================= */
 body.is-empleada #btnNuevoTurno {
     display: none !important;
 }
 
-/* =========================================
-   TARJETAS DE AGENDA DETALLADA (EMPLEADAS)
-   ========================================= */
 .tarjeta-turno-empleada {
     background-color: #fffdf7;
-    border-left: 4px solid var(--mostaza); /* Identidad de EMME */
+    border-left: 4px solid var(--mostaza); 
     padding: 8px 10px;
     border-radius: 6px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
@@ -682,17 +628,172 @@ body.is-empleada #btnNuevoTurno {
     transform: scale(1.02);
 }
 
-.tarjeta-turno-empleada .nombre-clienta {
-    font-weight: 700;
-    color: #333;
-    font-size: 13px;
-}
-
-.tarjeta-turno-empleada .servicio-detalle {
-    color: #666;
-    font-weight: 500;
-}
-
 .celda-semanal {
     position: relative;
+}
+
+/* =========================================================================
+   8. DISEÑO RESPONSIVO (CELULARES Y TABLETS HASTA 768px)
+   ========================================================================= */
+@media (max-width: 768px) {
+    
+    /* Mostrar los botones de abrir/cerrar menú */
+    .btn-cerrar-menu-movil { display: block !important; }
+    #btnAbrirMenuMovil { display: flex !important; }
+
+    /* PANTALLA DE LOGIN */
+    #pantallaLogin > div {
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 90vh;
+    }
+    #pantallaLogin > div > div:nth-child(2) {
+        display: none !important; 
+    }
+    #pantallaLogin > div > div:nth-child(1) {
+        padding: 40px 20px !important;
+    }
+
+    /* SIDEBAR (Menú Lateral) y CONTENIDO PRINCIPAL */
+    .sidebar {
+        transform: translateX(-100%); 
+        position: fixed !important;
+        z-index: 9999 !important;
+        width: 260px !important;
+        height: 100vh !important;
+        transition: transform 0.3s ease !important;
+        box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+        left: 0;
+    }
+    .sidebar.activa {
+        transform: translateX(0);
+    }
+    
+    /* Resetear modo colapsado en móvil para evitar conflictos */
+    .sidebar.collapsed .menu-text {
+        opacity: 1;
+        visibility: visible;
+        width: auto;
+        height: auto;
+    }
+    .sidebar.collapsed .menu-item {
+        justify-content: flex-start;
+        padding: 12px 15px;
+    }
+    .sidebar.collapsed .logo-text {
+        font-size: 1.5rem;
+        letter-spacing: 4px;
+    }
+    .sidebar.collapsed .btn-colapsar-sidebar svg {
+        transform: rotate(0deg);
+    }
+
+    .main-content {
+        margin-left: 0 !important; 
+        width: 100% !important;
+        padding: 15px !important;
+    }
+    body:has(.sidebar.collapsed) .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    /* CABECERA Y BOTONES SUPERIORES */
+    .header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 15px !important;
+    }
+    .header-actions {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+    .header-actions input, 
+    .header-actions button {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    /* DASHBOARD Y GRILLAS */
+    .cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+    div[style*="grid-template-columns: 2fr 1fr"],
+    div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* FORMULARIOS DENTRO DE MODALES */
+    .form-row {
+        flex-direction: column !important; 
+        gap: 0 !important;
+    }
+    .modal-content {
+        width: 95% !important;
+        padding: 20px !important;
+        margin: 10px auto !important;
+    }
+
+    /* TABLAS Y SCROLL */
+    table {
+        font-size: 13px !important;
+    }
+    div[style*="overflow-x: auto"] {
+        width: 100% !important;
+        -webkit-overflow-scrolling: touch; 
+    }
+
+    /* BOTONES DE PESTAÑAS (Tabs) */
+    .btn-tab {
+        flex: 1 !important;
+        text-align: center !important;
+        padding: 10px 5px !important;
+        font-size: 12px !important;
+        white-space: nowrap;
+    }
+
+    /* ARREGLO DE FILTROS (Cajas grises) */
+    #seccionGastos > div > div[style*="justify-content: space-between"] {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 15px !important;
+    }
+    div[style*="background: #f8f9fa"][style*="flex-wrap: wrap"] {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        box-sizing: border-box !important;
+    }
+    div[style*="width: 1px; height: 30px"] {
+        display: none !important;
+    }
+    #contenedorMesGastos, #contenedorMesIngresos {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        width: 100% !important;
+    }
+    #seccionGastos > div,
+    #seccionIngresos > div {
+        overflow-x: auto !important;
+        padding: 15px 10px !important;
+    }
+
+    /* ARREGLO DEL FOOTER */
+    footer > div[style*="justify-content: space-between"] {
+        flex-direction: column !important;
+        gap: 30px !important;
+    }
+
+    /* ARREGLO DE LA AGENDA SEMANAL */
+    #vistaSemanal .agenda-container {
+        overflow-x: auto !important; 
+    }
+    #agendaSemanalHeader, #agendaSemanalBody {
+        min-width: 600px !important; 
+    }
 }
