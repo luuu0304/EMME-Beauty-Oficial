@@ -3060,6 +3060,7 @@ function prepararNuevoGasto() {
     document.getElementById('descGastoInput').value = '';
     document.getElementById('montoGastoInput').value = '';
     document.getElementById('selectCategoriaGasto').value = '';
+    document.getElementById('selectMedioPagoGasto').value = '';
     
     const hoy = new Date();
     const yyyy = hoy.getFullYear();
@@ -3189,6 +3190,7 @@ function dibujarTablaGastos(listaGastos) {
             <td style="padding: 12px;"><span style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${gasto.Nombre_Categoria || 'Sin tipo'}</span></td>
             <td style="padding: 12px;">${gasto.Descripcion}</td>
             <td style="padding: 12px; font-weight: bold; color: #d9534f;">$${gasto.Monto.toLocaleString('es-AR')}</td>
+            <td style="padding: 12px;"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${gasto.Medio_Pago || 'No especificado'}</span></td>
             <td style="padding: 12px; text-align: center;">
                 <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarGasto(${gasto.Id_Gasto})" title="Eliminar">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -3204,8 +3206,9 @@ async function guardarGasto() {
     const fecha = document.getElementById('fechaGastoInput').value;
     const monto = document.getElementById('montoGastoInput').value;
     const idCategoria = document.getElementById('selectCategoriaGasto').value;
+    const idMedioPago = document.getElementById('selectMedioPagoGasto').value; // Nuevo valor
 
-    if (!desc || !fecha || !monto) {
+    if (!desc || !fecha || !monto || !idMedioPago) { // Validación actualizada
         mostrarNotificacion("Por favor completá los campos obligatorios (*).", "warning");
         return;
     }
@@ -3214,7 +3217,8 @@ async function guardarGasto() {
         Fecha: fecha,
         Descripcion: desc,
         Monto: parseFloat(monto),
-        Id_Categoria: idCategoria ? parseInt(idCategoria) : null
+        Id_Categoria: idCategoria ? parseInt(idCategoria) : null,
+        Id_Medio_Pago: parseInt(idMedioPago) // Lo mandamos al backend
     };
 
     try {
@@ -3390,6 +3394,7 @@ async function cargarMediosDePago() {
         
         const selectCobroTurno = document.getElementById('selectMedioPago');
         const selectNuevoIngreso = document.getElementById('pagoIngresoManual');
+        const selectGasto = document.getElementById('selectMedioPagoGasto');
         
         let opcionesHTML = '';
         if (medios.length === 0) {
@@ -3403,6 +3408,7 @@ async function cargarMediosDePago() {
         
         if (selectCobroTurno) selectCobroTurno.innerHTML = opcionesHTML;
         if (selectNuevoIngreso) selectNuevoIngreso.innerHTML = opcionesHTML;
+        if (selectGasto) selectGasto.innerHTML = opcionesHTML;
         
     } catch (error) {
         console.error("Error al cargar los medios de pago:", error);

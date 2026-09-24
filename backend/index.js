@@ -949,12 +949,23 @@ app.get('/api/gastos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
         let result = await pool.request().query(`
-            SELECT g.Id_Gasto, g.Fecha, g.Descripcion, g.Monto, c.Nombre AS Nombre_Categoria
-            FROM Gasto g LEFT JOIN Categoria_Gasto c ON g.Id_Categoria = c.Id_Categoria
+            SELECT 
+                g.Id_Gasto, 
+                g.Fecha, 
+                g.Descripcion, 
+                g.Monto, 
+                c.Nombre AS Nombre_Categoria,
+                mp.Nombre AS Medio_Pago /* <-- Traemos el nombre del medio de pago */
+            FROM Gasto g 
+            LEFT JOIN Categoria_Gasto c ON g.Id_Categoria = c.Id_Categoria
+            LEFT JOIN Medio_Pago mp ON g.Id_Medio_Pago = mp.Id_Medio_Pago /* <-- Relación agregada */
             ORDER BY g.Fecha DESC, g.Id_Gasto DESC
         `);
         res.json(result.recordset);
-    } catch (err) { console.error(err); res.status(500).send("Error interno"); }
+    } catch (err) { 
+        console.error(err); 
+        res.status(500).send("Error interno"); 
+    }
 });
 
 app.post('/api/gastos', async (req, res) => {
