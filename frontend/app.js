@@ -3025,7 +3025,7 @@ if (buscadorEmpleadas) {
 
 
 // ==========================================================================
-// 8. MÓDULO DE FINANZAS (Gastos e Ingresos)
+// 8. MÓDULO DE FINANZAS (Registro de Gastos e Ingresos manuales)
 // ==========================================================================
 
 let memoriaGastos = [];

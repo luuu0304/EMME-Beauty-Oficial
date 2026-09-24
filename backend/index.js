@@ -904,7 +904,7 @@ app.put('/api/turnos/:id/sena', async (req, res) => {
 });
 
 // ==========================================================================
-// 7. MÓDULO DE FINANZAS (Caja, Ingresos y Gastos)
+// 7. MÓDULO DE FINANZAS (Caja, Ingresos, Gastos y Cobro de turnos)
 // ==========================================================================
 
 // --- GASTOS Y CATEGORÍAS ---
@@ -986,12 +986,26 @@ app.get('/api/ingresos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
         let result = await pool.request().query(`
-            SELECT i.Id_Ingreso, i.Fecha, i.Monto_Total, i.Medio_Pago, i.Concepto, c.Nombre + ' ' + c.Apellido AS Nombre_Clienta, s.Nombre AS Nombre_Servicio
-            FROM Ingreso i LEFT JOIN Turno t ON i.Id_Turno = t.Id_Turno LEFT JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta LEFT JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            SELECT 
+                i.Id_Ingreso, 
+                i.Fecha, 
+                i.Monto_Total, 
+                mp.Nombre AS Medio_Pago, /* <-- Traemos el nombre desde la nueva tabla */
+                i.Concepto, 
+                c.Nombre + ' ' + c.Apellido AS Nombre_Clienta, 
+                s.Nombre AS Nombre_Servicio
+            FROM Ingreso i 
+            LEFT JOIN Turno t ON i.Id_Turno = t.Id_Turno 
+            LEFT JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta 
+            LEFT JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            LEFT JOIN Medio_Pago mp ON i.Id_Medio_Pago = mp.Id_Medio_Pago /* <-- Nueva conexión */
             ORDER BY i.Fecha DESC, i.Id_Ingreso DESC
         `);
         res.json(result.recordset);
-    } catch (err) { console.error(err); res.status(500).send("Error interno"); }
+    } catch (err) { 
+        console.error(err); 
+        res.status(500).send("Error interno"); 
+    }
 });
 
 app.post('/api/ingresos/manual', async (req, res) => {
