@@ -1988,7 +1988,7 @@ async function confirmarCobroTurno() {
     const datosCobro = {
         idTurno: parseInt(idTurno),
         montoTotal: totalFinal,
-        medioPago: medioPago,
+        idMedioPago: parseInt(medioPago),
         descuento: descuento,
         recargo: recargo, 
         extras: extrasSeleccionados
@@ -2051,7 +2051,6 @@ async function guardarSenaIndependiente() {
         mostrarNotificacion("Error de conexión.", "error");
     }
 }
-
 
 // ==========================================================================
 // 6. MÓDULO DE CLIENTAS (CRM, Retención e Historial Estético)

@@ -882,21 +882,44 @@ app.put('/api/turnos/:id/detalles', async (req, res) => {
     }
 });
 
-// Registrar seña tardía
+// Registrar o actualizar seña tardía (Calculando la diferencia)
 app.put('/api/turnos/:id/sena', async (req, res) => {
     const { id } = req.params;
     const { Sena_Monto, Nombre_Clienta } = req.body; 
+    
     try {
         let pool = await sql.connect(dbConfig);
-        await pool.request().input('Id', sql.Int, id).input('Monto', sql.Decimal(10,2), Sena_Monto).query('UPDATE Turno SET Sena_Monto = @Monto WHERE Id_Turno = @Id'); 
-        if (Sena_Monto > 0) {
+        
+        // 1. Consultamos cuánta seña ya tenía registrada este turno
+        const turnoActual = await pool.request()
+            .input('Id', sql.Int, id)
+            .query('SELECT Sena_Monto FROM Turno WHERE Id_Turno = @Id');
+            
+        if (turnoActual.recordset.length === 0) return res.status(404).send("Turno no encontrado");
+        
+        const senaPrevia = turnoActual.recordset[0].Sena_Monto || 0;
+        const diferencia = Sena_Monto - senaPrevia; // Calculamos la plata real que está ingresando ahora
+        
+        // 2. Actualizamos el Turno con el nuevo monto total de la seña
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .input('Monto', sql.Decimal(10,2), Sena_Monto)
+            .query('UPDATE Turno SET Sena_Monto = @Monto WHERE Id_Turno = @Id'); 
+            
+        // 3. Registramos el ingreso SOLO si la clienta agregó plata (diferencia positiva)
+        if (diferencia > 0) {
             await pool.request()
-                .input('Concepto', sql.VarChar, `Seña abonada - ${Nombre_Clienta}`)
-                .input('Monto', sql.Decimal(10,2), Sena_Monto)
-                .input('Medio', sql.VarChar, 'Transferencia') 
-                .query(`INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Medio_Pago) VALUES (@Concepto, @Monto, GETDATE(), @Medio)`);
+                .input('Concepto', sql.VarChar, `Seña abonada (Agregado) - ${Nombre_Clienta}`)
+                .input('Monto', sql.Decimal(10,2), diferencia)
+                .query(`
+                    DECLARE @IdTransferencia INT = (SELECT TOP 1 Id_Medio_Pago FROM Medio_Pago WHERE Nombre = 'Transferencia');
+                    
+                    INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Id_Medio_Pago) 
+                    VALUES (@Concepto, @Monto, GETDATE(), @IdTransferencia)
+                `);
         }
-        res.json({ message: "Seña guardada e ingreso registrado" });
+        
+        res.json({ message: "Seña actualizada y diferencia registrada en caja" });
     } catch (err) {
         console.error("Error al actualizar seña:", err);
         res.status(500).json({ error: "Error en el servidor" });
