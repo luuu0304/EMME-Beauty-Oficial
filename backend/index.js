@@ -1,4 +1,5 @@
-require('dotenv').config(); // Carga las variables de entorno (secretos) desde el archivo .env
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') }); // Carga las variables de entorno (secretos) desde el archivo .env
 const express = require('express');
 const cors = require('cors');
 const sql = require('mssql');
@@ -229,7 +230,7 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
         let result = await pool.request()
             .input('Id_Clienta', sql.Int, id)
             .query(`
-                SELECT t.Fecha_Hora, s.Nombre AS Nombre_Servicio, e.Nombre_Ap, t.Color, t.Comentario_Admin
+                SELECT t.Fecha_Hora, s.Nombre AS Nombre_Servicio, e.Nombre_Ap, t.Color, t.Comentario_Admin, t.Estado
                 FROM Turno t
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                 JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
@@ -709,6 +710,7 @@ app.get('/api/turnos', async (req, res) => {
             JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
             JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
             JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            WHERE t.Estado != 'Cancelado'
         `);
         res.json(resultado.recordset);
     } catch (error) {
@@ -728,12 +730,14 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
                 SELECT 
                     t.Id_Turno, t.Fecha_Hora, c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
                     s.Nombre AS Nombre_Servicio, s.Duracion_Minutos, s.Precio_Base, 
-                    t.Id_Empleada, e.Nombre_Ap, t.Estado, t.Color, t.Sena_Monto, t.Comentario_Admin
+                    t.Id_Empleada, e.Nombre_Ap, t.Estado, t.Color, t.Sena_Monto, t.Comentario_Admin,
+                    a.Nombre AS Nombre_Area
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                LEFT JOIN Area a ON s.Id_Area = a.Id_Area
                 JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada 
-                WHERE CAST(t.Fecha_Hora AS DATE) = @FechaBuscada
+                WHERE CAST(t.Fecha_Hora AS DATE) = @FechaBuscada AND t.Estado != 'Cancelado'
             `);
         res.json(result.recordset);
     } catch (err) {
@@ -751,7 +755,7 @@ app.get('/api/empleadas/:id/agenda/:fecha', async (req, res) => {
             .input('Id_Empleada', sql.Int, id)
             .input('Fecha', sql.VarChar, fecha) 
             .query(`
-                SELECT t.Fecha_Hora, s.Duracion_Minutos FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                SELECT t.Id_Turno, t.Fecha_Hora, s.Duracion_Minutos FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                 WHERE t.Id_Empleada = @Id_Empleada AND CAST(t.Fecha_Hora AS DATE) = @Fecha AND t.Estado != 'Cancelado'
             `);
         res.json(result.recordset);
@@ -767,6 +771,9 @@ app.post('/api/turnos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
         const infoServicio = await pool.request().input('Id_Servicio', sql.Int, Id_Servicio).query(`SELECT Duracion_Minutos FROM Servicio WHERE Id_Servicio = @Id_Servicio`);
+        if (infoServicio.recordset.length === 0) {
+            return res.status(404).send("Servicio no encontrado");
+        }
         const duracionNueva = infoServicio.recordset[0].Duracion_Minutos;
 
         const chequeo = await pool.request()
@@ -775,7 +782,7 @@ app.post('/api/turnos', async (req, res) => {
             .input('DuracionNueva', sql.Int, duracionNueva)
             .query(`
                 SELECT t.Id_Turno FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                WHERE t.Id_Empleada = @Id_Empleada AND (
+                WHERE t.Id_Empleada = @Id_Empleada AND t.Estado != 'Cancelado' AND (
                     @NuevaFechaInicio < DATEADD(MINUTE, s.Duracion_Minutos, t.Fecha_Hora)
                     AND DATEADD(MINUTE, @DuracionNueva, @NuevaFechaInicio) > t.Fecha_Hora
                 )
@@ -788,19 +795,21 @@ app.post('/api/turnos', async (req, res) => {
             .input('Id_Empleada', sql.Int, Id_Empleada)
             .input('Id_Servicio', sql.Int, Id_Servicio)
             .input('Fecha_Hora', sql.DateTime, Fecha_Hora)
+            .input('DuracionNueva', sql.Int, duracionNueva)
             .input('Sena_Monto', sql.Decimal(10,2), Sena_Monto || 0)
             .query(`
-                INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto) 
-                VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora, @Sena_Monto);
+                INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Fecha_Hora_Fin, Sena_Monto) 
+                VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora, DATEADD(MINUTE, @DuracionNueva, @Fecha_Hora), @Sena_Monto);
                 
                 IF (@Sena_Monto > 0) BEGIN
+                    DECLARE @NuevoIdTurno INT = SCOPE_IDENTITY();
                     DECLARE @NombreC VARCHAR(100);
                     SELECT @NombreC = Nombre + ' ' + Apellido FROM Clienta WHERE Id_Clienta = @Id_Clienta;
                     -- Buscamos dinámicamente el ID de 'Transferencia' en la nueva tabla
                     DECLARE @IdTransferencia INT = (SELECT TOP 1 Id_Medio_Pago FROM Medio_Pago WHERE Nombre = 'Transferencia');
                     
-                    INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Id_Medio_Pago) 
-                    VALUES ('Seña abonada - ' + @NombreC, @Sena_Monto, GETDATE(), @IdTransferencia);
+                    INSERT INTO Ingreso (Id_Turno, Concepto, Monto_Total, Fecha, Id_Medio_Pago) 
+                    VALUES (@NuevoIdTurno, 'Seña abonada - ' + @NombreC, @Sena_Monto, GETDATE(), @IdTransferencia);
                 END
             `);
         res.status(201).json({ message: "¡Turno creado exitosamente!" });
@@ -837,20 +846,23 @@ app.put('/api/turnos/:id', async (req, res) => {
         let pool = await sql.connect(dbConfig);
         
         const infoS = await pool.request().input('Id', sql.Int, Id_Servicio).query(`SELECT Duracion_Minutos FROM Servicio WHERE Id_Servicio = @Id`);
+        if (infoS.recordset.length === 0) {
+            return res.status(404).send("Servicio no encontrado");
+        }
         const dur = infoS.recordset[0].Duracion_Minutos;
 
         const chk = await pool.request()
             .input('IdE', sql.Int, Id_Empleada).input('NFI', sql.DateTime, Fecha_Hora).input('Dur', sql.Int, dur).input('IdTurno', sql.Int, id)
             .query(`
                 SELECT t.Id_Turno FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio 
-                WHERE t.Id_Empleada = @IdE AND t.Id_Turno != @IdTurno
+                WHERE t.Id_Empleada = @IdE AND t.Id_Turno != @IdTurno AND t.Estado != 'Cancelado'
                 AND (@NFI < DATEADD(MINUTE, s.Duracion_Minutos, t.Fecha_Hora) AND DATEADD(MINUTE, @Dur, @NFI) > t.Fecha_Hora)
             `);
         if (chk.recordset.length > 0) return res.status(400).send("La profesional ya tiene un turno en ese horario.");
 
         await pool.request()
-            .input('Id', sql.Int, id).input('IdS', sql.Int, Id_Servicio).input('IdE', sql.Int, Id_Empleada).input('FH', sql.DateTime, Fecha_Hora)
-            .query(`UPDATE Turno SET Id_Servicio = @IdS, Id_Empleada = @IdE, Fecha_Hora = @FH WHERE Id_Turno = @Id`);
+            .input('Id', sql.Int, id).input('IdS', sql.Int, Id_Servicio).input('IdE', sql.Int, Id_Empleada).input('FH', sql.DateTime, Fecha_Hora).input('Dur', sql.Int, dur)
+            .query(`UPDATE Turno SET Id_Servicio = @IdS, Id_Empleada = @IdE, Fecha_Hora = @FH, Fecha_Hora_Fin = DATEADD(MINUTE, @Dur, @FH) WHERE Id_Turno = @Id`);
         res.status(200).json({ message: "Turno modificado correctamente" });
     } catch (err) {
         console.error(err);
@@ -866,11 +878,11 @@ app.put('/api/turnos/:id/detalles', async (req, res) => {
         let pool = await sql.connect(dbConfig);
         await pool.request()
             .input('Id_Turno', sql.Int, id)
-            .input('NuevoColor', sql.VarChar, Color || '') 
+            .input('NuevoColor', sql.VarChar, Color !== undefined ? Color.trim() : '') 
             .input('Comentario', sql.VarChar, Comentario_Admin || '')
             .query(`
                 UPDATE Turno 
-                SET Color = CASE WHEN @NuevoColor = '' THEN Color WHEN Color IS NULL OR Color = '' THEN @NuevoColor ELSE Color + ' | ' + @NuevoColor END,
+                SET Color = NULLIF(@NuevoColor, ''),
                     Comentario_Admin = @Comentario,
                     Estado = CASE WHEN Estado = 'Pendiente' THEN 'En progreso' ELSE Estado END
                 WHERE Id_Turno = @Id_Turno AND Estado != 'Pagado'
@@ -888,34 +900,48 @@ app.put('/api/turnos/:id/sena', async (req, res) => {
     const { Sena_Monto, Nombre_Clienta } = req.body; 
     
     try {
+        const senaNumerica = parseFloat(Sena_Monto);
+        if (isNaN(senaNumerica) || senaNumerica < 0) {
+            return res.status(400).send("El monto de la seña debe ser un número mayor o igual a 0.");
+        }
+
         let pool = await sql.connect(dbConfig);
         
-        // 1. Consultamos cuánta seña ya tenía registrada este turno
+        // 1. Consultamos cuánta seña y estado ya tenía registrada este turno
         const turnoActual = await pool.request()
             .input('Id', sql.Int, id)
-            .query('SELECT Sena_Monto FROM Turno WHERE Id_Turno = @Id');
+            .query('SELECT Sena_Monto, Estado FROM Turno WHERE Id_Turno = @Id');
             
         if (turnoActual.recordset.length === 0) return res.status(404).send("Turno no encontrado");
         
+        const estadoTurno = turnoActual.recordset[0].Estado;
+        if (estadoTurno === 'Pagado') {
+            return res.status(400).send("No se puede modificar la seña de un turno ya pagado.");
+        }
+        if (estadoTurno === 'Cancelado') {
+            return res.status(400).send("No se puede modificar la seña de un turno cancelado.");
+        }
+
         const senaPrevia = turnoActual.recordset[0].Sena_Monto || 0;
-        const diferencia = Sena_Monto - senaPrevia; // Calculamos la plata real que está ingresando ahora
+        const diferencia = senaNumerica - senaPrevia; // Calculamos la plata real que está ingresando ahora
         
         // 2. Actualizamos el Turno con el nuevo monto total de la seña
         await pool.request()
             .input('Id', sql.Int, id)
-            .input('Monto', sql.Decimal(10,2), Sena_Monto)
+            .input('Monto', sql.Decimal(10,2), senaNumerica)
             .query('UPDATE Turno SET Sena_Monto = @Monto WHERE Id_Turno = @Id'); 
             
         // 3. Registramos el ingreso SOLO si la clienta agregó plata (diferencia positiva)
         if (diferencia > 0) {
             await pool.request()
-                .input('Concepto', sql.VarChar, `Seña abonada (Agregado) - ${Nombre_Clienta}`)
+                .input('Id_Turno', sql.Int, id)
+                .input('Concepto', sql.VarChar, `Seña abonada (Agregado) - ${Nombre_Clienta || ''}`)
                 .input('Monto', sql.Decimal(10,2), diferencia)
                 .query(`
                     DECLARE @IdTransferencia INT = (SELECT TOP 1 Id_Medio_Pago FROM Medio_Pago WHERE Nombre = 'Transferencia');
                     
-                    INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Id_Medio_Pago) 
-                    VALUES (@Concepto, @Monto, GETDATE(), @IdTransferencia)
+                    INSERT INTO Ingreso (Id_Turno, Concepto, Monto_Total, Fecha, Id_Medio_Pago) 
+                    VALUES (@Id_Turno, @Concepto, @Monto, GETDATE(), @IdTransferencia)
                 `);
         }
         
@@ -925,6 +951,39 @@ app.put('/api/turnos/:id/sena', async (req, res) => {
         res.status(500).json({ error: "Error en el servidor" });
     }
 });
+
+// Cancelar un turno (soporta PUT /cancelar, POST /cancelar y DELETE /api/turnos/:id)
+const cancelarTurnoHandler = async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+
+        const turnoActual = await pool.request()
+            .input('Id', sql.Int, id)
+            .query('SELECT Estado FROM Turno WHERE Id_Turno = @Id');
+
+        if (turnoActual.recordset.length === 0) {
+            return res.status(404).send("Turno no encontrado");
+        }
+
+        if (turnoActual.recordset[0].Estado === 'Pagado') {
+            return res.status(400).send("No se puede cancelar un turno que ya fue cobrado.");
+        }
+
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .query("UPDATE Turno SET Estado = 'Cancelado' WHERE Id_Turno = @Id");
+
+        res.status(200).json({ message: "Turno cancelado exitosamente" });
+    } catch (err) {
+        console.error("Error al cancelar turno:", err);
+        res.status(500).send("Error interno al cancelar el turno");
+    }
+};
+
+app.put('/api/turnos/:id/cancelar', cancelarTurnoHandler);
+app.post('/api/turnos/:id/cancelar', cancelarTurnoHandler);
+app.delete('/api/turnos/:id', cancelarTurnoHandler);
 
 // ==========================================================================
 // 7. MÓDULO DE FINANZAS (Caja, Ingresos, Gastos y Cobro de turnos)
@@ -1061,7 +1120,9 @@ app.post('/api/ingresos/manual', async (req, res) => {
 
 app.post('/api/cobrar-turno', async (req, res) => {
     try {
-        const { idTurno, montoTotal, idMedioPago, descuento, extras } = req.body; // Cambiamos medioPago por idMedioPago
+        const { idTurno, montoTotal, idMedioPago, descuento, extras, color, comentarioAdmin } = req.body;
+        const colorFinal = color !== undefined ? color : req.body.Color;
+        const comentarioFinal = comentarioAdmin !== undefined ? comentarioAdmin : req.body.Comentario_Admin;
         let pool = await sql.connect(dbConfig);
         
         const chequeo = await pool.request().input('Id_Turno', sql.Int, idTurno).query(`
@@ -1092,7 +1153,23 @@ app.post('/api/cobrar-turno', async (req, res) => {
                 }
             }
             const requestEstado = new sql.Request(transaction);
-            await requestEstado.input('Id_Turno', sql.Int, idTurno).query(`UPDATE Turno SET Estado = 'Pagado' WHERE Id_Turno = @Id_Turno`);
+            await requestEstado
+                .input('Id_Turno', sql.Int, idTurno)
+                .input('Color', sql.VarChar, colorFinal !== undefined && colorFinal !== null ? colorFinal.trim() : null)
+                .input('Comentario', sql.VarChar, comentarioFinal !== undefined && comentarioFinal !== null ? comentarioFinal.trim() : null)
+                .query(`
+                    UPDATE Turno 
+                    SET Estado = 'Pagado',
+                        Color = CASE 
+                            WHEN @Color IS NOT NULL THEN NULLIF(@Color, '') 
+                            ELSE Color 
+                        END,
+                        Comentario_Admin = CASE 
+                            WHEN @Comentario IS NOT NULL THEN NULLIF(@Comentario, '') 
+                            ELSE Comentario_Admin 
+                        END
+                    WHERE Id_Turno = @Id_Turno
+                `);
             
             await transaction.commit(); res.status(200).json({ message: "¡Cobro registrado exitosamente!" });
         } catch (err) { await transaction.rollback(); throw err; }

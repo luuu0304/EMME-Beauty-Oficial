@@ -154,7 +154,7 @@ function aplicarPermisos(rol) {
                 btn.style.display = 'none'; 
             }
             if (textoBoton === 'Agenda Semanal') {
-                setTimeout(() => { btn.click(); }, 100);
+                btn.classList.add('active');
             }
         });
     }
@@ -194,7 +194,7 @@ document.querySelectorAll('.menu-item').forEach(item => {
 // 2. INICIALIZACIÓN GLOBAL (Eventos de arranque de la SPA)
 // ==========================================================================
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     // 2.1. CHEQUEO DE SEGURIDAD
     const token = localStorage.getItem('emme_token');
     const rol = localStorage.getItem('emme_rol');
@@ -218,10 +218,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // 2.3. INICIALIZACIÓN DE CALENDARIOS (Agenda)
         inicializarFechaAgenda();
+        inicializarControlesAgenda();
         if (rol === 'Empleada') {
-            inicializarAgendaSemanal();
+            await cambiarVistaAgenda('semanal');
         } else {
-            inicializarAgendaDiaria();
+            await inicializarAgendaDiaria();
         }
         
         // 2.4. INICIALIZACIÓN DE FILTROS FLATPICKR (Rango de Fechas)
@@ -574,14 +575,23 @@ function abrirModalTurno() {
     document.getElementById('idTurnoAEditarOculto').value = '';
     document.getElementById('btnNuevaClientaExpress').style.display = 'block';
     document.getElementById('selectClientaTurno').disabled = false;
+    document.getElementById('selectClientaTurno').value = '';
     document.getElementById('inputBuscarClientaTurno').disabled = false;
     document.getElementById('inputBuscarClientaTurno').value = '';
+
+    const btnLimpiar = document.getElementById('btnLimpiarClienta');
+    if (btnLimpiar) btnLimpiar.style.display = 'none';
+    const dropdown = document.getElementById('dropdownClientas');
+    if (dropdown) dropdown.style.display = 'none';
+
     document.getElementById('senaTurnoInput').disabled = false;
     document.getElementById('modalNuevoTurno').classList.add('active');
 }
 
 function cerrarModalTurno() {
     if (modalTurno) modalTurno.classList.remove('active');
+    const dropdown = document.getElementById('dropdownClientas');
+    if (dropdown) dropdown.style.display = 'none';
 }
 
 async function abrirEdicionTurno() {
@@ -601,6 +611,12 @@ async function abrirEdicionTurno() {
         document.getElementById('selectClientaTurno').value = turno.Id_Clienta;
         document.getElementById('inputBuscarClientaTurno').value = turno.NombreClienta;
         document.getElementById('inputBuscarClientaTurno').disabled = true;
+        
+        const btnLimpiar = document.getElementById('btnLimpiarClienta');
+        if (btnLimpiar) btnLimpiar.style.display = 'none';
+        const dropdown = document.getElementById('dropdownClientas');
+        if (dropdown) dropdown.style.display = 'none';
+
         document.getElementById('btnNuevaClientaExpress').style.display = 'none';
         document.getElementById('senaTurnoInput').disabled = true;
 
@@ -861,6 +877,8 @@ async function guardarTurno() {
 }
 
 function agendarTurnoRapido(idClienta, nombre, apellido) {
+    abrirModalTurno();
+
     const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
     const grupoExpress = document.getElementById('grupoClientaExpress');
     
@@ -871,38 +889,40 @@ function agendarTurnoRapido(idClienta, nombre, apellido) {
 
     const inputOculto = document.getElementById('selectClientaTurno');
     const inputBuscar = document.getElementById('inputBuscarClientaTurno');
+    const btnLimpiar = document.getElementById('btnLimpiarClienta');
     if (inputOculto && inputBuscar) {
         inputOculto.value = idClienta;
-        inputBuscar.value = nombre + (apellido ? ' ' + apellido : '');
+        inputBuscar.value = (nombre + (apellido ? ' ' + apellido : '')).trim();
+        if (btnLimpiar) btnLimpiar.style.display = 'flex';
     }
-
-    abrirModalTurno();
 }
 
 async function cargarBotonesAreasAgenda() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/areas');
         const areas = await respuesta.json();
-        const contenedorFiltros = document.getElementById('filtrosEspecialidad');
+        const selectFiltro = document.getElementById('selectFiltroArea');
         
-        if (!contenedorFiltros) return;
+        if (!selectFiltro) return;
+
+        const valorActual = selectFiltro.value || 'Todo';
+        selectFiltro.innerHTML = '<option value="Todo">Todo</option>';
 
         areas.forEach(area => {
             const nombreArea = area.Nombre || area.Nombre_Area || area.Area || "Área sin nombre";
-            
-            const boton = document.createElement('button');
-            boton.className = 'btn-secundario filtro-btn';
-            boton.style.cssText = 'border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;';
-            boton.textContent = nombreArea;
-            
-            boton.onclick = function() { 
-                filtrarAgendaPorArea(nombreArea, this); 
-            };
-            
-            contenedorFiltros.appendChild(boton);
+            const opcion = document.createElement('option');
+            opcion.value = nombreArea;
+            opcion.textContent = nombreArea;
+            selectFiltro.appendChild(opcion);
         });
+
+        if (areas.some(a => (a.Nombre || a.Nombre_Area || a.Area) === valorActual) || valorActual === 'Todo') {
+            selectFiltro.value = valorActual;
+        } else {
+            selectFiltro.value = 'Todo';
+        }
     } catch (error) {
-        console.error("Error cargando los botones de áreas:", error);
+        console.error("Error cargando el desplegable de áreas:", error);
     }
 }
 
@@ -948,43 +968,7 @@ async function inicializarAgendaDiaria() {
             });
         }
 
-        const inputFecha = document.getElementById('fechaAgendaInput');
-        const btnAnterior = document.getElementById('btnDiaAnterior');
-        const btnSiguiente = document.getElementById('btnDiaSiguiente');
-
-        if (inputFecha) {
-            inputFecha.addEventListener('change', actualizarGrillaDiaria);
-            
-            if (btnAnterior) {
-                const newBtnAnterior = btnAnterior.cloneNode(true);
-                btnAnterior.parentNode.replaceChild(newBtnAnterior, btnAnterior);
-                newBtnAnterior.addEventListener('click', () => {
-                    const fechaActual = new Date(inputFecha.value + 'T00:00:00');
-                    fechaActual.setDate(fechaActual.getDate() - 1);
-                    const yyyy = fechaActual.getFullYear();
-                    const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
-                    const dd = String(fechaActual.getDate()).padStart(2, '0');
-                    inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    actualizarGrillaDiaria(); 
-                });
-            }
-
-            if (btnSiguiente) {
-                const newBtnSiguiente = btnSiguiente.cloneNode(true);
-                btnSiguiente.parentNode.replaceChild(newBtnSiguiente, btnSiguiente);
-                newBtnSiguiente.addEventListener('click', () => {
-                    const fechaActual = new Date(inputFecha.value + 'T00:00:00');
-                    fechaActual.setDate(fechaActual.getDate() + 1);
-                    const yyyy = fechaActual.getFullYear();
-                    const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
-                    const dd = String(fechaActual.getDate()).padStart(2, '0');
-                    inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    actualizarGrillaDiaria(); 
-                });
-            }
-        }
-
-        actualizarGrillaDiaria();
+        await actualizarGrillaDiaria();
     } catch (error) {
         console.error("Error al cargar la agenda diaria:", error);
     }
@@ -1102,6 +1086,7 @@ async function actualizarGrillaDiaria() {
     });
 
     await cargarTurnosAgenda();
+    filtrarAgendaPorArea(filtroAgendaActual);
 
     const fechaHoy = new Date().toISOString().split('T')[0];
     if (inputFecha.value === fechaHoy) {
@@ -1109,28 +1094,20 @@ async function actualizarGrillaDiaria() {
     }
 }
 
-function filtrarAgendaPorArea(areaSeleccionada, btnPulsado) {
-    filtroAgendaActual = areaSeleccionada;
+function filtrarAgendaPorArea(areaSeleccionada) {
+    filtroAgendaActual = areaSeleccionada || 'Todo';
 
-    if (btnPulsado) {
-        const botones = document.querySelectorAll('#filtrosEspecialidad .filtro-btn');
-        botones.forEach(b => {
-            b.style.background = 'white';
-            b.style.border = '1px solid #ccc';
-            b.style.color = '#333';
-        });
-        
-        btnPulsado.style.background = 'var(--mostaza, #d4af37)'; 
-        btnPulsado.style.border = '1px solid var(--mostaza, #d4af37)';
-        btnPulsado.style.color = 'white';
+    const selectFiltro = document.getElementById('selectFiltroArea');
+    if (selectFiltro && selectFiltro.value !== filtroAgendaActual) {
+        selectFiltro.value = filtroAgendaActual;
     }
 
     if (typeof empleadasAgendaGlobal !== 'undefined') {
         empleadasAgendaGlobal.forEach(emp => {
             const areasDeLaEmpleada = (emp.Areas || '').toLowerCase();
-            const areaBuscada = areaSeleccionada.toLowerCase();
+            const areaBuscada = filtroAgendaActual.toLowerCase();
             
-            const debeMostrar = (areaSeleccionada === 'Todo' || areasDeLaEmpleada.includes(areaBuscada));
+            const debeMostrar = (filtroAgendaActual === 'Todo' || areasDeLaEmpleada.includes(areaBuscada));
 
             const celdas = document.querySelectorAll(`.col-emp-${emp.Id_Empleada}`);
             
@@ -1143,7 +1120,7 @@ function filtrarAgendaPorArea(areaSeleccionada, btnPulsado) {
 
 function inicializarFechaAgenda() {
     const inputFecha = document.getElementById('fechaAgendaInput');
-    if (inputFecha) {
+    if (inputFecha && !inputFecha.value) {
         const hoy = new Date();
         const yyyy = hoy.getFullYear();
         const mm = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -1153,7 +1130,72 @@ function inicializarFechaAgenda() {
     }
 }
 
-function cambiarVistaAgenda(vista) {
+async function actualizarAgendaActiva() {
+    const vistaSemanal = document.getElementById('vistaSemanal');
+    const esSemanal = vistaSemanal && vistaSemanal.style.display !== 'none';
+    if (esSemanal) {
+        await inicializarAgendaSemanal();
+        await cargarTurnosSemana();
+        setTimeout(enfocarHoraActual, 100);
+    } else {
+        await actualizarGrillaDiaria();
+        setTimeout(enfocarHoraActual, 100);
+    }
+}
+
+let controlesAgendaRegistrados = false;
+function inicializarControlesAgenda() {
+    if (controlesAgendaRegistrados) return;
+    const inputFecha = document.getElementById('fechaAgendaInput');
+    const btnAnterior = document.getElementById('btnDiaAnterior');
+    const btnSiguiente = document.getElementById('btnDiaSiguiente');
+
+    if (inputFecha) {
+        inputFecha.addEventListener('change', () => {
+            actualizarAgendaActiva();
+        });
+    }
+
+    if (btnAnterior) {
+        btnAnterior.addEventListener('click', () => {
+            if (!inputFecha || !inputFecha.value) return;
+            const vistaSemanal = document.getElementById('vistaSemanal');
+            const esSemanal = vistaSemanal && vistaSemanal.style.display !== 'none';
+            const saltoDias = esSemanal ? 7 : 1;
+
+            const [y, m, d] = inputFecha.value.split('-').map(Number);
+            const fechaActual = new Date(y, m - 1, d);
+            fechaActual.setDate(fechaActual.getDate() - saltoDias);
+            const yyyy = fechaActual.getFullYear();
+            const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
+            const dd = String(fechaActual.getDate()).padStart(2, '0');
+            inputFecha.value = `${yyyy}-${mm}-${dd}`;
+            actualizarAgendaActiva();
+        });
+    }
+
+    if (btnSiguiente) {
+        btnSiguiente.addEventListener('click', () => {
+            if (!inputFecha || !inputFecha.value) return;
+            const vistaSemanal = document.getElementById('vistaSemanal');
+            const esSemanal = vistaSemanal && vistaSemanal.style.display !== 'none';
+            const saltoDias = esSemanal ? 7 : 1;
+
+            const [y, m, d] = inputFecha.value.split('-').map(Number);
+            const fechaActual = new Date(y, m - 1, d);
+            fechaActual.setDate(fechaActual.getDate() + saltoDias);
+            const yyyy = fechaActual.getFullYear();
+            const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
+            const dd = String(fechaActual.getDate()).padStart(2, '0');
+            inputFecha.value = `${yyyy}-${mm}-${dd}`;
+            actualizarAgendaActiva();
+        });
+    }
+
+    controlesAgendaRegistrados = true;
+}
+
+async function cambiarVistaAgenda(vista) {
     const vistaDiaria = document.getElementById('vistaDiaria');
     const vistaSemanal = document.getElementById('vistaSemanal');
     const btnDiaria = document.getElementById('btnVistaDiaria');
@@ -1161,22 +1203,28 @@ function cambiarVistaAgenda(vista) {
     const filtros = document.getElementById('filtrosEspecialidad'); 
 
     if (vista === 'diaria') {
-        vistaDiaria.style.display = 'block';
-        vistaSemanal.style.display = 'none';
-        btnDiaria.classList.add('active');
-        btnSemanal.classList.remove('active');
+        if (vistaDiaria) vistaDiaria.style.display = 'block';
+        if (vistaSemanal) vistaSemanal.style.display = 'none';
+        if (btnDiaria) btnDiaria.classList.add('active');
+        if (btnSemanal) btnSemanal.classList.remove('active');
         
-        filtros.style.display = 'flex'; 
+        if (filtros) filtros.style.display = 'flex'; 
+        if (horariosAgendaGlobal.length === 0) {
+            await inicializarAgendaDiaria();
+        } else {
+            await actualizarGrillaDiaria();
+        }
+        setTimeout(enfocarHoraActual, 100);
     } else if (vista === 'semanal') {
-        vistaDiaria.style.display = 'none';
-        vistaSemanal.style.display = 'block';
-        btnSemanal.classList.add('active');
-        btnDiaria.classList.remove('active');
+        if (vistaDiaria) vistaDiaria.style.display = 'none';
+        if (vistaSemanal) vistaSemanal.style.display = 'block';
+        if (btnSemanal) btnSemanal.classList.add('active');
+        if (btnDiaria) btnDiaria.classList.remove('active');
         
-        filtros.style.display = 'none'; 
+        if (filtros) filtros.style.display = 'none'; 
         
-        inicializarAgendaSemanal();
-        cargarTurnosSemana();
+        await inicializarAgendaSemanal();
+        await cargarTurnosSemana();
         setTimeout(enfocarHoraActual, 100);
     }
 }
@@ -1224,7 +1272,7 @@ async function cargarTurnosSemana() {
             const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${fechaStr}`);
             if (respuesta.ok) {
                 const turnosDia = await respuesta.json();
-                todosLosTurnos.push(...turnosDia); 
+                todosLosTurnos.push(...turnosDia.filter(t => t.Estado !== 'Cancelado')); 
             }
         }
 
@@ -1522,7 +1570,10 @@ async function cargarTurnosAgenda() {
 
         document.querySelectorAll('.turno-card').forEach(card => card.remove());
 
-        turnos.forEach(turno => {
+        // Solo dibujamos los turnos activos en la grilla (los cancelados dejan el hueco libre)
+        const turnosActivos = turnos.filter(t => t.Estado !== 'Cancelado');
+
+        turnosActivos.forEach(turno => {
             const fechaObj = new Date(turno.Fecha_Hora);
             const horas = fechaObj.getHours().toString().padStart(2, '0');
             const minutosReales = fechaObj.getMinutes();
@@ -1648,8 +1699,11 @@ async function cargarHorariosDisponibles() {
             for (let m = apertura2; m < cierre2; m += 30) horariosPosibles.push(m);
         }
 
+        const idAEditar = document.getElementById('idTurnoAEditarOculto')?.value;
+
         const horariosFiltrados = horariosPosibles.filter(minutoEvaluado => {
             const estaOcupado = turnosOcupados.some(turno => {
+                if (idAEditar && turno.Id_Turno == idAEditar) return false;
                 const inicioOcupado = extraerMinutos(turno.Fecha_Hora);
                 const finOcupado = inicioOcupado + turno.Duracion_Minutos;
                 
@@ -1765,6 +1819,8 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     
     const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
     const btnEditar = document.getElementById('btnEditarDatosTurno');
+    const btnCancelarT = document.getElementById('btnCancelarTurno');
+    const rolUsuario = localStorage.getItem('emme_rol');
     
     if (estado === 'Pagado') {
         badgeEstado.style.background = '#d4edda';
@@ -1785,6 +1841,27 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         checkboxes.forEach(chk => chk.disabled = true);
         
         if (btnEditar) btnEditar.style.display = 'none'; 
+        if (btnCancelarT) btnCancelarT.style.display = 'none';
+    } else if (estado === 'Cancelado') {
+        badgeEstado.style.background = '#f8d7da';
+        badgeEstado.style.color = '#721c24';
+        
+        btnCobrar.disabled = true;
+        btnCobrar.style.background = '#ccc';
+        btnCobrar.textContent = 'Turno cancelado';
+        btnCobrar.style.cursor = 'not-allowed';
+        
+        btnGuardar.style.display = 'none';
+        inputColor.disabled = true;
+        inputDescuento.disabled = true;
+        if (inputRecargo) inputRecargo.disabled = true;
+        if (inputComentario) inputComentario.disabled = true; 
+        if (inputSena) inputSena.disabled = true;
+        if (btnActualizarSena) btnActualizarSena.disabled = true;
+        checkboxes.forEach(chk => chk.disabled = true);
+        
+        if (btnEditar) btnEditar.style.display = 'none'; 
+        if (btnCancelarT) btnCancelarT.style.display = 'none';
     } else {
         badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
         badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
@@ -1803,7 +1880,8 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         if (btnActualizarSena) btnActualizarSena.disabled = false;
         checkboxes.forEach(chk => chk.disabled = false);
         
-        if (btnEditar) btnEditar.style.display = 'block'; 
+        if (btnEditar) btnEditar.style.display = (rolUsuario !== 'Empleada') ? 'inline-flex' : 'none'; 
+        if (btnCancelarT) btnCancelarT.style.display = (rolUsuario !== 'Empleada') ? 'inline-flex' : 'none';
     }
 
     document.getElementById('descuentoCobroInput').value = 0;
@@ -1817,8 +1895,56 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
 }
 
+async function cancelarTurnoDesdeModal() {
+    const idTurno = document.getElementById('idTurnoCobroOculto')?.value;
+    if (!idTurno) return;
+
+    const confirma = await pedirConfirmacion("¿Estás segura de que deseás cancelar este turno?");
+    if (!confirma) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/cancelar`, {
+            method: 'PUT'
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("Turno cancelado exitosamente", "success");
+            cerrarModalDetalleTurno();
+            await actualizarAgendaActiva();
+        } else {
+            let mensajeError = "Error al cancelar el turno";
+            try {
+                const errText = await respuesta.text();
+                const matchPre = errText.match(/<pre>(.*?)<\/pre>/i);
+                if (matchPre) {
+                    mensajeError = matchPre[1];
+                } else if (errText && !errText.includes('<html')) {
+                    try {
+                        const parsed = JSON.parse(errText);
+                        mensajeError = parsed.message || parsed.error || errText;
+                    } catch {
+                        mensajeError = errText;
+                    }
+                }
+            } catch (e) {}
+            mostrarNotificacion(`Error: ${mensajeError}`, "error");
+        }
+    } catch (error) {
+        console.error("Error al cancelar turno:", error);
+        mostrarNotificacion("Error de conexión al cancelar el turno", "error");
+    }
+}
+
 async function guardarDetallesTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
+
+    // Si el usuario escribió un color en el input y no presionó Enter, agregarlo como chip
+    const inputColor = document.getElementById('inputNuevoColor');
+    if (inputColor && inputColor.value.trim()) {
+        agregarChipColor(inputColor.value.trim());
+        inputColor.value = '';
+    }
+
     const coloresFinales = document.getElementById('coloresGuardados').value; 
     const comentario = document.getElementById('comentarioAdminInput').value;
     
@@ -1964,6 +2090,16 @@ async function confirmarCobroTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const medioPago = document.getElementById('selectMedioPago').value;
     
+    // Si el usuario escribió un color en el input y no presionó Enter, agregarlo como chip
+    const inputColor = document.getElementById('inputNuevoColor');
+    if (inputColor && inputColor.value.trim()) {
+        agregarChipColor(inputColor.value.trim());
+        inputColor.value = '';
+    }
+
+    const coloresFinales = document.getElementById('coloresGuardados')?.value || '';
+    const comentario = document.getElementById('comentarioAdminInput')?.value || '';
+
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
 
@@ -1991,7 +2127,9 @@ async function confirmarCobroTurno() {
         idMedioPago: parseInt(medioPago),
         descuento: descuento,
         recargo: recargo, 
-        extras: extrasSeleccionados
+        extras: extrasSeleccionados,
+        color: coloresFinales,
+        comentarioAdmin: comentario
     };
 
     try {
@@ -2167,9 +2305,19 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
                 `;
             }
 
+            const esCancelado = turno.Estado === 'Cancelado';
+            const badgeCancelado = esCancelado 
+                ? `<span style="background: #f8d7da; color: #721c24; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #f5c6cb; margin-left: 8px;">Cancelado</span>` 
+                : '';
+            const colorBorde = esCancelado ? '#dc3545' : 'var(--mostaza)';
+            const fondoTarjeta = esCancelado ? '#fff5f5' : '#f9f9f9';
+
             const itemHTML = `
-                <div style="background-color: #f9f9f9; border-left: 4px solid var(--mostaza); padding: 10px 15px; margin-bottom: 10px; border-radius: 4px;">
-                    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">${turno.Nombre_Servicio}</div>
+                <div style="background-color: ${fondoTarjeta}; border-left: 4px solid ${colorBorde}; padding: 10px 15px; margin-bottom: 10px; border-radius: 4px;">
+                    <div style="font-weight: bold; color: #333; margin-bottom: 5px; display: flex; align-items: center;">
+                        <span>${turno.Nombre_Servicio}</span>
+                        ${badgeCancelado}
+                    </div>
                     <div style="font-size: 13px; color: #666; display: flex; justify-content: space-between;">
                         <span>Fecha: ${fechaLimpia} a las ${horaLimpia} hs</span>
                         <span>Profesional: ${turno.Nombre_Ap}</span>
@@ -2266,11 +2414,11 @@ function renderizarClientas(clientasParaMostrar) {
 
         const filaHTML = `
             <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
-                <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
-                <td style="padding: 12px 15px;">${clienta.Telefono || '-'}</td>
-                <td style="padding: 12px 15px;">${clienta.Observacion || '-'}</td>
-                <td style="padding: 12px 15px;">${fechaNac}</td>
-                <td style="padding: 12px 15px; text-align: center;">
+                <td style="padding: 11px 14px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
+                <td style="padding: 11px 14px;">${clienta.Telefono || '-'}</td>
+                <td style="padding: 11px 14px;">${clienta.Observacion || '-'}</td>
+                <td style="padding: 11px 14px;">${fechaNac}</td>
+                <td style="padding: 11px 14px; text-align: center;">
                     <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
                     <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
                     <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Observacion}')">Editar</button>
@@ -2385,55 +2533,239 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputBuscarClienta = document.getElementById('inputBuscarClientaTurno');
     const dropdownClientas = document.getElementById('dropdownClientas');
     const inputClientaOculto = document.getElementById('selectClientaTurno');
+    const btnLimpiar = document.getElementById('btnLimpiarClienta');
 
-    if (inputBuscarClienta) {
-        inputBuscarClienta.addEventListener('input', (e) => {
-            const texto = e.target.value.toLowerCase();
-            dropdownClientas.innerHTML = '';
-            
-            if (texto.length < 2) {
-                dropdownClientas.style.display = 'none';
-                inputClientaOculto.value = ''; 
-                return;
-            }
-            
-            const filtradas = listaGlobalClientas.filter(c => 
-                c.Nombre.toLowerCase().includes(texto) || 
-                (c.Apellido && c.Apellido.toLowerCase().includes(texto))
-            );
-            
-            if (filtradas.length === 0) {
-                dropdownClientas.innerHTML = '<div style="padding: 10px; color: #888; font-size: 13px;">No se encontraron clientas...</div>';
-                dropdownClientas.style.display = 'block';
-                return;
-            }
-            
-            filtradas.forEach(c => {
-                const item = document.createElement('div');
-                item.style.padding = '10px';
-                item.style.cursor = 'pointer';
-                item.style.borderBottom = '1px solid #eee';
-                item.textContent = `${c.Nombre} ${c.Apellido || ''}`;
-                
-                item.onmouseover = () => item.style.backgroundColor = '#f8f9fa';
-                item.onmouseout = () => item.style.backgroundColor = 'white';
-                
-                item.onclick = () => {
-                    inputBuscarClienta.value = `${c.Nombre} ${c.Apellido || ''}`;
-                    inputClientaOculto.value = c.Id_Clienta;
-                    dropdownClientas.style.display = 'none';
-                };
-                dropdownClientas.appendChild(item);
-            });
-            dropdownClientas.style.display = 'block';
-        });
+    if (!inputBuscarClienta || !dropdownClientas || !inputClientaOculto) return;
 
-        document.addEventListener('click', (e) => {
-            if(e.target !== inputBuscarClienta && e.target !== dropdownClientas) {
-                dropdownClientas.style.display = 'none';
+    let itemsFiltrados = [];
+    let indiceResaltado = -1;
+
+    function obtenerIniciales(nombre, apellido) {
+        const n = (nombre || '').trim().charAt(0).toUpperCase();
+        const a = (apellido || '').trim().charAt(0).toUpperCase();
+        return (n + a) || 'C';
+    }
+
+    function resaltarTexto(textoOriginal, consulta) {
+        if (!consulta) return textoOriginal;
+        const regex = new RegExp(`(${consulta.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return textoOriginal.replace(regex, '<mark style="background: #fef08a; color: inherit; padding: 0 1px; border-radius: 2px;">$1</mark>');
+    }
+
+    function seleccionarClienta(c) {
+        const nombreCompleto = `${c.Nombre || ''} ${c.Apellido || ''}`.trim();
+        inputBuscarClienta.value = nombreCompleto;
+        inputClientaOculto.value = c.Id_Clienta;
+        dropdownClientas.style.display = 'none';
+        indiceResaltado = -1;
+        if (btnLimpiar) btnLimpiar.style.display = 'flex';
+
+        // Pasamos el foco al siguiente campo (Área) si está disponible
+        const selectArea = document.getElementById('areaTurno');
+        if (selectArea && !selectArea.disabled) {
+            selectArea.focus();
+        }
+    }
+
+    function actualizarResaltado() {
+        const itemsDOM = dropdownClientas.querySelectorAll('.item-dropdown-clienta');
+        itemsDOM.forEach((el, idx) => {
+            if (idx === indiceResaltado) {
+                el.classList.add('highlighted');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.classList.remove('highlighted');
             }
         });
     }
+
+    window.abrirExpressDesdeBuscador = function(nombreSugerido) {
+        const partes = (nombreSugerido || '').trim().split(' ');
+        const nombre = partes[0] || '';
+        const apellido = partes.slice(1).join(' ') || '';
+        
+        dropdownClientas.style.display = 'none';
+        
+        const btnExpress = document.getElementById('btnNuevaClientaExpress');
+        if (btnExpress) btnExpress.click();
+        
+        const inputNom = document.getElementById('nombreExpress');
+        const inputApe = document.getElementById('apellidoExpress');
+        if (inputNom) inputNom.value = nombre;
+        if (inputApe) inputApe.value = apellido;
+        if (inputNom) inputNom.focus();
+    };
+
+    function renderizarLista(filtro = '') {
+        const query = (filtro || '').trim().toLowerCase();
+        dropdownClientas.innerHTML = '';
+        indiceResaltado = -1;
+
+        if (!Array.isArray(listaGlobalClientas) || listaGlobalClientas.length === 0) {
+            dropdownClientas.innerHTML = `
+                <div style="padding: 16px; text-align: center; color: #888; font-size: 13px;">
+                    No hay clientas cargadas aún.
+                </div>`;
+            dropdownClientas.style.display = 'block';
+            return;
+        }
+
+        if (query) {
+            itemsFiltrados = listaGlobalClientas.filter(c => {
+                const nombreCompleto = `${c.Nombre || ''} ${c.Apellido || ''}`.toLowerCase();
+                const tel = (c.Telefono || '').toLowerCase();
+                return nombreCompleto.includes(query) || tel.includes(query);
+            });
+        } else {
+            itemsFiltrados = [...listaGlobalClientas];
+        }
+
+        if (itemsFiltrados.length === 0) {
+            dropdownClientas.innerHTML = `
+                <div style="padding: 16px; text-align: center; color: #64748b; font-size: 13px;">
+                    <div style="margin-bottom: 8px;">No encontramos clientas con "<strong>${filtro}</strong>"</div>
+                    <button type="button" onclick="abrirExpressDesdeBuscador('${filtro.replace(/'/g, "\\'")}')" style="background: #fdf3e1; border: 1px solid var(--mostaza, #cfa15f); color: #856404; font-weight: 600; font-size: 12.5px; cursor: pointer; padding: 6px 12px; border-radius: 6px; transition: all 0.2s;">
+                        + Registrar a "${filtro}" como nueva
+                    </button>
+                </div>
+            `;
+            dropdownClientas.style.display = 'block';
+            return;
+        }
+
+        const idSeleccionado = inputClientaOculto.value;
+        const itemsAMostrar = itemsFiltrados.slice(0, 50);
+
+        itemsAMostrar.forEach((c, idx) => {
+            const item = document.createElement('div');
+            item.className = 'item-dropdown-clienta';
+            item.dataset.index = idx;
+
+            const esSeleccionado = idSeleccionado && String(c.Id_Clienta) === String(idSeleccionado);
+            const nombreCompleto = `${c.Nombre || ''} ${c.Apellido || ''}`.trim();
+            const iniciales = obtenerIniciales(c.Nombre, c.Apellido);
+            const nombreHTML = query ? resaltarTexto(nombreCompleto, query) : nombreCompleto;
+            const telHTML = c.Telefono ? (query ? resaltarTexto(c.Telefono, query) : c.Telefono) : '';
+
+            item.innerHTML = `
+                <div class="avatar-clienta">${iniciales}</div>
+                <div class="info-clienta">
+                    <div class="nombre-clienta">${nombreHTML}</div>
+                    ${c.Telefono ? `<div class="meta-clienta"><span>📞</span><span>${telHTML}</span></div>` : ''}
+                </div>
+                ${esSeleccionado ? `<span class="check-seleccionado">✓</span>` : ''}
+            `;
+
+            item.addEventListener('mouseenter', () => {
+                indiceResaltado = idx;
+                actualizarResaltado();
+            });
+
+            item.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                seleccionarClienta(c);
+            });
+
+            dropdownClientas.appendChild(item);
+        });
+
+        if (itemsFiltrados.length > 50) {
+            const aviso = document.createElement('div');
+            aviso.style.cssText = 'padding: 8px 12px; text-align: center; color: #94a3b8; font-size: 11.5px; background: #f8fafc; border-top: 1px solid #f1f5f9;';
+            aviso.textContent = `Mostrando 50 de ${itemsFiltrados.length} clientas. Escribí para acotar la lista.`;
+            dropdownClientas.appendChild(aviso);
+        }
+
+        dropdownClientas.style.display = 'block';
+
+        if (query && itemsAMostrar.length > 0) {
+            indiceResaltado = 0;
+            actualizarResaltado();
+        }
+    }
+
+    inputBuscarClienta.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (btnLimpiar) btnLimpiar.style.display = val ? 'flex' : 'none';
+        
+        if (!val.trim()) {
+            inputClientaOculto.value = '';
+        }
+        renderizarLista(val);
+    });
+
+    inputBuscarClienta.addEventListener('focus', () => {
+        if (!inputBuscarClienta.disabled) {
+            renderizarLista(inputBuscarClienta.value);
+        }
+    });
+
+    inputBuscarClienta.addEventListener('click', () => {
+        if (!inputBuscarClienta.disabled && dropdownClientas.style.display === 'none') {
+            renderizarLista(inputBuscarClienta.value);
+        }
+    });
+
+    inputBuscarClienta.addEventListener('keydown', (e) => {
+        const estaAbierto = dropdownClientas.style.display !== 'none';
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!estaAbierto) {
+                renderizarLista(inputBuscarClienta.value);
+                return;
+            }
+            if (itemsFiltrados.length > 0) {
+                const limite = Math.min(itemsFiltrados.length, 50);
+                indiceResaltado = (indiceResaltado + 1) % limite;
+                actualizarResaltado();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!estaAbierto) {
+                renderizarLista(inputBuscarClienta.value);
+                return;
+            }
+            if (itemsFiltrados.length > 0) {
+                const limite = Math.min(itemsFiltrados.length, 50);
+                indiceResaltado = (indiceResaltado - 1 + limite) % limite;
+                actualizarResaltado();
+            }
+        } else if (e.key === 'Enter') {
+            if (estaAbierto) {
+                e.preventDefault();
+                if (indiceResaltado >= 0 && indiceResaltado < itemsFiltrados.length) {
+                    seleccionarClienta(itemsFiltrados[indiceResaltado]);
+                } else if (itemsFiltrados.length === 1) {
+                    seleccionarClienta(itemsFiltrados[0]);
+                }
+            }
+        } else if (e.key === 'Escape') {
+            if (estaAbierto) {
+                e.preventDefault();
+                dropdownClientas.style.display = 'none';
+                indiceResaltado = -1;
+            }
+        }
+    });
+
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            inputBuscarClienta.value = '';
+            inputClientaOculto.value = '';
+            btnLimpiar.style.display = 'none';
+            inputBuscarClienta.focus();
+            renderizarLista('');
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!inputBuscarClienta.contains(e.target) && !dropdownClientas.contains(e.target) && (!btnLimpiar || !btnLimpiar.contains(e.target))) {
+            dropdownClientas.style.display = 'none';
+            indiceResaltado = -1;
+        }
+    });
 });
 
 
@@ -2664,12 +2996,12 @@ async function verDetalleSueldo(idEmpleada, nombre) {
             
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px;">${fechaLimpia}</td>
-                    <td style="padding: 10px; font-weight: 500;">${d.Nombre_Clienta}</td>
-                    <td style="padding: 10px; color: #555;">${d.Nombre_Servicio}</td>
-                    <td style="padding: 10px; text-align: right;">$${d.Total_Abonado.toLocaleString('es-AR')}</td>
-                    <td style="padding: 10px; text-align: center; color: var(--mostaza); font-weight: bold;">${d.Porcentaje_Comision * 100}%</td>
-                    <td style="padding: 10px; text-align: right; font-weight: bold; color: #28a745;">$${d.A_Cobrar.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px;">${fechaLimpia}</td>
+                    <td style="padding: 11px 14px; font-weight: 500;">${d.Nombre_Clienta}</td>
+                    <td style="padding: 11px 14px; color: #555;">${d.Nombre_Servicio}</td>
+                    <td style="padding: 11px 14px; text-align: right;">$${d.Total_Abonado.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: center; color: var(--mostaza); font-weight: bold;">${d.Porcentaje_Comision * 100}%</td>
+                    <td style="padding: 11px 14px; text-align: right; font-weight: bold; color: #28a745;">$${d.A_Cobrar.toLocaleString('es-AR')}</td>
                 </tr>
             `;
         });
@@ -2899,12 +3231,12 @@ function dibujarTablaCobros(lista) {
         
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid #eee; transition: background-color 0.2s;">
-                <td style="padding: 15px; color: #555;">${fechaLimpia}</td>
-                <td style="padding: 15px; font-weight: 500; color: #333;">${liq.Nombre_Ap}</td>
-                <td style="padding: 15px; font-weight: 600; color: #28a745;">$${liq.Monto_Total.toLocaleString('es-AR')}</td>
-                <td style="padding: 15px; text-align: center;">
-                    <button class="btn-icon" onclick="abrirDetalleCobro(${liq.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <td style="padding: 11px 14px; color: #555;">${fechaLimpia}</td>
+                <td style="padding: 11px 14px; font-weight: 500; color: #333;">${liq.Nombre_Ap}</td>
+                <td style="padding: 11px 14px; font-weight: 600; color: #28a745;">$${liq.Monto_Total.toLocaleString('es-AR')}</td>
+                <td style="padding: 11px 14px; text-align: center;">
+                    <button class="btn-icon" onclick="abrirDetalleCobro(${liq.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer; padding: 4px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                             <circle cx="12" cy="12" r="3"></circle>
                         </svg>
@@ -2944,12 +3276,12 @@ async function abrirDetalleCobro(idLiquidacion) {
             
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 12px 15px; color: #555;">${fechaLimpia}</td>
-                    <td style="padding: 12px 15px;">${item.Nombre_Clienta}</td>
-                    <td style="padding: 12px 15px; color: #666;">${item.Nombre_Servicio}</td>
-                    <td style="padding: 12px 15px; text-align: right;">$${item.Monto_Abonado.toLocaleString('es-AR')}</td>
-                    <td style="padding: 12px 15px; text-align: center; color: #888;">${item.Porcentaje}%</td>
-                    <td style="padding: 12px 15px; text-align: right; font-weight: 600; color: #28a745;">$${item.Comision.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; color: #555;">${fechaLimpia}</td>
+                    <td style="padding: 11px 14px;">${item.Nombre_Clienta}</td>
+                    <td style="padding: 11px 14px; color: #666;">${item.Nombre_Servicio}</td>
+                    <td style="padding: 11px 14px; text-align: right;">$${item.Monto_Abonado.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: center; color: #888;">${item.Porcentaje}%</td>
+                    <td style="padding: 11px 14px; text-align: right; font-weight: 600; color: #28a745;">$${item.Comision.toLocaleString('es-AR')}</td>
                 </tr>
             `;
         });
@@ -2995,11 +3327,11 @@ async function cargarMisPagos() {
             
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee; transition: background-color 0.2s;">
-                    <td style="padding: 15px; color: #555;">${fechaLimpia}</td>
-                    <td style="padding: 15px; font-weight: 600; color: #28a745;">$${pago.Monto_Total.toLocaleString('es-AR')}</td>
-                    <td style="padding: 15px; text-align: center;">
-                        <button class="btn-icon" onclick="abrirDetalleCobro(${pago.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    <td style="padding: 11px 14px; color: #555;">${fechaLimpia}</td>
+                    <td style="padding: 11px 14px; font-weight: 600; color: #28a745;">$${pago.Monto_Total.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: center;">
+                        <button class="btn-icon" onclick="abrirDetalleCobro(${pago.Id_Liquidacion})" title="Ver servicios" style="color: #d4a347; border: none; background: transparent; cursor: pointer; padding: 4px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
@@ -3185,12 +3517,12 @@ function dibujarTablaGastos(listaGastos) {
         tr.style.borderBottom = "1px solid #eee";
         
         tr.innerHTML = `
-            <td style="padding: 12px;">${fechaLimpia}</td>
-            <td style="padding: 12px;"><span style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${gasto.Nombre_Categoria || 'Sin tipo'}</span></td>
-            <td style="padding: 12px;">${gasto.Descripcion}</td>
-            <td style="padding: 12px; font-weight: bold; color: #d9534f;">$${gasto.Monto.toLocaleString('es-AR')}</td>
-            <td style="padding: 12px;"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${gasto.Medio_Pago || 'No especificado'}</span></td>
-            <td style="padding: 12px; text-align: center;">
+            <td style="padding: 11px 14px;">${fechaLimpia}</td>
+            <td style="padding: 11px 14px;"><span style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${gasto.Nombre_Categoria || 'Sin tipo'}</span></td>
+            <td style="padding: 11px 14px;">${gasto.Descripcion}</td>
+            <td style="padding: 11px 14px; font-weight: bold; color: #d9534f;">$${gasto.Monto.toLocaleString('es-AR')}</td>
+            <td style="padding: 11px 14px;"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${gasto.Medio_Pago || 'No especificado'}</span></td>
+            <td style="padding: 11px 14px; text-align: center;">
                 <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarGasto(${gasto.Id_Gasto})" title="Eliminar">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
@@ -3282,13 +3614,13 @@ async function cargarIngresos() {
 
             const filaHTML = `
                 <tr style="border-bottom: 1px solid #eee;" data-fecha="${fechaCorta}">
-                    <td style="padding: 12px;">${fechaFormateada}</td>
-                    <td style="padding: 12px; font-weight: 500;">${clientaMostrar}</td>
-                    <td style="padding: 12px; color: #555;">${servicioMostrar}</td>
-                    <td style="padding: 12px;">
+                    <td style="padding: 11px 14px;">${fechaFormateada}</td>
+                    <td style="padding: 11px 14px; font-weight: 500;">${clientaMostrar}</td>
+                    <td style="padding: 11px 14px; color: #555;">${servicioMostrar}</td>
+                    <td style="padding: 11px 14px;">
                         <span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${ingreso.Medio_Pago}</span>
                     </td>
-                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">
+                    <td style="padding: 11px 14px; text-align: right; font-weight: bold; color: #28a745;">
                         $${ingreso.Monto_Total.toLocaleString('es-AR')}
                     </td>
                 </tr>
@@ -3436,9 +3768,9 @@ async function cargarTablaMediosPago() {
             const nombreMedio = String(medio.Nombre ?? '').replace(/'/g, "\\'");
             
             tr.innerHTML = `
-                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${medio.Id_Medio_Pago}</td>
-                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${medio.Nombre}</td>
-                <td style="padding: 8px 15px; text-align: center;">
+                <td style="padding: 11px 14px; color: var(--texto-claro); font-weight: 500;">${medio.Id_Medio_Pago}</td>
+                <td style="padding: 11px 14px; font-weight: 500; color: var(--texto-oscuro);">${medio.Nombre}</td>
+                <td style="padding: 11px 14px; text-align: center;">
                     <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="abrirModalMedioPago(${medio.Id_Medio_Pago}, '${nombreMedio}')" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
@@ -3854,9 +4186,9 @@ async function cargarTablaConfigCategorias() {
             tr.style.borderBottom = '1px solid var(--borde)';
             const nombreCategoria = String(cat.Nombre ?? '').replace(/'/g, "\\'");
             tr.innerHTML = `
-                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${cat.Id_Categoria}</td>
-                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${cat.Nombre}</td>
-                <td style="padding: 8px 15px; text-align: center;">
+                <td style="padding: 11px 14px; color: var(--texto-claro); font-weight: 500;">${cat.Id_Categoria}</td>
+                <td style="padding: 11px 14px; font-weight: 500; color: var(--texto-oscuro);">${cat.Nombre}</td>
+                <td style="padding: 11px 14px; text-align: center;">
                     <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarCategoriaGasto(${cat.Id_Categoria}, '${nombreCategoria}')" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
@@ -3970,11 +4302,11 @@ async function cargarTablaConfigServicios() {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--borde)';
             tr.innerHTML = `
-                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${srv.Id_Servicio || srv.id_servicio}</td>
-                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${srv.Nombre || srv.nombre}</td>
-                <td style="padding: 8px 15px; color: var(--texto-claro);"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${areaSegura}</span></td>
-                <td style="padding: 8px 15px; font-weight: 600; color: #333;">$${precioSeguro.toLocaleString('es-AR')}</td>
-                <td style="padding: 8px 15px; text-align: center;">
+                <td style="padding: 11px 14px; color: var(--texto-claro); font-weight: 500;">${srv.Id_Servicio || srv.id_servicio}</td>
+                <td style="padding: 11px 14px; font-weight: 500; color: var(--texto-oscuro);">${srv.Nombre || srv.nombre}</td>
+                <td style="padding: 11px 14px; color: var(--texto-claro);"><span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${areaSegura}</span></td>
+                <td style="padding: 11px 14px; font-weight: 600; color: #333;">$${precioSeguro.toLocaleString('es-AR')}</td>
+                <td style="padding: 11px 14px; text-align: center;">
                     <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarServicio(${srv.Id_Servicio || srv.id_servicio}, '${nombreServicio}', '${srv.Id_Area || srv.id_area || ''}', ${precioSeguro})" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
@@ -4104,9 +4436,9 @@ async function cargarTablaConfigAreas() {
             tr.style.borderBottom = '1px solid var(--borde)';
             const nombreArea = String(a.Area || a.area || '').replace(/'/g, "\\'");
             tr.innerHTML = `
-                <td style="padding: 8px 15px; color: var(--texto-claro); font-weight: 500;">${a.Id_Area || a.id_area}</td>
-                <td style="padding: 8px 15px; font-weight: 500; color: var(--texto-oscuro);">${a.Area || a.area}</td>
-                <td style="padding: 8px 15px; text-align: center;">
+                <td style="padding: 11px 14px; color: var(--texto-claro); font-weight: 500;">${a.Id_Area || a.id_area}</td>
+                <td style="padding: 11px 14px; font-weight: 500; color: var(--texto-oscuro);">${a.Area || a.area}</td>
+                <td style="padding: 11px 14px; text-align: center;">
                     <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarArea(${a.Id_Area || a.id_area}, '${nombreArea}')" title="Editar">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
@@ -4468,9 +4800,9 @@ const cargarTablaPlantillasBot = async () => {
             tr.style.borderBottom = '1px solid var(--borde)';
             
             tr.innerHTML = `
-                <td style="padding: 12px 15px; color: var(--texto-oscuro); font-weight: 500;">${plan.Nombre_Funcion}</td>
-                <td style="padding: 12px 15px; color: var(--texto-claro); max-width: 400px; white-space: pre-wrap;">${plan.Texto_Mensaje}</td>
-                <td style="padding: 12px 15px; text-align: center;">
+                <td style="padding: 11px 14px; color: var(--texto-oscuro); font-weight: 500;">${plan.Nombre_Funcion}</td>
+                <td style="padding: 11px 14px; color: var(--texto-claro); max-width: 400px; white-space: pre-wrap;">${plan.Texto_Mensaje}</td>
+                <td style="padding: 11px 14px; text-align: center;">
                     <button onclick="abrirModalEditarPlantilla(${plan.Id_Plantilla})" style="background: none; border: none; cursor: pointer; color: #666;" title="Editar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>

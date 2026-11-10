@@ -138,6 +138,16 @@ body:has(.sidebar.collapsed) .main-content {
 .sidebar.collapsed .menu-item {
     justify-content: center;
     padding: 12px 0;
+    gap: 0;
+}
+
+.sidebar.collapsed .menu-item .menu-text {
+    display: none;
+}
+
+.sidebar.collapsed .menu-item svg {
+    margin: 0;
+    flex-shrink: 0;
 }
 
 .sidebar.collapsed .btn-colapsar-sidebar svg {
@@ -300,6 +310,50 @@ body:has(.sidebar.collapsed) .main-content {
 }
 
 /* ==========================================================================
+   ESTANDARIZACIÓN DE TABLAS DE DATOS (UX/UI Consistente)
+   ========================================================================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13.5px;
+}
+
+table thead th {
+    padding: 12px 14px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    vertical-align: middle !important;
+    white-space: nowrap;
+}
+
+table tbody tr {
+    height: 48px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.15s ease;
+}
+
+table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+table tbody td {
+    padding: 11px 14px !important;
+    font-size: 13.5px !important;
+    line-height: 1.4 !important;
+    vertical-align: middle !important;
+}
+
+table tbody td .btn-icon,
+table tbody td button {
+    vertical-align: middle;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ==========================================================================
    5. VENTANAS MODALES Y FORMULARIOS
    ========================================================================== */
 .modal-overlay {
@@ -426,6 +480,148 @@ body:has(.sidebar.collapsed) .main-content {
 
 #btnCancelarExpress:hover {
     color: var(--mostaza) !important;
+}
+
+/* ==========================================================================
+   AUTOCOMPLETE & DROPDOWN MODERNO DE CLIENTAS (Modal Turno)
+   ========================================================================== */
+.combobox-clienta-container {
+    position: relative;
+    flex-grow: 1;
+}
+
+.combobox-clienta-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.combobox-clienta-input-wrapper .icono-busqueda {
+    position: absolute;
+    left: 12px;
+    color: #94a3b8;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    z-index: 2;
+}
+
+.combobox-clienta-input-wrapper input {
+    padding-left: 36px !important;
+    padding-right: 36px !important;
+}
+
+.btn-limpiar-clienta {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 4px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+.btn-limpiar-clienta:hover {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+.dropdown-clientas-custom {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 3000;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.dropdown-clientas-custom::-webkit-scrollbar {
+    width: 6px;
+}
+.dropdown-clientas-custom::-webkit-scrollbar-track {
+    background: transparent;
+}
+.dropdown-clientas-custom::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.item-dropdown-clienta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    border-left: 3px solid transparent;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.item-dropdown-clienta:last-child {
+    border-bottom: none;
+}
+
+.item-dropdown-clienta:hover,
+.item-dropdown-clienta.highlighted {
+    background-color: #fdf6ea !important;
+    border-left-color: var(--mostaza) !important;
+}
+
+.item-dropdown-clienta .avatar-clienta {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #fdf3e1;
+    color: var(--mostaza);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.item-dropdown-clienta .info-clienta {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.item-dropdown-clienta .nombre-clienta {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-dropdown-clienta .meta-clienta {
+    font-size: 11.5px;
+    color: #64748b;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.item-dropdown-clienta .check-seleccionado {
+    color: var(--mostaza);
+    font-weight: bold;
+    font-size: 14px;
 }
 
 #contenedorExtras > div {
@@ -676,9 +872,13 @@ body.is-empleada #btnNuevoTurno {
         width: auto;
         height: auto;
     }
+    .sidebar.collapsed .menu-item .menu-text {
+        display: inline !important;
+    }
     .sidebar.collapsed .menu-item {
         justify-content: flex-start;
         padding: 12px 15px;
+        gap: 15px !important;
     }
     .sidebar.collapsed .logo-text {
         font-size: 1.5rem;

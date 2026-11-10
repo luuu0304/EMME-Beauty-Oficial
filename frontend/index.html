@@ -232,9 +232,14 @@
                 </div>
                 
                 <!-- Filtros por Especialidad/Área -->
-                <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center; flex-wrap: wrap;">
-                    <span style="font-weight: 500; font-size: 14px;">Filtrar por:</span>
-                    <button class="btn-secundario filtro-btn active" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: var(--mostaza, #d4af37); color: white; border: 1px solid var(--mostaza, #d4af37); padding: 6px 15px; cursor: pointer;">Todo</button>
+                <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px 15px; background: white; border-radius: 8px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--mostaza, #d4af37);">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <label for="selectFiltroArea" style="font-weight: 500; font-size: 14px; color: #444; margin: 0; white-space: nowrap;">Filtrar por:</label>
+                    <select id="selectFiltroArea" onchange="filtrarAgendaPorArea(this.value)" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; font-size: 14px; background-color: #fff; color: #333; cursor: pointer; outline: none; min-width: 170px;">
+                        <option value="Todo">Todo</option>
+                    </select>
                 </div>
             </div>
 
@@ -300,11 +305,11 @@
                 <table style="width: 100%; border-collapse: collapse; text-align: left; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <thead style="background-color: #2c3e50; color: white;">
                         <tr>
-                            <th style="padding: 12px 15px;">Nombre y Apellido</th>
-                            <th style="padding: 12px 15px;">Teléfono</th>
-                            <th style="padding: 12px 15px;">Observación</th>
-                            <th style="padding: 12px 15px;">Cumpleaños</th>
-                            <th style="padding: 12px 15px; text-align: center;">Acciones</th>
+                            <th style="padding: 12px 14px;">Nombre y Apellido</th>
+                            <th style="padding: 12px 14px;">Teléfono</th>
+                            <th style="padding: 12px 14px;">Observación</th>
+                            <th style="padding: 12px 14px;">Cumpleaños</th>
+                            <th style="padding: 12px 14px; text-align: center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaClientasBody"></tbody>
@@ -353,10 +358,10 @@
                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                         <thead>
                             <tr style="background-color: #2c3e50; color: white;">
-                                <th style="padding: 12px 15px; font-weight: 500;">Fecha del Pago</th>
-                                <th style="padding: 12px 15px; font-weight: 500;">Profesional</th>
-                                <th style="padding: 12px 15px; font-weight: 500;">Monto Liquidado</th>
-                                <th style="padding: 12px 15px; font-weight: 500; text-align: center;">Detalles</th>
+                                <th style="padding: 12px 14px; font-weight: 500;">Fecha del Pago</th>
+                                <th style="padding: 12px 14px; font-weight: 500;">Profesional</th>
+                                <th style="padding: 12px 14px; font-weight: 500;">Monto Liquidado</th>
+                                <th style="padding: 12px 14px; font-weight: 500; text-align: center;">Detalles</th>
                             </tr>
                         </thead>
                         <tbody id="tablaHistorialCobrosBody">
@@ -421,12 +426,12 @@
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                     <thead>
                         <tr style="background-color: #2c3e50; color: white;">
-                            <th style="padding: 12px; border-radius: 8px 0 0 0;">Fecha</th>
-                            <th style="padding: 12px;">Tipo</th>
-                            <th style="padding: 12px;">Descripción</th>
-                            <th style="padding: 12px;">Monto</th>
-                            <th style="padding: 12px;">Medio de Pago</th>
-                            <th style="padding: 12px; border-radius: 0 8px 0 0; text-align: center;">Opciones</th>
+                            <th style="padding: 12px 14px; border-radius: 8px 0 0 0;">Fecha</th>
+                            <th style="padding: 12px 14px;">Tipo</th>
+                            <th style="padding: 12px 14px;">Descripción</th>
+                            <th style="padding: 12px 14px;">Monto</th>
+                            <th style="padding: 12px 14px;">Medio de Pago</th>
+                            <th style="padding: 12px 14px; border-radius: 0 8px 0 0; text-align: center;">Opciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaGastosBody">
@@ -491,11 +496,11 @@
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                     <thead>
                         <tr style="background-color: #2c3e50; color: white;">
-                            <th style="padding: 12px; border-radius: 8px 0 0 0;">Fecha</th>
-                            <th style="padding: 12px;">Clienta</th>
-                            <th style="padding: 12px;">Servicio</th>
-                            <th style="padding: 12px;">Medio de Pago</th>
-                            <th style="padding: 12px; border-radius: 0 8px 0 0; text-align: right;">Monto Total</th>
+                            <th style="padding: 12px 14px; border-radius: 8px 0 0 0;">Fecha</th>
+                            <th style="padding: 12px 14px;">Clienta</th>
+                            <th style="padding: 12px 14px;">Servicio</th>
+                            <th style="padding: 12px 14px;">Medio de Pago</th>
+                            <th style="padding: 12px 14px; border-radius: 0 8px 0 0; text-align: right;">Monto Total</th>
                         </tr>
                     </thead>
                     <tbody id="tablaIngresosBody">
@@ -527,9 +532,9 @@
                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                         <thead>
                             <tr style="background-color: #2c3e50; color: white;">
-                                <th style="padding: 12px 15px; font-weight: 500;">Fecha del Pago</th>
-                                <th style="padding: 12px 15px; font-weight: 500;">Monto Cobrado</th>
-                                <th style="padding: 12px 15px; font-weight: 500; text-align: center;">Detalles</th>
+                                <th style="padding: 12px 14px; font-weight: 500;">Fecha del Pago</th>
+                                <th style="padding: 12px 14px; font-weight: 500;">Monto Cobrado</th>
+                                <th style="padding: 12px 14px; font-weight: 500; text-align: center;">Detalles</th>
                             </tr>
                         </thead>
                         <tbody id="tablaMisPagosBody">
@@ -705,9 +710,9 @@
                         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
                             <thead>
                                 <tr style="background-color: #2c3e50; color: white;">
-                                    <th style="padding: 12px 15px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
-                                    <th style="padding: 12px 15px; font-weight: 500;">Nombre de la Categoría</th>
-                                    <th style="padding: 12px 15px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
+                                    <th style="padding: 12px 14px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
+                                    <th style="padding: 12px 14px; font-weight: 500;">Nombre de la Categoría</th>
+                                    <th style="padding: 12px 14px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaConfigCategoriasBody">
@@ -738,11 +743,11 @@
                             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
                                 <thead>
                                     <tr style="background-color: #2c3e50; color: white;">
-                                        <th style="padding: 12px 15px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
-                                        <th style="padding: 12px 15px; font-weight: 500;">Servicio</th>
-                                        <th style="padding: 12px 15px; font-weight: 500;">Área</th>
-                                        <th style="padding: 12px 15px; font-weight: 500;">Precio Base</th>
-                                        <th style="padding: 12px 15px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
+                                        <th style="padding: 12px 14px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
+                                        <th style="padding: 12px 14px; font-weight: 500;">Servicio</th>
+                                        <th style="padding: 12px 14px; font-weight: 500;">Área</th>
+                                        <th style="padding: 12px 14px; font-weight: 500;">Precio Base</th>
+                                        <th style="padding: 12px 14px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaConfigServiciosBody">
@@ -768,9 +773,9 @@
                             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
                                 <thead>
                                     <tr style="background-color: #2c3e50; color: white;">
-                                        <th style="padding: 12px 15px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
-                                        <th style="padding: 12px 15px; font-weight: 500;">Nombre del Área</th>
-                                        <th style="padding: 12px 15px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
+                                        <th style="padding: 12px 14px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
+                                        <th style="padding: 12px 14px; font-weight: 500;">Nombre del Área</th>
+                                        <th style="padding: 12px 14px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaConfigAreasBody">
@@ -891,9 +896,9 @@
                         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
                             <thead>
                                 <tr style="background-color: #2c3e50; color: white;">
-                                    <th style="padding: 12px 15px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
-                                    <th style="padding: 12px 15px; font-weight: 500;">Medio de Pago</th>
-                                    <th style="padding: 12px 15px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
+                                    <th style="padding: 12px 14px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
+                                    <th style="padding: 12px 14px; font-weight: 500;">Medio de Pago</th>
+                                    <th style="padding: 12px 14px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaConfigPagosBody">
@@ -940,9 +945,9 @@
                         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
                             <thead>
                                 <tr style="background-color: #2c3e50; color: white;">
-                                    <th style="padding: 12px 15px; font-weight: 500; border-top-left-radius: 8px;">Función</th>
-                                    <th style="padding: 12px 15px; font-weight: 500;">Mensaje Configurado</th>
-                                    <th style="padding: 12px 15px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
+                                    <th style="padding: 12px 14px; font-weight: 500; border-top-left-radius: 8px;">Función</th>
+                                    <th style="padding: 12px 14px; font-weight: 500;">Mensaje Configurado</th>
+                                    <th style="padding: 12px 14px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaPlantillasBotBody">
@@ -1094,12 +1099,20 @@
             </div>
             
             <div class="form-group" id="grupoSeleccionClienta">
-                <label for="selectClientaTurno">Clienta</label>
-                <div style="display: flex; gap: 10px;">
-                    <div style="position: relative; flex-grow: 1;">
-                        <input type="text" id="inputBuscarClientaTurno" placeholder="Escribí 2 letras para buscar..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;" autocomplete="off">
+                <label for="inputBuscarClientaTurno">Clienta</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="combobox-clienta-container">
+                        <div class="combobox-clienta-input-wrapper">
+                            <span class="icono-busqueda">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </span>
+                            <input type="text" id="inputBuscarClientaTurno" placeholder="Buscar por nombre o teléfono..." autocomplete="off">
+                            <button type="button" id="btnLimpiarClienta" class="btn-limpiar-clienta" title="Borrar selección">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
                         <input type="hidden" id="selectClientaTurno"> 
-                        <div id="dropdownClientas" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 180px; overflow-y: auto; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.1);"></div>
+                        <div id="dropdownClientas" class="dropdown-clientas-custom"></div>
                     </div>
                     <button type="button" id="btnNuevaClientaExpress" class="btn-secundario">+ Nueva</button>
                 </div>
@@ -1164,28 +1177,36 @@
 
     <!-- === MODAL: DETALLE Y COBRO (Check-out de un Turno) === -->
     <div class="modal-overlay" id="modalDetalleTurno">
-        <div class="modal-content" style="max-width: 750px; width: 90%;">
+        <div class="modal-content" style="max-width: 920px; width: 92%; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2>Detalle y Cobro del Turno</h2>
             </div>
             
             <input type="hidden" id="idTurnoCobroOculto">
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;">
                 
                 <!-- Columna Izquierda: Datos del turno y notas -->
                 <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                            <h3 id="nombreClientaCobro" style="margin: 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button id="btnEditarDatosTurno" onclick="abrirEdicionTurno()" style="color: #17a2b8; background: transparent; border: 1px solid #b8daff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: none; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='transparent'">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                    Editar
-                                </button>
-                                <span id="estadoTurnoBadge" style="padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404; white-space: nowrap;">Pendiente</span>
-                            </div>
+                    <div style="background: #f8f9fa; padding: 16px 18px; border-radius: 8px; border: 1px solid #eee;">
+                        <!-- Línea 1: Nombre de la Clienta -->
+                        <div style="margin-bottom: 8px;">
+                            <h3 id="nombreClientaCobro" style="margin: 0; color: #2C2C2C; font-size: 16px; font-weight: 600;">Clienta: Cargando...</h3>
                         </div>
+                        
+                        <!-- Línea 2: Botones de Acción (Editar, Cancelar) y Estado -->
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+                            <button id="btnEditarDatosTurno" onclick="abrirEdicionTurno()" style="color: #17a2b8; background: transparent; border: 1px solid #b8daff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: none; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='transparent'">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                Editar
+                            </button>
+                            <button id="btnCancelarTurno" onclick="cancelarTurnoDesdeModal()" style="color: #dc3545; background: transparent; border: 1px solid #f5c6cb; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: none; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.2s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                Cancelar Turno
+                            </button>
+                            <span id="estadoTurnoBadge" style="padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404; white-space: nowrap;">Pendiente</span>
+                        </div>
+                        
                         <p id="servicioBaseCobro" style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
                         <p id="precioBaseCobro" style="margin: 0; font-weight: bold; color: var(--mostaza); font-size: 15px;">Precio Base: $0</p>
                         
@@ -1444,12 +1465,12 @@
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                     <thead>
                         <tr style="background-color: #f8f9fa; border-bottom: 2px solid #ddd;">
-                            <th style="padding: 12px 15px;">Fecha</th>
-                            <th style="padding: 12px 15px;">Clienta</th>
-                            <th style="padding: 12px 15px;">Servicio</th>
-                            <th style="padding: 12px 15px; text-align: right;">Abonado</th>
-                            <th style="padding: 12px 15px; text-align: center;">%</th>
-                            <th style="padding: 12px 15px; text-align: right;">Comisión</th>
+                            <th style="padding: 12px 14px;">Fecha</th>
+                            <th style="padding: 12px 14px;">Clienta</th>
+                            <th style="padding: 12px 14px;">Servicio</th>
+                            <th style="padding: 12px 14px; text-align: right;">Abonado</th>
+                            <th style="padding: 12px 14px; text-align: center;">%</th>
+                            <th style="padding: 12px 14px; text-align: right;">Comisión</th>
                         </tr>
                     </thead>
                     <tbody id="tablaDetalleSueldoBody">
@@ -1473,12 +1494,12 @@
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                     <thead>
                         <tr style="background-color: #f8f9fa; border-bottom: 2px solid #ddd;">
-                            <th style="padding: 12px 15px;">Fecha</th>
-                            <th style="padding: 12px 15px;">Clienta</th>
-                            <th style="padding: 12px 15px;">Servicio</th>
-                            <th style="padding: 12px 15px; text-align: right;">Abonado</th>
-                            <th style="padding: 12px 15px; text-align: center;">%</th>
-                            <th style="padding: 12px 15px; text-align: right;">Comisión</th>
+                            <th style="padding: 12px 14px;">Fecha</th>
+                            <th style="padding: 12px 14px;">Clienta</th>
+                            <th style="padding: 12px 14px;">Servicio</th>
+                            <th style="padding: 12px 14px; text-align: right;">Abonado</th>
+                            <th style="padding: 12px 14px; text-align: center;">%</th>
+                            <th style="padding: 12px 14px; text-align: right;">Comisión</th>
                         </tr>
                     </thead>
                     <tbody id="tablaDetalleHistorialBody">
