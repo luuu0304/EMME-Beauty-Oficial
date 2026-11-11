@@ -447,6 +447,18 @@ table tbody td button {
     box-shadow: 0 0 0 3px rgba(207, 161, 95, 0.15);
 }
 
+/* Estandarización de todos los desplegables (<select>) con flecha separada del borde */
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23555555' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 15px 15px !important;
+    padding-right: 36px !important;
+}
+
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -804,20 +816,21 @@ body.is-empleada #btnNuevoTurno {
 }
 
 .tarjeta-turno-empleada {
-    background-color: #fffdf7;
-    border-left: 4px solid var(--mostaza); 
-    padding: 8px 10px;
-    border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    font-size: 12px;
-    line-height: 1.4;
-    margin: 2px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 95%;
+    margin-left: 2.5%;
+    background-color: rgba(212, 175, 55, 0.2);
+    border-left: 4px solid var(--mostaza);
+    border-radius: 4px;
+    padding: 6px;
+    box-sizing: border-box;
     overflow: hidden;
-    transition: transform 0.2s;
+    z-index: 5;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     cursor: pointer;
+    text-align: left;
 }
 
 .tarjeta-turno-empleada:hover {
@@ -828,41 +841,99 @@ body.is-empleada #btnNuevoTurno {
     position: relative;
 }
 
+/* Fondo oscuro para el menú lateral móvil */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 9998;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.sidebar-backdrop.activo {
+    display: block;
+    opacity: 1;
+}
+
 /* =========================================================================
    8. DISEÑO RESPONSIVO (CELULARES Y TABLETS HASTA 768px)
    ========================================================================= */
 @media (max-width: 768px) {
     
-    /* Mostrar los botones de abrir/cerrar menú */
+    html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+    }
+
+    body {
+        display: block !important;
+        height: auto !important;
+        min-height: 100dvh;
+    }
+
+    /* Mostrar los botones de abrir/cerrar menú y ocultar botón de colapsar de escritorio */
     .btn-cerrar-menu-movil { display: block !important; }
-    #btnAbrirMenuMovil { display: flex !important; }
+    #btnAbrirMenuMovil {
+        display: flex !important;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: 8px !important;
+    }
+    .btn-colapsar-sidebar { display: none !important; }
 
     /* PANTALLA DE LOGIN */
+    #pantallaLogin {
+        padding: 16px !important;
+        height: 100dvh !important;
+    }
     #pantallaLogin > div {
         flex-direction: column !important;
+        width: 100% !important;
+        max-width: 420px !important;
         height: auto !important;
-        min-height: 90vh;
+        max-height: 92dvh !important;
+        border-radius: 16px !important;
+        overflow-y: auto !important;
     }
     #pantallaLogin > div > div:nth-child(2) {
         display: none !important; 
     }
     #pantallaLogin > div > div:nth-child(1) {
-        padding: 40px 20px !important;
+        padding: 32px 24px !important;
+    }
+    #pantallaLogin > div > div:nth-child(1) > div:first-child {
+        position: static !important;
+        margin-bottom: 16px !important;
+        font-size: 22px !important;
+    }
+    #pantallaLogin h2 {
+        font-size: 26px !important;
+    }
+    #pantallaLogin p[style*="margin-bottom: 40px"] {
+        margin-bottom: 24px !important;
     }
 
     /* SIDEBAR (Menú Lateral) y CONTENIDO PRINCIPAL */
     .sidebar {
         transform: translateX(-100%); 
         position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
         z-index: 9999 !important;
-        width: 260px !important;
-        height: 100vh !important;
-        transition: transform 0.3s ease !important;
-        box-shadow: 2px 0 15px rgba(0,0,0,0.1);
-        left: 0;
+        width: 270px !important;
+        max-width: 82vw !important;
+        height: 100dvh !important;
+        overflow-y: auto !important;
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: none !important;
     }
     .sidebar.activa {
         transform: translateX(0);
+        box-shadow: 8px 0 30px rgba(0,0,0,0.22) !important;
     }
     
     /* Resetear modo colapsado en móvil para evitar conflictos */
@@ -884,116 +955,430 @@ body.is-empleada #btnNuevoTurno {
         font-size: 1.5rem;
         letter-spacing: 4px;
     }
-    .sidebar.collapsed .btn-colapsar-sidebar svg {
-        transform: rotate(0deg);
-    }
 
     .main-content {
         margin-left: 0 !important; 
         width: 100% !important;
-        padding: 15px !important;
+        max-width: 100vw !important;
+        padding: 14px !important;
+        overflow-x: hidden !important;
     }
     body:has(.sidebar.collapsed) .main-content {
         margin-left: 0 !important;
         width: 100% !important;
     }
 
-    /* CABECERA Y BOTONES SUPERIORES */
+    /* CABECERA PRINCIPAL Y ACCIONES SUPERIORES */
     .header {
         flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 15px !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        margin-bottom: 18px !important;
+    }
+    .header > div:first-child {
+        width: 100% !important;
+        gap: 12px !important;
+    }
+    .header h1 {
+        font-size: 1.3rem !important;
+        line-height: 1.25 !important;
     }
     .header-actions {
         width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
-        gap: 10px !important;
+        gap: 8px !important;
     }
     .header-actions input, 
     .header-actions button {
         width: 100% !important;
         margin: 0 !important;
-    }
-
-    /* DASHBOARD Y GRILLAS */
-    .cards-grid {
-        grid-template-columns: 1fr !important;
-        gap: 15px !important;
-    }
-    div[style*="grid-template-columns: 2fr 1fr"],
-    div[style*="grid-template-columns: 1fr 1fr"] {
-        grid-template-columns: 1fr !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-
-    /* FORMULARIOS DENTRO DE MODALES */
-    .form-row {
-        flex-direction: column !important; 
-        gap: 0 !important;
-    }
-    .modal-content {
-        width: 95% !important;
-        padding: 20px !important;
-        margin: 10px auto !important;
-    }
-
-    /* TABLAS Y SCROLL */
-    table {
-        font-size: 13px !important;
-    }
-    div[style*="overflow-x: auto"] {
-        width: 100% !important;
-        -webkit-overflow-scrolling: touch; 
+        min-height: 42px;
+        font-size: 14px !important;
+        box-sizing: border-box !important;
     }
 
     /* BOTONES DE PESTAÑAS (Tabs) */
     .btn-tab {
         flex: 1 !important;
         text-align: center !important;
-        padding: 10px 5px !important;
-        font-size: 12px !important;
+        padding: 10px 8px !important;
+        font-size: 12.5px !important;
         white-space: nowrap;
     }
 
-    /* ARREGLO DE FILTROS (Cajas grises) */
+    /* SECCIÓN 3.1: TURNOS Y AGENDA */
+    #seccionTurnos .header-seccion {
+        margin-bottom: 14px !important;
+    }
+    #seccionTurnos .header-seccion > div {
+        width: 100% !important;
+    }
+    #seccionTurnos .header-seccion h2 {
+        font-size: 1.05rem !important;
+    }
+    .barra-controles-agenda {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    .controles-agenda {
+        width: 100% !important;
+        justify-content: space-between !important;
+        padding: 8px 12px !important;
+        box-sizing: border-box !important;
+    }
+    #fechaAgendaInput {
+        flex: 1 !important;
+        text-align: center !important;
+        min-width: 0 !important;
+        font-size: 14px !important;
+    }
+    #filtrosEspecialidad {
+        width: 100% !important;
+        justify-content: space-between !important;
+        padding: 8px 12px !important;
+        box-sizing: border-box !important;
+    }
+    #selectFiltroArea {
+        flex: 1 !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    .agenda-container {
+        max-height: 68dvh !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .hora-col {
+        flex: 0 0 64px !important;
+        min-width: 64px !important;
+        padding: 10px 6px !important;
+        font-size: 12px !important;
+    }
+    .agenda-header > div:not(.hora-col),
+    .agenda-row > div:not(.hora-col) {
+        min-width: 140px !important;
+        padding: 8px !important;
+    }
+    #vistaSemanal .agenda-container {
+        overflow-x: auto !important; 
+    }
+    #agendaSemanalHeader,
+    #agendaSemanalBody > div {
+        grid-template-columns: 64px repeat(6, minmax(125px, 1fr)) !important;
+        min-width: 814px !important;
+    }
+    #agendaSemanalHeader, #agendaSemanalBody {
+        min-width: 814px !important; 
+    }
+
+    /* SECCIÓN 3.2: CLIENTAS */
+    #seccionClientas > div:first-child {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    #seccionClientas > div:first-child > div {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    #filtroRetencionClientas {
+        width: 100% !important;
+    }
+    #vistaClientasListado table {
+        min-width: 580px !important;
+    }
+
+    /* SECCIÓN 3.3: EMPLEADAS E HISTORIAL DE COBROS */
+    #seccionEmpleados > div:first-child {
+        width: 100% !important;
+    }
+    #vistaCobrosEmpleadas {
+        padding: 15px !important;
+    }
+    #vistaCobrosEmpleadas > div:first-child {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        margin-bottom: 16px !important;
+    }
+    #vistaCobrosEmpleadas > div:first-child > div {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 10px !important;
+    }
+    #vistaCobrosEmpleadas > div:first-child > div > div {
+        width: 100% !important;
+    }
+    #vistaCobrosEmpleadas table {
+        min-width: 500px !important;
+    }
+
+    /* SECCIÓN 3.4, 3.5 Y 3.6: GASTOS, INGRESOS Y MIS PAGOS */
+    #seccionGastos > div,
+    #seccionIngresos > div,
+    #contenedor-mis-pagos-tabla {
+        padding: 15px !important;
+        overflow-x: visible !important;
+    }
     #seccionGastos > div > div[style*="justify-content: space-between"] {
         flex-direction: column !important;
         align-items: flex-start !important;
-        gap: 15px !important;
+        gap: 12px !important;
     }
     div[style*="background: #f8f9fa"][style*="flex-wrap: wrap"] {
         width: 100% !important;
         flex-direction: column !important;
         align-items: stretch !important;
         box-sizing: border-box !important;
+        padding: 12px !important;
     }
     div[style*="width: 1px; height: 30px"] {
         display: none !important;
+    }
+    #filtroCategoriaGasto,
+    #modoFechaGastos,
+    #modoFechaIngresos,
+    #rangoFechaGastos,
+    #rangoFechaIngresos {
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+    #seccionIngresos div[style*="min-width: 200px"] {
+        min-width: 0 !important;
+        width: 100% !important;
     }
     #contenedorMesGastos, #contenedorMesIngresos {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         width: 100% !important;
+        gap: 8px !important;
     }
-    #seccionGastos > div,
-    #seccionIngresos > div {
+    .tabla-scroll-wrapper {
+        width: 100% !important;
         overflow-x: auto !important;
-        padding: 15px 10px !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .tabla-scroll-wrapper table {
+        min-width: 560px !important;
+    }
+    #contenedor-mis-pagos-tabla table {
+        min-width: 440px !important;
     }
 
-    /* ARREGLO DEL FOOTER */
-    footer > div[style*="justify-content: space-between"] {
+    /* SECCIÓN 3.7: RESÚMENES Y DASHBOARD */
+    #seccionResumenes .header-seccion {
         flex-direction: column !important;
-        gap: 30px !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        margin-bottom: 20px !important;
+    }
+    #seccionResumenes .header-seccion > div:last-child {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        box-sizing: border-box !important;
+    }
+    #filtroRapidoDash,
+    #rangoFechasCustomDash {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+    #dashboardAdmin > .cards-grid,
+    #dashboardEmpleada > .cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        margin-bottom: 20px !important;
+    }
+    #dashboardAdmin > .cards-grid .card,
+    #dashboardEmpleada > .cards-grid .card {
+        padding: 14px !important;
+    }
+    #dashboardAdmin > .cards-grid .card h3,
+    #dashboardEmpleada > .cards-grid .card h3 {
+        font-size: 21px !important;
+        margin: 6px 0 !important;
+        word-break: break-word;
+    }
+    div[style*="grid-template-columns: 2fr 1fr"],
+    div[style*="grid-template-columns: 1fr 1fr"]:not(.ajustes-cobro-grid) {
+        grid-template-columns: 1fr !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
     }
 
-    /* ARREGLO DE LA AGENDA SEMANAL */
-    #vistaSemanal .agenda-container {
-        overflow-x: auto !important; 
+    /* SECCIÓN 3.8: CONFIGURACIÓN (Todas las pestañas + Mi Perfil) */
+    #seccionConfiguracion {
+        padding: 0 !important;
     }
-    #agendaSemanalHeader, #agendaSemanalBody {
-        min-width: 600px !important; 
+    .config-tabs-container {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+    .config-tabs-container .btn-tab {
+        width: 100% !important;
+        white-space: normal !important;
+        padding: 10px 8px !important;
+        font-size: 12.5px !important;
+        line-height: 1.2 !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+    #vistaConfigGastos > div,
+    #vistaConfigServicios > div > div,
+    #vistaConfigHorarios > div,
+    #vistaConfigPagos > div,
+    #seccion-bot > div,
+    #vistaConfigPerfil > div {
+        padding: 16px !important;
+    }
+    #vistaConfigGastos > div > div:first-child,
+    #vistaConfigServicios > div > div > div:first-child,
+    #vistaConfigPagos > div > div:first-child,
+    #seccion-bot > div > div:first-child {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+    #vistaConfigGastos > div > div:first-child .btn-primary,
+    #vistaConfigServicios > div > div > div:first-child .btn-primary,
+    #vistaConfigPagos > div > div:first-child .btn-primary {
+        width: 100% !important;
+    }
+    #seccionConfiguracion h2 {
+        font-size: 1.2rem !important;
+    }
+    #visorHorariosActuales {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        padding: 14px !important;
+    }
+    #vistaConfigHorarios > div > div:last-child {
+        padding: 16px !important;
+    }
+    #vistaConfigHorarios div[style*="justify-content: space-between"][style*="border-top"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 14px !important;
+    }
+    #vistaConfigHorarios div[style*="justify-content: space-between"][style*="border-top"] .btn-primary {
+        width: 100% !important;
+    }
+    #vistaConfigPerfil #btnGuardarPerfil {
+        width: 100% !important;
+    }
+    #seccion-bot table {
+        min-width: 500px !important;
+    }
+
+    /* TABLAS GENERALES */
+    table {
+        font-size: 13px !important;
+    }
+    th, td {
+        padding: 10px 10px !important;
+    }
+    div[style*="overflow-x: auto"] {
+        width: 100% !important;
+        -webkit-overflow-scrolling: touch; 
+    }
+
+    /* MODALES Y FORMULARIOS */
+    .modal-overlay {
+        padding: 10px !important;
+        align-items: center !important;
+    }
+    .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 90dvh !important;
+        overflow-y: auto !important;
+        padding: 18px !important;
+        margin: 0 !important;
+        border-radius: 12px !important;
+    }
+    #modalTurnos > div,
+    #modalEditarPlantillaBot > div {
+        width: 94% !important;
+        max-height: 90dvh !important;
+        overflow-y: auto !important;
+        padding: 18px !important;
+    }
+    .form-row {
+        flex-direction: column !important; 
+        gap: 0 !important;
+    }
+    .ajustes-cobro-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+    #modalDetalleSueldo table,
+    #modalDetalleHistorial table {
+        min-width: 520px !important;
+    }
+    .modal-footer,
+    .modal-actions {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    .modal-footer button,
+    .modal-actions button {
+        flex: 1 1 auto !important;
+        justify-content: center !important;
+        min-height: 42px;
+    }
+
+    /* FOOTER DEL SISTEMA */
+    footer {
+        padding: 24px 18px !important;
+        margin: 28px 0 12px 0 !important;
+    }
+    footer > div:first-child {
+        flex-direction: column !important;
+        gap: 24px !important;
+    }
+    footer > div:first-child > div:last-child {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 20px !important;
+        width: 100% !important;
+    }
+    footer > div:last-child {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    /* NOTIFICACIONES TOAST */
+    .toast-container {
+        left: 14px !important;
+        right: 14px !important;
+        bottom: 14px !important;
+    }
+    .toast {
+        min-width: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* Ajustes adicionales para pantallas muy angostas (<= 420px) */
+@media (max-width: 420px) {
+    #dashboardAdmin > .cards-grid,
+    #dashboardEmpleada > .cards-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .ajustes-cobro-grid {
+        grid-template-columns: 1fr !important;
     }
 }

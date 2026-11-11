@@ -98,7 +98,7 @@
          Controla la navegación principal del sistema.
          ========================================================================= -->
     <aside class="sidebar" id="sidebar">
-        <button onclick="document.getElementById('sidebar').classList.remove('activa')" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; color: #555; cursor: pointer; display: block;" class="btn-cerrar-menu-movil">
+        <button onclick="cerrarMenuMovil()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; color: #555; cursor: pointer; display: block;" class="btn-cerrar-menu-movil" aria-label="Cerrar menú">
             &times;
         </button>
         
@@ -161,6 +161,9 @@
         </div>
     </aside>
 
+    <!-- Fondo semitransparente para cerrar el menú lateral en móviles al tocar afuera -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="cerrarMenuMovil()"></div>
+
 
     <!-- =========================================================================
          CONTENEDOR PRINCIPAL
@@ -175,7 +178,7 @@
         <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
             
             <div style="display: flex; align-items: center; gap: 15px;">
-                <button id="btnAbrirMenuMovil" onclick="document.getElementById('sidebar').classList.add('activa')" style="background: var(--mostaza); color: white; border: none; border-radius: 6px; padding: 8px 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <button id="btnAbrirMenuMovil" onclick="abrirMenuMovil()" style="background: var(--mostaza); color: white; border: none; border-radius: 6px; padding: 8px 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;" aria-label="Abrir menú">
                     ☰
                 </button>
                 <h1 style="margin: 0;">Gestión de Turnos</h1>
@@ -217,7 +220,7 @@
             </div>
 
             <!-- Controles Generales de la Agenda -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div class="barra-controles-agenda" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <!-- Navegación de Fechas -->
                 <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                     <button class="btn-icon" id="btnDiaAnterior" title="Anterior">
@@ -259,9 +262,9 @@
             
             <!-- VISTA 2: AGENDA SEMANAL -->
             <div id="vistaSemanal" style="display: none;">
-                <div class="agenda-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; max-height: 60vh;">
-                    <div id="agendaSemanalHeader" style="position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 80px repeat(6, 1fr); background: #f8f9fa; border-bottom: 1px solid #eee; text-align: center; font-weight: 600; padding: 15px 0;">
-                        <div class="hora-col" style="color: #999;">Hora</div>
+                <div class="agenda-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; overflow-x: auto; max-height: 65vh; position: relative;">
+                    <div id="agendaSemanalHeader" style="position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 80px repeat(6, 1fr); background: #f8f9fa; border-bottom: 2px solid #eee; text-align: center; font-weight: bold;">
+                        <div class="hora-col" style="padding: 15px; border-right: 1px solid #eee;">Hora</div>
                         <!-- Los días (Lunes a Sábado) se inyectarán acá con sus fechas reales -->
                     </div>
                     <div id="agendaSemanalBody">
@@ -287,7 +290,7 @@
                 <!-- Filtro Inteligente (Algoritmo para detectar ausencias) -->
                 <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 5px 10px; border-radius: 8px; border: 1px solid #e0e0e0;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                    <select id="filtroRetencionClientas" onchange="aplicarFiltroClientas()" style="border: none; outline: none; background: transparent; font-size: 14px; color: #333; cursor: pointer;">
+                    <select id="filtroRetencionClientas" onchange="aplicarFiltroClientas()" style="border: none; outline: none; background-color: transparent; font-size: 14px; color: #333; cursor: pointer; padding: 4px 10px 4px 4px;">
                         <option value="todas">Todas las clientas</option>
                         <option value="este_mes">Vinieron este mes</option>
                         <option value="15_dias">Hace más de 15 días</option>
@@ -423,23 +426,25 @@
                     </div>
                 </div>
                 
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
-                    <thead>
-                        <tr style="background-color: #2c3e50; color: white;">
-                            <th style="padding: 12px 14px; border-radius: 8px 0 0 0;">Fecha</th>
-                            <th style="padding: 12px 14px;">Tipo</th>
-                            <th style="padding: 12px 14px;">Descripción</th>
-                            <th style="padding: 12px 14px;">Monto</th>
-                            <th style="padding: 12px 14px;">Medio de Pago</th>
-                            <th style="padding: 12px 14px; border-radius: 0 8px 0 0; text-align: center;">Opciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaGastosBody">
-                        <tr>
-                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando gastos...</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="tabla-scroll-wrapper" style="overflow-x: auto; width: 100%; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                        <thead>
+                            <tr style="background-color: #2c3e50; color: white;">
+                                <th style="padding: 12px 14px; border-radius: 8px 0 0 0;">Fecha</th>
+                                <th style="padding: 12px 14px;">Tipo</th>
+                                <th style="padding: 12px 14px;">Descripción</th>
+                                <th style="padding: 12px 14px;">Monto</th>
+                                <th style="padding: 12px 14px;">Medio de Pago</th>
+                                <th style="padding: 12px 14px; border-radius: 0 8px 0 0; text-align: center;">Opciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaGastosBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando gastos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         
@@ -493,28 +498,30 @@
                     <input type="text" id="rangoFechaIngresos" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 220px;">
                 </div>
                 
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
-                    <thead>
-                        <tr style="background-color: #2c3e50; color: white;">
-                            <th style="padding: 12px 14px; border-radius: 8px 0 0 0;">Fecha</th>
-                            <th style="padding: 12px 14px;">Clienta</th>
-                            <th style="padding: 12px 14px;">Servicio</th>
-                            <th style="padding: 12px 14px;">Medio de Pago</th>
-                            <th style="padding: 12px 14px; border-radius: 0 8px 0 0; text-align: right;">Monto Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaIngresosBody">
-                        <tr>
-                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando ingresos...</td>
-                        </tr>
-                    </tbody>
-                    <tfoot style="background-color: #f8f9fa; border-top: 2px solid #ddd;">
-                        <tr>
-                            <td colspan="4" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 15px; color: #333;">Total en pantalla:</td>
-                            <td id="totalIngresosFiltrados" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745;">$0</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <div class="tabla-scroll-wrapper" style="overflow-x: auto; width: 100%; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                        <thead>
+                            <tr style="background-color: #2c3e50; color: white;">
+                                <th style="padding: 12px 14px; border-radius: 8px 0 0 0;">Fecha</th>
+                                <th style="padding: 12px 14px;">Clienta</th>
+                                <th style="padding: 12px 14px;">Servicio</th>
+                                <th style="padding: 12px 14px;">Medio de Pago</th>
+                                <th style="padding: 12px 14px; border-radius: 0 8px 0 0; text-align: right;">Monto Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaIngresosBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando ingresos...</td>
+                            </tr>
+                        </tbody>
+                        <tfoot style="background-color: #f8f9fa; border-top: 2px solid #ddd;">
+                            <tr>
+                                <td colspan="4" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 15px; color: #333;">Total en pantalla:</td>
+                                <td id="totalIngresosFiltrados" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 16px; color: #28a745;">$0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -553,8 +560,7 @@
     <!-- CABECERA (COMPARTIDA) -->
     <div class="header-seccion" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <div>
-            <h2>Panel de Control</h2>
-            <p id="subtituloDashboard" style="color: #666; font-size: 14px;">Métricas y rendimiento financiero del local</p>
+            <p id="subtituloDashboard" style="color: #666; font-size: 14px; margin: 0;">Métricas y rendimiento financiero del local</p>
         </div>
 
         <div style="background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; gap: 15px; align-items: center; border: 1px solid #eee;">
@@ -598,42 +604,49 @@
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
-                <div style="display: flex; flex-direction: column; gap: 20px;">
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                        <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Ingresos diarios</h3>
-                        <div style="position: relative; height: 250px; width: 100%;">
-                            <canvas id="graficoIngresos"></canvas>
-                        </div>
-                    </div>
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                        <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Movimiento de Turnos</h3>
-                        <div style="position: relative; height: 200px; width: 100%;">
-                            <canvas id="graficoTurnos"></canvas>
-                        </div>
-                    </div>
+            <!-- Gráfico Principal: Evolución de Ingresos Diarios (Ancho Completo) -->
+            <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; margin-bottom: 25px;">
+                <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Ingresos diarios</h3>
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="graficoIngresos"></canvas>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 30px;">
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Servicios Estrella (Top 5)</h3>
-                        <div style="position: relative; height: 250px; width: 100%;">
-                            <canvas id="graficoServicios"></canvas>
-                        </div>
-                    </div>
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Top Profesionales (Turnos)</h3>
-                        <div style="position: relative; height: 220px; width: 100%; display: flex; justify-content: center;">
-                            <canvas id="graficoEmpleadas"></canvas>
-                        </div>
-                    </div>
+            </div>
 
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Ingresos por Medio de Pago</h3>
-                        <div style="position: relative; height: 220px; width: 100%; display: flex; justify-content: center;">
-                            <canvas id="graficoMediosPago"></canvas>
-                        </div>
+            <!-- Grilla 2x2 Perfectamente Balanceada y Alineada -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                
+                <!-- 1. Movimiento de Turnos por Día -->
+                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                    <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Movimiento de Turnos</h3>
+                    <div style="position: relative; height: 240px; width: 100%;">
+                        <canvas id="graficoTurnos"></canvas>
                     </div>
                 </div>
+
+                <!-- 2. Servicios Estrella (Top 5) -->
+                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                    <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Servicios Estrella (Top 5)</h3>
+                    <div style="position: relative; height: 240px; width: 100%;">
+                        <canvas id="graficoServicios"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3. Top Profesionales por Turnos -->
+                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                    <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Top Profesionales (Turnos)</h3>
+                    <div style="position: relative; height: 240px; width: 100%; display: flex; justify-content: center; align-items: center;">
+                        <canvas id="graficoEmpleadas"></canvas>
+                    </div>
+                </div>
+
+                <!-- 4. Ingresos por Medio de Pago -->
+                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                    <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Ingresos por Medio de Pago</h3>
+                    <div style="position: relative; height: 240px; width: 100%; display: flex; justify-content: center; align-items: center;">
+                        <canvas id="graficoMediosPago"></canvas>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -661,15 +674,15 @@
             </div>
 
             <!-- Gráficos Profesionales -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
                 <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                    <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Mis Servicios Más Pedidos</h3>
+                    <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Mis Servicios Más Pedidos</h3>
                     <div style="position: relative; height: 250px; width: 100%;">
                         <canvas id="graficoMisServicios"></canvas>
                     </div>
                 </div>
                 <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
-                    <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Mis Horarios Frecuentes</h3>
+                    <h3 style="font-size: 16px; margin: 0 0 15px 0; color: #333;">Mis Horarios Frecuentes</h3>
                     <div style="position: relative; height: 250px; width: 100%;">
                         <canvas id="graficoMisHorarios"></canvas>
                     </div>
@@ -684,12 +697,13 @@
              -------------------------------------------------- -->
         <section id="seccionConfiguracion" style="display: none; padding: 2rem;">
             
-            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <div class="config-tabs-container" style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button id="btnVistaConfigGastos" class="btn-tab active" onclick="cambiarVistaConfig('gastos')">Gastos</button>
                 <button id="btnVistaConfigServicios" class="btn-tab" onclick="cambiarVistaConfig('servicios')">Servicios</button>
                 <button id="btnVistaConfigHorarios" class="btn-tab" onclick="cambiarVistaConfig('horarios')">Horario de Atención</button>
                 <button id="btnVistaConfigPagos" class="btn-tab" onclick="cambiarVistaConfig('pagos')">Medios de Pago</button>
                 <button id="btnVistaConfigBot" class="btn-tab" onclick="cambiarVistaConfig('bot')">Bot de WhatsApp</button>
+                <button id="btnVistaConfigPerfil" class="btn-tab" onclick="cambiarVistaConfig('perfil')">Mi Perfil</button>
             </div>
 
             <!-- SUB-SECCIÓN 1: Categorías de Gastos -->
@@ -958,61 +972,148 @@
                     
                 </div>
             </div>
+
+            <!-- SUB-SECCIÓN 6: MI PERFIL (Datos Personales y Seguridad) -->
+            <div id="vistaConfigPerfil" style="display: none;">
+                <div style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 2.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); width: 100%;">
+                    
+                    <!-- Cabecera con Avatar y Resumen de Cuenta -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div id="perfilAvatarInicial" style="width: 56px; height: 56px; border-radius: 50%; background-color: #fdf3e1; border: 2px solid var(--mostaza); color: var(--mostaza); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700;">
+                                U
+                            </div>
+                            <div>
+                                <h2 id="perfilTituloNombre" style="font-weight: 600; font-size: 1.4rem; color: var(--texto-oscuro); margin: 0;">Mi Perfil</h2>
+                                <p style="color: var(--texto-claro); font-size: 0.9rem; margin-top: 4px;">Personalizá tu nombre visible en el sistema y actualizá tu contraseña de acceso.</p>
+                            </div>
+                        </div>
+                        <span id="perfilBadgeRol" style="padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 12.5px; background: #fdf3e1; color: var(--mostaza); border: 1px solid #e6c883;">
+                            Profesional
+                        </span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">
+                        
+                        <!-- Bloque 1: Identidad y Nombre Visible -->
+                        <div style="background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 20px;">
+                            <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; color: #333; display: flex; align-items: center; gap: 8px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--mostaza)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                Datos de tu Cuenta
+                            </h3>
+
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="perfilUsernameInput" style="display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px;">Usuario de inicio de sesión</label>
+                                <input type="text" id="perfilUsernameInput" disabled style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; color: #777; background-color: #f1f3f5; cursor: not-allowed;">
+                                <small style="display: block; margin-top: 5px; font-size: 11.5px; color: #888;">Tu usuario de acceso es fijo y se usa para ingresar al sistema.</small>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="perfilNombreInput" style="display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px;">Nombre visible (*)</label>
+                                <input type="text" id="perfilNombreInput" placeholder="Ej. Luciana" style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; color: #333; background-color: #fff; outline: none;">
+                                <small style="display: block; margin-top: 5px; font-size: 11.5px; color: #666;">Este nombre es el que se muestra en la agenda, turnos y liquidaciones.</small>
+                            </div>
+                        </div>
+
+                        <!-- Bloque 2: Cambio de Contraseña -->
+                        <div style="background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 20px;">
+                            <h3 style="margin-top: 0; margin-bottom: 6px; font-size: 15px; color: #333; display: flex; align-items: center; gap: 8px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--mostaza)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                Cambiar Contraseña <span style="font-weight: normal; font-size: 12px; color: #888;">(Opcional)</span>
+                            </h3>
+                            <p style="font-size: 12px; color: #777; margin-bottom: 14px;">Completá estos campos solo si querés modificar tu clave actual.</p>
+
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label for="perfilPassActualInput" style="display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 5px;">Contraseña actual</label>
+                                <input type="password" id="perfilPassActualInput" placeholder="••••••••" style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; background-color: #fff; outline: none;">
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label for="perfilPassNuevaInput" style="display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 5px;">Nueva contraseña</label>
+                                <input type="password" id="perfilPassNuevaInput" placeholder="Mínimo 4 caracteres" style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; background-color: #fff; outline: none;">
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="perfilPassConfirmarInput" style="display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 5px;">Confirmar nueva contraseña</label>
+                                <input type="password" id="perfilPassConfirmarInput" placeholder="Repetí la nueva contraseña" style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; background-color: #fff; outline: none;">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; align-items: center; padding-top: 15px; border-top: 1px solid #eee;">
+                        <button type="button" class="btn-primary" id="btnGuardarPerfil" onclick="guardarCambiosPerfil()" style="padding: 12px 28px;">
+                            Guardar Cambios
+                        </button>
+                    </div>
+
+                </div>
+            </div>
         </section>
 
         <!-- =========================================================================
              FOOTER DEL SISTEMA
              ========================================================================= -->
-        <footer style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 16px; padding: 40px; margin: 40px 0 20px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px; margin-bottom: 40px;">
+        <footer style="background-color: var(--blanco); border: 1px solid var(--borde); border-radius: 16px; padding: 35px 40px; margin: 40px 0 20px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px; margin-bottom: 30px;">
                 
+                <!-- Identidad y Marca -->
                 <div style="max-width: 320px;">
-                    <h2 style="font-size: 20px; font-weight: 600; color: var(--texto-oscuro); margin-bottom: 15px; letter-spacing: 1px;">EMME</h2>
-                    <p style="color: var(--texto-claro); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
-                        Sistema integral de gestión, administración y control de turnos diseñado para potenciar la organización de centros de estética.
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                        <span style="font-size: 20px; font-weight: 700; color: var(--texto-oscuro); letter-spacing: 3px;">EMME BEAUTY</span>
+                    </div>
+                    <span style="display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--mostaza); font-weight: 600; margin-bottom: 12px;">Centro de Estética & Belleza</span>
+                    <p style="color: var(--texto-claro); font-size: 13px; line-height: 1.6; margin-bottom: 18px;">
+                        Plataforma integral para la administración inteligente de turnos, clientas, finanzas y liquidaciones del local.
                     </p>
                     
-                    <div style="display: flex; gap: 15px;">
-                        <a href="https://github.com/luuu0304/EMME-Beauty-Oficial" style="color: #888; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='#888'" title="GitHub">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                        </a>
-                        <a href="mailto:luchicn33@gmail.com" style="color: #888; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='#888'" title="Soporte Técnico">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    <div>
+                        <a href="mailto:luchicn33@gmail.com" style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; background: #fdfaf2; border: 1px solid #e6c883; border-radius: 20px; color: #6b521e; text-decoration: none; font-size: 12px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#f6ebd0'" onmouseout="this.style.background='#fdfaf2'">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                            Soporte y Contacto
                         </a>
                     </div>
                 </div>
 
+                <!-- Columnas de Navegación Rápida -->
                 <div style="display: flex; gap: 60px; flex-wrap: wrap;">
                     <div>
-                        <h4 style="font-size: 14px; font-weight: 600; color: var(--texto-oscuro); margin-bottom: 15px;">Operativa</h4>
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[0].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Turnos</a></li>
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[1].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Clientas</a></li>
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[2].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Empleadas</a></li>
+                        <h4 style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--texto-oscuro); margin-bottom: 14px;">Operativa</h4>
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Turnos')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Agenda de Turnos</a></li>
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Clientas')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Directorio de Clientas</a></li>
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Emplead')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Staff de Profesionales</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 style="font-size: 14px; font-weight: 600; color: var(--texto-oscuro); margin-bottom: 15px;">Finanzas</h4>
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[3].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Gastos</a></li>
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[4].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Ingresos</a></li>
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[5].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Resúmenes</a></li>
+                        <h4 style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--texto-oscuro); margin-bottom: 14px;">Finanzas</h4>
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Gastos')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Gestión de Gastos</a></li>
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Ingresos')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Historial de Ingresos</a></li>
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Resúmenes')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Panel de Resúmenes</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 style="font-size: 14px; font-weight: 600; color: var(--texto-oscuro); margin-bottom: 15px;">Sistema</h4>
-                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
-                            <li><a href="#" onclick="document.querySelectorAll('.menu-item')[6].click(); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Configuración</a></li>
-                            <li><a href="mailto:luchicn33@gmail.com" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Soporte Técnico</a></li>
+                        <h4 style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--texto-oscuro); margin-bottom: 14px;">Sistema</h4>
+                        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Configuración')); if(b)b.click(); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Configuración General</a></li>
+                            <li><a href="#" onclick="const b=Array.from(document.querySelectorAll('.menu-item')).find(el=>el.textContent.trim().includes('Configuración')); if(b)b.click(); if(typeof cambiarVistaConfig==='function')cambiarVistaConfig('perfil'); window.scrollTo({top:0,behavior:'smooth'}); return false;" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Mi Perfil y Seguridad</a></li>
+                            <li><a href="mailto:luchicn33@gmail.com" style="color: var(--texto-claro); text-decoration: none; font-size: 13px; transition: color 0.2s;" onmouseover="this.style.color='var(--mostaza)'" onmouseout="this.style.color='var(--texto-claro)'">Mesa de Ayuda</a></li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-            <div style="border-top: 1px solid var(--borde); padding-top: 20px; display: flex; justify-content: space-between; align-items: center; color: #999; font-size: 12px; flex-wrap: wrap; gap: 15px;">
-                <span>© 2026 Luciana. Todos los derechos reservados.</span>
-                <div style="display: flex; gap: 20px;">
-                    <span>Desarrollado en Salta, Arg.</span>
+            <!-- Barra Inferior -->
+            <div style="border-top: 1px solid var(--borde); padding-top: 18px; display: flex; justify-content: space-between; align-items: center; color: #888; font-size: 12px; flex-wrap: wrap; gap: 15px;">
+                <span>© 2026 EmmE Beauty Salón. Todos los derechos reservados.</span>
+                <div style="display: flex; align-items: center; gap: 18px;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; color: #28a745; font-weight: 500;">
+                        <span style="width: 7px; height: 7px; border-radius: 50%; background: #28a745; display: inline-block;"></span>
+                        Sistema Operativo
+                    </span>
+                    <span style="color: #ddd;">•</span>
+                    <span>Salta, Argentina</span>
                 </div>
             </div>
         </footer>
@@ -1217,7 +1318,7 @@
                         </div>
                     </div>
 
-                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
+                    <div id="seccionColores" style="padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
                         <label style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 8px;">Color / Esmalte (Opcional):</label>
                         <input type="text" id="inputNuevoColor" placeholder="Ej. Vía Láctea y presioná Enter..." onkeypress="manejarEnterColor(event)" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                         <!-- Contenedor donde se dibujan las píldoras (Chips de colores) -->
@@ -1247,27 +1348,30 @@
                         </div>
                     </div>
 
-                    <!-- Caja Financiera (Descuentos, Recargos y Medio de pago) -->
-                    <div style="display: flex; flex-direction: column; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin: 0;">
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="margin: 0; color: #555; font-size: 14px;">Descuento ($)</label>
-                            <input type="number" id="descuentoCobroInput" placeholder="0" value="0" oninput="recalcularTotalCobro()" style="width: 100px; padding: 6px; text-align: right; border: 1px solid #ccc; border-radius: 4px;">
+                    <!-- Bloque 1: Ajustes de Monto (Descuentos y Recargos) -->
+                    <div style="background: #f8f9fa; padding: 14px 16px; border-radius: 8px; border: 1px solid #eee; margin: 0;">
+                        <span style="display: block; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #777; margin-bottom: 10px;">Ajustes sobre el valor (Opcional)</span>
+                        <div class="ajustes-cobro-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <label for="descuentoCobroInput" style="display: block; margin-bottom: 5px; color: #2e7d32; font-size: 13px; font-weight: 600;">- Descuento ($)</label>
+                                <input type="number" id="descuentoCobroInput" placeholder="0" value="0" min="0" oninput="recalcularTotalCobro()" style="width: 100%; padding: 8px 10px; text-align: right; border: 1px solid #dcdcdc; border-radius: 6px; font-size: 14px; font-weight: 500; background: white;">
+                            </div>
+                            <div>
+                                <label for="recargoCobroInput" style="display: block; margin-bottom: 5px; color: #c62828; font-size: 13px; font-weight: 600;">+ Recargo ($)</label>
+                                <input type="number" id="recargoCobroInput" placeholder="0" value="0" min="0" oninput="recalcularTotalCobro()" style="width: 100%; padding: 8px 10px; text-align: right; border: 1px solid #dcdcdc; border-radius: 6px; font-size: 14px; font-weight: 500; background: white;">
+                            </div>
                         </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="margin: 0; color: #555; font-size: 14px;">Recargo ($)</label>
-                            <input type="number" id="recargoCobroInput" placeholder="0" value="0" oninput="recalcularTotalCobro()" style="width: 100px; padding: 6px; text-align: right; border: 1px solid #ccc; border-radius: 4px;">
-                        </div>
+                    </div>
 
-                        <hr style="border: 0; border-top: 1px solid #e0e0e0; width: 100%; margin: 5px 0;">
-
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <label style="margin: 0; font-weight: 600; color: #333; font-size: 14px;">Medio de Pago</label>
-                            <select id="selectMedioPago" style="width: 130px; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
-                                <!-- Se llena dinámicamente desde app.js con cargarMediosDePago() -->
-                            </select>
-                        </div>
+                    <!-- Bloque 2: Selección de Medio de Pago (Destacado) -->
+                    <div style="background: #fdfaf2; padding: 15px 16px; border-radius: 8px; border: 1.5px solid #e6c883; box-shadow: 0 2px 8px rgba(212, 163, 71, 0.08); margin: 0;">
+                        <label for="selectMedioPago" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 700; color: #2C2C2C; font-size: 14px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--mostaza)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                            Medio de Pago
+                        </label>
+                        <select id="selectMedioPago" style="width: 100%; padding: 10px 12px; border: 1px solid #d4a347; border-radius: 6px; font-size: 14px; font-weight: 600; color: #2C2C2C; background-color: #ffffff; cursor: pointer; outline: none; transition: border-color 0.2s, box-shadow 0.2s;">
+                            <!-- Se llena dinámicamente desde app.js con cargarMediosDePago() -->
+                        </select>
                     </div>
 
                     <div style="text-align: right; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
@@ -1439,7 +1543,7 @@
     </div>
     
     <!-- === MODAL: ALERTA DE CONFIRMACIÓN GENÉRICA === -->
-    <div class="modal-overlay" id="modalConfirmacion">
+    <div class="modal-overlay" id="modalConfirmacion" style="z-index: 2000;">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
                 <h2 style="color: #d9534f; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px;">

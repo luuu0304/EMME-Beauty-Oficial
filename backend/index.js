@@ -87,21 +87,56 @@ app.put('/api/bot/plantillas/:id', async (req, res) => {
 // 2. MÓDULO DE SEGURIDAD (AUTH)
 // ==========================================================================
 
+// Asegura que la tabla Usuario tenga la columna Nombre (distinto de Username)
+async function asegurarColumnaNombreUsuario(pool) {
+    try {
+        await pool.request().query(`
+            IF COL_LENGTH('Usuario', 'Nombre') IS NULL
+            BEGIN
+                ALTER TABLE Usuario ADD Nombre VARCHAR(100) NULL;
+            END
+        `);
+    } catch (e) {
+        console.warn("Aviso al verificar columna Nombre en Usuario:", e.message);
+    }
+}
+
+// Middleware para verificar el token JWT en operaciones de perfil y seguridad
+function verificarToken(req, res, next) {
+    const authHeader = req.headers['authorization'] || req.headers['x-access-token'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+
+    if (!token) {
+        return res.status(401).json({ error: "Sesión no válida o expirada. Iniciá sesión nuevamente." });
+    }
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        req.usuario = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: "Tu sesión expiró. Por favor, volvé a iniciar sesión." });
+    }
+}
+
 // Registrar un nuevo usuario (Usado para crear el Admin por primera vez o accesos de empleadas)
 app.post('/api/auth/register', async (req, res) => {
-    const { Username, Password, Rol, Id_Empleada } = req.body;
+    const { Username, Password, Rol, Id_Empleada, Nombre } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(Password, 10);
         
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnaNombreUsuario(pool);
+
         await pool.request()
             .input('Username', sql.VarChar, Username)
             .input('PasswordHash', sql.VarChar, hashedPassword)
             .input('Rol', sql.VarChar, Rol)
             .input('Id_Empleada', sql.Int, Id_Empleada || null)
+            .input('Nombre', sql.VarChar, Nombre || null)
             .query(`
-                INSERT INTO Usuario (Username, Password_Hash, Rol, Id_Empleada)
-                VALUES (@Username, @PasswordHash, @Rol, @Id_Empleada)
+                INSERT INTO Usuario (Username, Password_Hash, Rol, Id_Empleada, Nombre)
+                VALUES (@Username, @PasswordHash, @Rol, @Id_Empleada, @Nombre)
             `);
             
         res.status(201).json({ message: "Usuario creado con éxito" });
@@ -116,9 +151,16 @@ app.post('/api/auth/login', async (req, res) => {
     const { Username, Password } = req.body;
     try {
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnaNombreUsuario(pool);
+
         const result = await pool.request()
             .input('Username', sql.VarChar, Username)
-            .query(`SELECT * FROM Usuario WHERE Username = @Username`);
+            .query(`
+                SELECT u.*, e.Nombre_Ap
+                FROM Usuario u
+                LEFT JOIN Empleada e ON u.Id_Empleada = e.Id_Empleada
+                WHERE u.Username = @Username
+            `);
             
         if (result.recordset.length === 0) {
             return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
@@ -130,18 +172,180 @@ app.post('/api/auth/login', async (req, res) => {
         if (!passwordValida) {
             return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
         }
+
+        const nombreVisible = usuario.Nombre_Ap || usuario.Nombre || usuario.Username;
         
         // Genera el token JWT que el frontend guardará en localStorage
         const token = jwt.sign(
-            { id: usuario.Id_Usuario, rol: usuario.Rol, idEmpleada: usuario.Id_Empleada },
+            {
+                id: usuario.Id_Usuario,
+                username: usuario.Username,
+                nombre: nombreVisible,
+                rol: usuario.Rol,
+                idEmpleada: usuario.Id_Empleada,
+                Id_Empleada: usuario.Id_Empleada
+            },
             SECRET_KEY,
             { expiresIn: '12h' }
         );
         
-        res.json({ message: "Login exitoso", token, rol: usuario.Rol });
+        res.json({
+            message: "Login exitoso",
+            token,
+            rol: usuario.Rol,
+            nombre: nombreVisible,
+            username: usuario.Username
+        });
     } catch (err) {
         console.error("Error en login:", err);
         res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+
+// Obtener los datos del perfil del usuario autenticado
+app.get('/api/auth/perfil', verificarToken, async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        await asegurarColumnaNombreUsuario(pool);
+
+        const result = await pool.request()
+            .input('Id_Usuario', sql.Int, req.usuario.id)
+            .query(`
+                SELECT 
+                    u.Id_Usuario,
+                    u.Username,
+                    u.Rol,
+                    u.Id_Empleada,
+                    u.Nombre AS Nombre_Usuario,
+                    e.Nombre_Ap AS Nombre_Empleada,
+                    e.DNI,
+                    e.Telefono
+                FROM Usuario u
+                LEFT JOIN Empleada e ON u.Id_Empleada = e.Id_Empleada
+                WHERE u.Id_Usuario = @Id_Usuario
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+
+        const u = result.recordset[0];
+        const nombreVisible = u.Nombre_Empleada || u.Nombre_Usuario || u.Username;
+
+        res.json({
+            idUsuario: u.Id_Usuario,
+            username: u.Username,
+            rol: u.Rol,
+            idEmpleada: u.Id_Empleada,
+            nombre: nombreVisible,
+            dni: u.DNI || null,
+            telefono: u.Telefono || null
+        });
+    } catch (err) {
+        console.error("Error obteniendo perfil:", err);
+        res.status(500).json({ error: "Error al obtener los datos del perfil" });
+    }
+});
+
+// Actualizar nombre visible (distinto de Username) y/o contraseña del usuario autenticado
+app.put('/api/auth/perfil', verificarToken, async (req, res) => {
+    const { nombre, passwordActual, passwordNueva } = req.body;
+    const nombreLimpio = (nombre || '').trim();
+
+    if (!nombreLimpio) {
+        return res.status(400).json({ error: "El nombre no puede estar vacío" });
+    }
+
+    try {
+        let pool = await sql.connect(dbConfig);
+        await asegurarColumnaNombreUsuario(pool);
+
+        const userResult = await pool.request()
+            .input('Id_Usuario', sql.Int, req.usuario.id)
+            .query(`SELECT * FROM Usuario WHERE Id_Usuario = @Id_Usuario`);
+
+        if (userResult.recordset.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+
+        const usuario = userResult.recordset[0];
+
+        // Si el usuario desea cambiar su contraseña, validamos la contraseña actual
+        let nuevoHash = null;
+        if (passwordNueva && passwordNueva.trim() !== '') {
+            if (!passwordActual) {
+                return res.status(400).json({ error: "Ingresá tu contraseña actual para poder cambiarla" });
+            }
+
+            const passwordValida = await bcrypt.compare(passwordActual, usuario.Password_Hash);
+            if (!passwordValida) {
+                return res.status(400).json({ error: "La contraseña actual ingresada es incorrecta" });
+            }
+
+            if (passwordNueva.trim().length < 4) {
+                return res.status(400).json({ error: "La nueva contraseña debe tener al menos 4 caracteres" });
+            }
+
+            nuevoHash = await bcrypt.hash(passwordNueva.trim(), 10);
+        }
+
+        // Actualizamos Usuario (Nombre y opcionalmente Password_Hash)
+        if (nuevoHash) {
+            await pool.request()
+                .input('Id_Usuario', sql.Int, usuario.Id_Usuario)
+                .input('Nombre', sql.VarChar, nombreLimpio)
+                .input('PasswordHash', sql.VarChar, nuevoHash)
+                .query(`
+                    UPDATE Usuario
+                    SET Nombre = @Nombre, Password_Hash = @PasswordHash
+                    WHERE Id_Usuario = @Id_Usuario
+                `);
+        } else {
+            await pool.request()
+                .input('Id_Usuario', sql.Int, usuario.Id_Usuario)
+                .input('Nombre', sql.VarChar, nombreLimpio)
+                .query(`
+                    UPDATE Usuario
+                    SET Nombre = @Nombre
+                    WHERE Id_Usuario = @Id_Usuario
+                `);
+        }
+
+        // Si el usuario está vinculado a una Empleada, sincronizamos su Nombre_Ap en la tabla Empleada
+        if (usuario.Id_Empleada) {
+            await pool.request()
+                .input('Id_Empleada', sql.Int, usuario.Id_Empleada)
+                .input('Nombre_Ap', sql.VarChar, nombreLimpio)
+                .query(`
+                    UPDATE Empleada
+                    SET Nombre_Ap = @Nombre_Ap
+                    WHERE Id_Empleada = @Id_Empleada
+                `);
+        }
+
+        // Emitimos un nuevo token con el nombre actualizado
+        const nuevoToken = jwt.sign(
+            {
+                id: usuario.Id_Usuario,
+                username: usuario.Username,
+                nombre: nombreLimpio,
+                rol: usuario.Rol,
+                idEmpleada: usuario.Id_Empleada,
+                Id_Empleada: usuario.Id_Empleada
+            },
+            SECRET_KEY,
+            { expiresIn: '12h' }
+        );
+
+        res.json({
+            message: "Perfil actualizado correctamente",
+            nombre: nombreLimpio,
+            username: usuario.Username,
+            token: nuevoToken
+        });
+    } catch (err) {
+        console.error("Error actualizando perfil:", err);
+        res.status(500).json({ error: "Error interno al actualizar el perfil" });
     }
 });
 
@@ -321,12 +525,19 @@ app.put('/api/empleadas/:id', async (req, res) => {
         const { Nombre_Ap, Dni, Telefono } = req.body; // <-- Leemos las 3 variables
 
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnaNombreUsuario(pool);
+
         await pool.request()
             .input('Id_Empleada', sql.Int, id)
             .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
             .input('Dni', sql.VarChar, Dni)
             .input('Telefono', sql.VarChar, Telefono)
             .query(`UPDATE Empleada SET Nombre_Ap = @Nombre_Ap, Dni = @Dni, Telefono = @Telefono WHERE Id_Empleada = @Id_Empleada`);
+
+        await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .input('Nombre', sql.VarChar, Nombre_Ap)
+            .query(`UPDATE Usuario SET Nombre = @Nombre WHERE Id_Empleada = @Id_Empleada`);
             
         res.status(200).send("Profesional actualizada correctamente");
     } catch (error) {
@@ -341,11 +552,41 @@ app.post('/api/empleadas', async (req, res) => {
         const { Nombre_Ap, Dni, Telefono } = req.body;
         
         let pool = await sql.connect(dbConfig);
-        await pool.request()
+        await asegurarColumnaNombreUsuario(pool);
+
+        const insEmp = await pool.request()
             .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
             .input('Dni', sql.VarChar, Dni)
             .input('Telefono', sql.VarChar, Telefono)
-            .query(`INSERT INTO Empleada (Nombre_Ap, DNI, Telefono, Saldo_Acumulado) VALUES (@Nombre_Ap, @Dni, @Telefono, 0)`);
+            .query(`
+                INSERT INTO Empleada (Nombre_Ap, DNI, Telefono, Saldo_Acumulado)
+                OUTPUT inserted.Id_Empleada
+                VALUES (@Nombre_Ap, @Dni, @Telefono, 0)
+            `);
+
+        const nuevoIdEmpleada = insEmp.recordset?.[0]?.Id_Empleada;
+
+        // Si se ingresó DNI, creamos automáticamente su acceso en Usuario (si no existe) con usuario y clave = DNI
+        if (nuevoIdEmpleada && Dni && String(Dni).trim() !== '') {
+            const usernameDni = String(Dni).trim();
+            const existeUser = await pool.request()
+                .input('Username', sql.VarChar, usernameDni)
+                .query(`SELECT Id_Usuario FROM Usuario WHERE Username = @Username`);
+
+            if (existeUser.recordset.length === 0) {
+                const hashedPass = await bcrypt.hash(usernameDni, 10);
+                await pool.request()
+                    .input('Username', sql.VarChar, usernameDni)
+                    .input('PasswordHash', sql.VarChar, hashedPass)
+                    .input('Rol', sql.VarChar, 'Empleada')
+                    .input('Id_Empleada', sql.Int, nuevoIdEmpleada)
+                    .input('Nombre', sql.VarChar, Nombre_Ap)
+                    .query(`
+                        INSERT INTO Usuario (Username, Password_Hash, Rol, Id_Empleada, Nombre)
+                        VALUES (@Username, @PasswordHash, @Rol, @Id_Empleada, @Nombre)
+                    `);
+            }
+        }
             
         res.status(200).send("Profesional creada correctamente");
     } catch (error) {

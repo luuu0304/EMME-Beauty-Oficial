@@ -38,24 +38,33 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
 }
 
 // --- Sistema de Confirmación Personalizado ---
-function pedirConfirmacion(mensaje) {
+function pedirConfirmacion(mensaje, opciones = {}) {
     return new Promise((resolve) => {
         const modalConf = document.getElementById('modalConfirmacion');
         const textoConf = document.getElementById('textoConfirmacion');
         const btnAceptar = document.getElementById('btnAceptarConfirmacion');
         const btnCancelar = document.getElementById('btnCancelarConfirmacion');
 
-        textoConf.textContent = mensaje;
+        if (opciones.esHtml) {
+            textoConf.innerHTML = mensaje;
+        } else {
+            textoConf.textContent = mensaje;
+        }
+
+        btnAceptar.style.backgroundColor = opciones.colorBoton || '#d9534f';
+        btnAceptar.textContent = opciones.textoBoton || 'Sí, confirmar';
+
         modalConf.classList.add('active');
 
-        btnAceptar.onclick = () => {
+        const cerrar = (resultado) => {
             modalConf.classList.remove('active');
-            resolve(true);
+            resolve(resultado);
         };
 
-        btnCancelar.onclick = () => {
-            modalConf.classList.remove('active');
-            resolve(false);
+        btnAceptar.onclick = () => cerrar(true);
+        btnCancelar.onclick = () => cerrar(false);
+        modalConf.onclick = (e) => {
+            if (e.target === modalConf) cerrar(false);
         };
     });
 }
@@ -126,7 +135,7 @@ function aplicarPermisos(rol) {
     botonesMenu.forEach(boton => {
         const textoMenu = boton.textContent.trim();
         if (rol === 'Empleada') {
-            if (['Clientas', 'Gastos', 'Ingresos', 'Configuración', 'Empleados', 'Empleadas'].includes(textoMenu)) {
+            if (['Clientas', 'Gastos', 'Ingresos', 'Empleados', 'Empleadas'].includes(textoMenu)) {
                 boton.style.display = 'none';
             } else {
                 boton.style.display = 'flex'; 
@@ -139,6 +148,22 @@ function aplicarPermisos(rol) {
             }
         }
     });
+
+    // Pestañas dentro de Configuración según rol
+    const tabsSoloAdminConfig = [
+        'btnVistaConfigGastos',
+        'btnVistaConfigServicios',
+        'btnVistaConfigHorarios',
+        'btnVistaConfigPagos',
+        'btnVistaConfigBot'
+    ];
+    tabsSoloAdminConfig.forEach(idBtn => {
+        const btn = document.getElementById(idBtn);
+        if (btn) btn.style.display = (rol === 'Empleada') ? 'none' : '';
+    });
+    if (rol === 'Empleada' && typeof cambiarVistaConfig === 'function') {
+        cambiarVistaConfig('perfil');
+    }
 
     if (rol === 'Empleada') {
         if (btnNuevoTurno) btnNuevoTurno.style.display = 'none';
@@ -316,7 +341,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Inicialización del Menú Hamburguesa (Mobile)
+// Control del Menú Lateral (Mobile Drawer & Desktop Collapse)
+function abrirMenuMovil() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) sidebar.classList.add('activa');
+    if (backdrop) backdrop.classList.add('activo');
+}
+
+function cerrarMenuMovil() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) sidebar.classList.remove('activa');
+    if (backdrop) backdrop.classList.remove('activo');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const btnMenu = document.getElementById('btnToggleMenu');
     const sidebar = document.getElementById('sidebar');
@@ -324,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnMenu && sidebar) {
         btnMenu.addEventListener('click', () => {
             if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('mobile-open');
+                cerrarMenuMovil();
             } else {
                 sidebar.classList.toggle('collapsed');
             }
@@ -454,6 +493,10 @@ botonesMenu.forEach(boton => {
         botonesMenu.forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
 
+        if (window.innerWidth <= 768) {
+            cerrarMenuMovil();
+        }
+
         seccionTurnos.style.display = 'none';
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
@@ -513,8 +556,19 @@ botonesMenu.forEach(boton => {
             
         } else if (opcionSeleccionada === 'Configuración') {
             if(seccionConfiguracion) seccionConfiguracion.style.display = 'block';
-            tituloHeader.textContent = 'Configuración General';
-            cargarTablaConfigCategorias();
+            const rolActual = localStorage.getItem('emme_rol');
+            if (rolActual === 'Empleada') {
+                tituloHeader.textContent = 'Mi Perfil y Seguridad';
+                cambiarVistaConfig('perfil');
+            } else {
+                tituloHeader.textContent = 'Configuración General';
+                const btnPerfil = document.getElementById('btnVistaConfigPerfil');
+                if (btnPerfil && btnPerfil.classList.contains('active')) {
+                    cargarDatosPerfil();
+                } else {
+                    cargarTablaConfigCategorias();
+                }
+            }
             
         } else if (opcionSeleccionada === 'Mis Pagos') {
             if(seccionMisPagos) seccionMisPagos.style.display = 'block';
@@ -1303,26 +1357,40 @@ async function cargarTurnosSemana() {
             if (cantidad > 0) {
                 if (rolUsuario === 'Empleada') {
                     turnos.forEach(turno => {
+                        const alturaPixeles = (turno.Duracion_Minutos || 30) * 2;
                         const tarjeta = document.createElement('div');
-                        tarjeta.className = 'tarjeta-turno-empleada'; 
-                        
-                        const duracionMinutos = turno.Duracion_Minutos || 60;
-                        const cantidadBloques = duracionMinutos / 30;
-                        
-                        tarjeta.style.position = 'absolute';
-                        tarjeta.style.top = '0';
-                        tarjeta.style.left = '4px';
-                        tarjeta.style.width = 'calc(100% - 8px)';
-                        tarjeta.style.zIndex = '10';
-                        tarjeta.style.height = `calc(${cantidadBloques * 100}% + ${cantidadBloques - 1}px)`;
+                        tarjeta.className = 'turno-card';
+                        tarjeta.style.height = `${alturaPixeles}px`;
+                        tarjeta.style.cursor = 'pointer';
+                        tarjeta.style.textAlign = 'left';
 
-                        if (turno.Color && turno.Color !== 'null') {
-                            tarjeta.style.borderLeft = `4px solid ${turno.Color.split(' | ')[0]}`; 
+                        let badgeColorBg = '#ffeeba';
+                        let badgeColorText = '#856404';
+                        let textoEstado = turno.Estado || 'Pendiente';
+
+                        if (textoEstado === 'Pagado') {
+                            badgeColorBg = '#d4edda';
+                            badgeColorText = '#155724';
+                        } else if (textoEstado === 'En progreso') {
+                            badgeColorBg = '#cce5ff';
+                            badgeColorText = '#004085';
+                        } else if (textoEstado === 'Cancelado') {
+                            badgeColorBg = '#f8d7da';
+                            badgeColorText = '#721c24';
                         }
-                        
+
+                        const badgeHTML = `
+                            <div style="margin-top: 5px;">
+                                <span style="display: inline-block; font-size: 10px; font-weight: 700; background: ${badgeColorBg}; color: ${badgeColorText}; padding: 3px 8px; border-radius: 12px; border: 1px solid ${badgeColorText}40; letter-spacing: 0.3px;">
+                                    ${textoEstado}
+                                </span>
+                            </div>
+                        `;
+
                         tarjeta.innerHTML = `
-                            <span class="nombre-clienta">${turno.Nombre_Clienta || 'Clienta'}</span>
-                            <span class="servicio-detalle">${turno.Nombre_Servicio || 'Servicio'}</span>
+                            <div class="turno-titulo" style="font-weight: 600; color: #333; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${turno.Nombre_Clienta || 'Clienta'}</div>
+                            <div class="turno-detalle" style="color: #666; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${turno.Nombre_Servicio || 'Servicio'}</div>
+                            ${badgeHTML}
                         `;
                         
                         tarjeta.onclick = () => {
@@ -1337,7 +1405,8 @@ async function cargarTurnosSemana() {
                                 turno.Color, 
                                 senaPagada, 
                                 turno.Comentario_Admin,
-                                turno.Nombre_Area || ''
+                                turno.Nombre_Area || '',
+                                turno.Nombre_Ap || ''
                             );
                         };
                         celda.appendChild(tarjeta);
@@ -1409,7 +1478,8 @@ function abrirModalTurnosAgrupados(turnos) {
                 turno.Color,
                 senaPagada,
                 turno.Comentario_Admin,
-                turno.Nombre_Area || '' 
+                turno.Nombre_Area || '',
+                turno.Nombre_Ap || ''
             );
         };
         
@@ -1464,7 +1534,7 @@ async function inicializarAgendaSemanal() {
     let lunesDeEstaSemana = new Date(fechaBase);
     lunesDeEstaSemana.setDate(fechaBase.getDate() + diferenciaAlLunes);
 
-    let htmlHeader = `<div class="hora-col" style="color: #999;">Hora</div>`;
+    let htmlHeader = `<div class="hora-col" style="padding: 15px; border-right: 1px solid #eee;">Hora</div>`;
     const nombresDias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     
     for (let i = 0; i < 6; i++) {
@@ -1475,7 +1545,7 @@ async function inicializarAgendaSemanal() {
         let mesNum = (diaIterado.getMonth() + 1).toString().padStart(2, '0');
         
         htmlHeader += `
-            <div style="display: flex; flex-direction: column;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; border-right: 1px solid #eee;">
                 <span>${nombresDias[i]}</span>
                 <span style="font-size: 12px; font-weight: normal; color: #666; margin-top: 4px;">${diaNum}/${mesNum}</span>
             </div>
@@ -1546,14 +1616,20 @@ async function inicializarAgendaSemanal() {
 
 function crearFilaSemanal(hora) {
     let fila = document.createElement('div');
+    const esHoraEnPunto = hora.endsWith(':00');
+    fila.className = esHoraEnPunto ? 'hora-en-punto' : '';
     fila.style.display = 'grid';
     fila.style.gridTemplateColumns = '80px repeat(6, 1fr)'; 
-    fila.style.borderBottom = '1px solid #f0f0f0';
+    fila.style.borderBottom = '1px solid #eee';
+    if (esHoraEnPunto) {
+        fila.style.borderTop = '1px solid #ddd';
+    }
+    fila.style.minHeight = '60px';
 
-    let htmlFila = `<div class="hora-col" style="padding: 10px; color: #666; text-align: center; border-right: 1px solid #eee;">${hora}</div>`;
+    let htmlFila = `<div class="hora-col" style="padding: 15px; border-right: 1px solid #eee;">${hora}</div>`;
 
     for (let dia = 1; dia <= 6; dia++) {
-        htmlFila += `<div id="celda-sem-${dia}-${hora}" class="celda-semanal" style="padding: 5px; border-right: 1px solid #eee; min-height: 40px; display: flex; justify-content: center; align-items: center;"></div>`;
+        htmlFila += `<div id="celda-sem-${dia}-${hora}" class="celda-semanal agenda-celda" style="padding: 15px; border-right: 1px solid #eee; min-height: 60px; display: flex; justify-content: center; align-items: center; position: relative;"></div>`;
     }
     
     fila.innerHTML = htmlFila;
@@ -1603,7 +1679,8 @@ async function cargarTurnosAgenda() {
                         turno.Color || '',
                         senaPagada,
                         turno.Comentario_Admin || '',
-                        turno.Nombre_Area || '' 
+                        turno.Nombre_Area || '',
+                        turno.Nombre_Ap || ''
                     );
                 };
 
@@ -1739,6 +1816,9 @@ async function cargarHorariosDisponibles() {
 // ==========================================================================
 
 let precioBaseActual = 0;
+let clientaActualCobro = '';
+let servicioActualCobro = '';
+let empleadaActualCobro = '';
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 
 if (modalDetalleTurno) {
@@ -1747,8 +1827,11 @@ if (modalDetalleTurno) {
     });
 }
 
-function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '') {
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '', nombreEmpleada = '') {
     precioBaseActual = parseFloat(precioBase) || 0;
+    clientaActualCobro = nombreClienta || 'No especificada';
+    servicioActualCobro = nombreServicio || 'No especificado';
+    empleadaActualCobro = nombreEmpleada || 'No especificada';
     const senaActual = parseFloat(sena) || 0;
     
     document.getElementById('idTurnoCobroOculto').value = idTurno;
@@ -1777,15 +1860,19 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     }
     
     const nombreSrvLow = (nombreServicio || '').toLowerCase();
-    const esUñas = nombreSrvLow.includes('kapping') || nombreSrvLow.includes('esmaltado') || nombreSrvLow.includes('soft') || nombreSrvLow.includes('esculpidas');
+    const areaLow = (areaDefinitiva || '').trim().toLowerCase();
+    const esUñas = areaLow
+        ? (areaLow === 'manicura' || areaLow === 'pedicura')
+        : (nombreSrvLow.includes('kapping') || nombreSrvLow.includes('esmaltado') || nombreSrvLow.includes('soft') || nombreSrvLow.includes('esculpidas') || nombreSrvLow.includes('manos') || nombreSrvLow.includes('pies') || nombreSrvLow.includes('podo'));
 
     const divExtras = document.getElementById('seccionExtras');
     if (divExtras) {
-        if (areaDefinitiva === 'Manicura' || areaDefinitiva === 'Pedicura' || esUñas) {
-            divExtras.style.display = 'flex'; 
-        } else {
-            divExtras.style.display = 'none'; 
-        }
+        divExtras.style.display = esUñas ? 'flex' : 'none';
+    }
+
+    const divColores = document.getElementById('seccionColores');
+    if (divColores) {
+        divColores.style.display = esUñas ? 'block' : 'none';
     }
 
     document.getElementById('inputNuevoColor').value = '';
@@ -1815,6 +1902,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     const inputColor = document.getElementById('inputNuevoColor'); 
     const inputDescuento = document.getElementById('descuentoCobroInput');
     const inputRecargo = document.getElementById('recargoCobroInput'); 
+    const selectMedio = document.getElementById('selectMedioPago');
     const checkboxes = document.querySelectorAll('.check-extra');
     
     const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
@@ -1835,6 +1923,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         inputColor.disabled = true;
         inputDescuento.disabled = true;
         if (inputRecargo) inputRecargo.disabled = true;
+        if (selectMedio) selectMedio.disabled = true;
         if (inputComentario) inputComentario.disabled = true; 
         if (inputSena) inputSena.disabled = true;
         if (btnActualizarSena) btnActualizarSena.disabled = true;
@@ -1855,6 +1944,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         inputColor.disabled = true;
         inputDescuento.disabled = true;
         if (inputRecargo) inputRecargo.disabled = true;
+        if (selectMedio) selectMedio.disabled = true;
         if (inputComentario) inputComentario.disabled = true; 
         if (inputSena) inputSena.disabled = true;
         if (btnActualizarSena) btnActualizarSena.disabled = true;
@@ -1875,6 +1965,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
         inputColor.disabled = false;
         inputDescuento.disabled = false;
         if (inputRecargo) inputRecargo.disabled = false;
+        if (selectMedio) selectMedio.disabled = false;
         if (inputComentario) inputComentario.disabled = false; 
         if (inputSena) inputSena.disabled = false;
         if (btnActualizarSena) btnActualizarSena.disabled = false;
@@ -2120,6 +2211,25 @@ async function confirmarCobroTurno() {
 
     let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
     if (totalFinal < 0) totalFinal = 0;
+
+    const resumenHtml = `
+        ¿Estás segura de que deseás confirmar y cobrar este turno?
+        <div style="margin-top: 14px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; text-align: left; font-size: 14px; line-height: 1.7; color: #333;">
+            <div><strong>Clienta:</strong> ${clientaActualCobro}</div>
+            <div><strong>Servicio:</strong> ${servicioActualCobro}</div>
+            <div><strong>Empleada:</strong> ${empleadaActualCobro}</div>
+            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #dcdcdc; font-size: 15px;">
+                <strong>Monto a cobrar:</strong> <span style="color: #28a745; font-weight: 700;">$${totalFinal.toLocaleString('es-AR')}</span>
+            </div>
+        </div>
+    `;
+
+    const confirma = await pedirConfirmacion(resumenHtml, {
+        esHtml: true,
+        colorBoton: '#28a745',
+        textoBoton: 'Sí, cobrar turno'
+    });
+    if (!confirma) return;
 
     const datosCobro = {
         idTurno: parseInt(idTurno),
@@ -2966,6 +3076,13 @@ async function eliminarEmpleada(id) {
     }
 }
 
+const modalDetalleSueldo = document.getElementById('modalDetalleSueldo');
+if (modalDetalleSueldo) {
+    modalDetalleSueldo.addEventListener('click', function(e) {
+        if (e.target === modalDetalleSueldo) cerrarModalDetalleSueldo();
+    });
+}
+
 function cerrarModalDetalleSueldo() {
     const modal = document.getElementById('modalDetalleSueldo');
     if (modal) modal.classList.remove('active');
@@ -3292,9 +3409,16 @@ async function abrirDetalleCobro(idLiquidacion) {
     }
 }
 
+const modalDetalleHistorial = document.getElementById('modalDetalleHistorial');
+if (modalDetalleHistorial) {
+    modalDetalleHistorial.addEventListener('click', function(e) {
+        if (e.target === modalDetalleHistorial) cerrarModalHistorial();
+    });
+}
+
 function cerrarModalHistorial() {
     const modal = document.getElementById('modalDetalleHistorial');
-    modal.classList.remove('active');
+    if (modal) modal.classList.remove('active');
 }
 
 async function cargarMisPagos() {
@@ -3306,7 +3430,7 @@ async function cargarMisPagos() {
 
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        const idEmpleada = payload.Id_Empleada || payload.id; 
+        const idEmpleada = payload.idEmpleada || payload.Id_Empleada || payload.id; 
 
         const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidaciones`);
         
@@ -4108,30 +4232,34 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
 // ==========================================================================
 
 function cambiarVistaConfig(vista) {
-    // 1. Agregamos las variables para la sección del bot
+    // 1. Agregamos las variables para la sección del bot y de Mi Perfil
     const vistaGastos = document.getElementById('vistaConfigGastos');
     const vistaServicios = document.getElementById('vistaConfigServicios');
     const vistaHorarios = document.getElementById('vistaConfigHorarios');
     const vistaPagos = document.getElementById('vistaConfigPagos'); 
-    const vistaBot = document.getElementById('seccion-bot'); // <-- Contenedor del bot
+    const vistaBot = document.getElementById('seccion-bot');
+    const vistaPerfil = document.getElementById('vistaConfigPerfil');
     
     const btnGastos = document.getElementById('btnVistaConfigGastos');
     const btnServicios = document.getElementById('btnVistaConfigServicios');
     const btnHorarios = document.getElementById('btnVistaConfigHorarios');
     const btnPagos = document.getElementById('btnVistaConfigPagos'); 
     const btnBot = document.getElementById('btnVistaConfigBot');
+    const btnPerfil = document.getElementById('btnVistaConfigPerfil');
 
     if (vistaGastos) vistaGastos.style.display = 'none';
     if (vistaServicios) vistaServicios.style.display = 'none';
     if (vistaHorarios) vistaHorarios.style.display = 'none';
     if (vistaPagos) vistaPagos.style.display = 'none';
     if (vistaBot) vistaBot.style.display = 'none';
+    if (vistaPerfil) vistaPerfil.style.display = 'none';
     
     if (btnGastos) btnGastos.classList.remove('active');
     if (btnServicios) btnServicios.classList.remove('active');
     if (btnHorarios) btnHorarios.classList.remove('active');
     if (btnPagos) btnPagos.classList.remove('active');
     if (btnBot) btnBot.classList.remove('active');
+    if (btnPerfil) btnPerfil.classList.remove('active');
 
     // 3. Mostramos solo la vista que el usuario seleccionó
     if (vista === 'gastos') {
@@ -4159,7 +4287,152 @@ function cambiarVistaConfig(vista) {
         if (btnBot) btnBot.classList.add('active');
         
         if (typeof chequearEstadoBot === 'function') chequearEstadoBot();
-        if (typeof cargarTablaPlantillasBot === 'function') cargarTablaPlantillasBot(); // <-- ¡LÍNEA NUEVA!
+        if (typeof cargarTablaPlantillasBot === 'function') cargarTablaPlantillasBot();
+
+    } else if (vista === 'perfil') {
+        if (vistaPerfil) vistaPerfil.style.display = 'block';
+        if (btnPerfil) btnPerfil.classList.add('active');
+        cargarDatosPerfil();
+    }
+}
+
+// --- CONFIG: MI PERFIL (Nombre visible y Contraseña) ---
+async function cargarDatosPerfil() {
+    const token = localStorage.getItem('emme_token');
+    if (!token) return;
+
+    const inputUsername = document.getElementById('perfilUsernameInput');
+    const inputNombre = document.getElementById('perfilNombreInput');
+    const tituloNombre = document.getElementById('perfilTituloNombre');
+    const avatarInicial = document.getElementById('perfilAvatarInicial');
+    const badgeRol = document.getElementById('perfilBadgeRol');
+
+    const inputPassActual = document.getElementById('perfilPassActualInput');
+    const inputPassNueva = document.getElementById('perfilPassNuevaInput');
+    const inputPassConfirmar = document.getElementById('perfilPassConfirmarInput');
+
+    if (inputPassActual) inputPassActual.value = '';
+    if (inputPassNueva) inputPassNueva.value = '';
+    if (inputPassConfirmar) inputPassConfirmar.value = '';
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/auth/perfil', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!respuesta.ok) {
+            throw new Error('No se pudo obtener la información del perfil');
+        }
+
+        const datos = await respuesta.json();
+        const nombreMostrar = datos.nombre || datos.username || 'Usuario';
+
+        if (inputUsername) inputUsername.value = datos.username || '';
+        if (inputNombre) inputNombre.value = datos.nombre || '';
+        if (tituloNombre) tituloNombre.textContent = nombreMostrar;
+        if (avatarInicial) avatarInicial.textContent = nombreMostrar.trim().charAt(0).toUpperCase() || 'U';
+        if (badgeRol) {
+            badgeRol.textContent = datos.rol === 'Admin' ? 'Administradora' : 'Profesional';
+        }
+    } catch (error) {
+        console.error('Error cargando perfil:', error);
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const nombreToken = payload.nombre || payload.username || 'Mi Perfil';
+            if (inputUsername) inputUsername.value = payload.username || '';
+            if (inputNombre) inputNombre.value = payload.nombre || '';
+            if (tituloNombre) tituloNombre.textContent = nombreToken;
+            if (avatarInicial) avatarInicial.textContent = nombreToken.trim().charAt(0).toUpperCase() || 'U';
+        } catch (e) {}
+    }
+}
+
+async function guardarCambiosPerfil() {
+    const token = localStorage.getItem('emme_token');
+    if (!token) {
+        mostrarNotificacion("Tu sesión expiró. Volvé a iniciar sesión.", "error");
+        return;
+    }
+
+    const inputNombre = document.getElementById('perfilNombreInput');
+    const inputPassActual = document.getElementById('perfilPassActualInput');
+    const inputPassNueva = document.getElementById('perfilPassNuevaInput');
+    const inputPassConfirmar = document.getElementById('perfilPassConfirmarInput');
+    const btnGuardar = document.getElementById('btnGuardarPerfil');
+
+    const nombre = (inputNombre?.value || '').trim();
+    const passwordActual = inputPassActual?.value || '';
+    const passwordNueva = inputPassNueva?.value || '';
+    const passwordConfirmar = inputPassConfirmar?.value || '';
+
+    if (!nombre) {
+        mostrarNotificacion("El nombre visible no puede quedar vacío.", "warning");
+        return;
+    }
+
+    const intentaCambiarPass = Boolean(passwordActual || passwordNueva || passwordConfirmar);
+    if (intentaCambiarPass) {
+        if (!passwordActual) {
+            mostrarNotificacion("Ingresá tu contraseña actual para poder cambiarla.", "warning");
+            return;
+        }
+        if (!passwordNueva || passwordNueva.trim().length < 4) {
+            mostrarNotificacion("La nueva contraseña debe tener al menos 4 caracteres.", "warning");
+            return;
+        }
+        if (passwordNueva !== passwordConfirmar) {
+            mostrarNotificacion("La nueva contraseña y su confirmación no coinciden.", "warning");
+            return;
+        }
+    }
+
+    const textoOriginal = btnGuardar ? btnGuardar.textContent : 'Guardar Cambios';
+    if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.textContent = 'Guardando...';
+    }
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/auth/perfil', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                nombre,
+                passwordActual: intentaCambiarPass ? passwordActual : '',
+                passwordNueva: intentaCambiarPass ? passwordNueva : ''
+            })
+        });
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok) {
+            if (resultado.token) {
+                localStorage.setItem('emme_token', resultado.token);
+            }
+            mostrarNotificacion(
+                intentaCambiarPass
+                    ? "¡Nombre y contraseña actualizados con éxito!"
+                    : "¡Nombre actualizado con éxito!",
+                "success"
+            );
+            await cargarDatosPerfil();
+            if (typeof cargarEmpleadas === 'function') {
+                cargarEmpleadas();
+            }
+        } else {
+            mostrarNotificacion(resultado.error || "No se pudieron guardar los cambios.", "error");
+        }
+    } catch (error) {
+        console.error("Error guardando perfil:", error);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    } finally {
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = textoOriginal;
+        }
     }
 }
 
