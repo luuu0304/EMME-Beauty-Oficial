@@ -736,6 +736,14 @@ select {
     background-color: #fcfcfc; 
 }
 
+body:not(.is-empleada) .agenda-celda:not([data-ocupado="true"]):hover {
+    background-color: #fdf8ee;
+}
+
+body.is-empleada .agenda-celda {
+    cursor: default;
+}
+
 .turno-card {
     position: absolute;
     top: 0;
@@ -750,6 +758,7 @@ select {
     overflow: hidden; 
     z-index: 5;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
 }
 
 .turno-titulo {
@@ -830,7 +839,7 @@ body.is-empleada #btnNuevoTurno {
     z-index: 5;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     cursor: pointer;
-    text-align: left;
+    text-align: center;
 }
 
 .tarjeta-turno-empleada:hover {

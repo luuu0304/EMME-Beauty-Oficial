@@ -760,12 +760,13 @@
                                         <th style="padding: 12px 14px; font-weight: 500; border-top-left-radius: 8px;">Cód</th>
                                         <th style="padding: 12px 14px; font-weight: 500;">Servicio</th>
                                         <th style="padding: 12px 14px; font-weight: 500;">Área</th>
+                                        <th style="padding: 12px 14px; font-weight: 500;">Duración</th>
                                         <th style="padding: 12px 14px; font-weight: 500;">Precio Base</th>
                                         <th style="padding: 12px 14px; text-align: center; font-weight: 500; border-top-right-radius: 8px;">Opciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaConfigServiciosBody">
-                                    <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--texto-claro);">Cargando servicios...</td></tr>
+                                    <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--texto-claro);">Cargando servicios...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1525,9 +1526,9 @@
         </div>
     </div>
 
-    <!-- === MODAL: NUEVO/EDITAR SERVICIO === -->
+            <!-- === MODAL: NUEVO/EDITAR SERVICIO === -->
     <div class="modal-overlay" id="modalNuevoServicio">
-        <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-content" style="max-width: 480px;">
             <div class="modal-header">
                 <h2 id="tituloModalServicio">Nuevo Servicio</h2>
             </div>
@@ -1536,12 +1537,16 @@
                 <label>Nombre del Servicio</label>
                 <input type="text" id="nombreNuevoServicioInput" placeholder="Ej. Kapping Gel">
             </div>
+            <div class="form-group">
+                <label>Área</label>
+                <select id="areaNuevoServicioInput">
+                    <option value="">Cargando áreas...</option>
+                </select>
+            </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Área</label>
-                    <select id="areaNuevoServicioInput">
-                        <option value="">Cargando áreas...</option>
-                    </select>
+                    <label>Duración (min)</label>
+                    <input type="number" id="duracionNuevoServicioInput" placeholder="Ej. 60" min="5" step="5">
                 </div>
                 <div class="form-group">
                     <label>Precio Base ($)</label>

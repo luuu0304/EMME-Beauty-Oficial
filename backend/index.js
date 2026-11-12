@@ -944,7 +944,7 @@ app.get('/api/servicios', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
         let result = await pool.request().query(`
-            SELECT s.Id_Servicio, s.Nombre, s.Precio_Base, s.Id_Area, a.Nombre AS Area
+            SELECT s.Id_Servicio, s.Nombre, s.Precio_Base, ISNULL(s.Duracion_Minutos, 30) AS Duracion_Minutos, s.Id_Area, a.Nombre AS Area
             FROM Servicio s LEFT JOIN Area a ON s.Id_Area = a.Id_Area
         `);
         res.json(result.recordset);
@@ -956,13 +956,15 @@ app.get('/api/servicios', async (req, res) => {
 
 app.post('/api/servicios', async (req, res) => {
     try {
-        const { Nombre, Id_Area, Precio_Base } = req.body;
+        const { Nombre, Id_Area, Precio_Base, Duracion_Minutos } = req.body;
+        const duracionValida = Math.max(5, parseInt(Duracion_Minutos, 10) || 30);
         let pool = await sql.connect(dbConfig);
         await pool.request()
             .input('Nombre', sql.VarChar, Nombre)
             .input('Id_Area', sql.Int, Id_Area)
             .input('Precio_Base', sql.Decimal(10,2), Precio_Base)
-            .query(`INSERT INTO Servicio (Nombre, Id_Area, Precio_Base, Duracion_Minutos) VALUES (@Nombre, @Id_Area, @Precio_Base, 30)`);
+            .input('Duracion_Minutos', sql.Int, duracionValida)
+            .query(`INSERT INTO Servicio (Nombre, Id_Area, Precio_Base, Duracion_Minutos) VALUES (@Nombre, @Id_Area, @Precio_Base, @Duracion_Minutos)`);
         res.status(201).send("Servicio creado");
     } catch (err) {
         console.error(err);
@@ -973,14 +975,16 @@ app.post('/api/servicios', async (req, res) => {
 app.put('/api/servicios/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { Nombre, Id_Area, Precio_Base } = req.body;
+        const { Nombre, Id_Area, Precio_Base, Duracion_Minutos } = req.body;
+        const duracionValida = Math.max(5, parseInt(Duracion_Minutos, 10) || 30);
         let pool = await sql.connect(dbConfig);
         await pool.request()
             .input('Id_Servicio', sql.Int, id)
             .input('Nombre', sql.VarChar, Nombre)
             .input('Id_Area', sql.Int, Id_Area)
             .input('Precio_Base', sql.Decimal(10,2), Precio_Base)
-            .query(`UPDATE Servicio SET Nombre = @Nombre, Id_Area = @Id_Area, Precio_Base = @Precio_Base WHERE Id_Servicio = @Id_Servicio`);
+            .input('Duracion_Minutos', sql.Int, duracionValida)
+            .query(`UPDATE Servicio SET Nombre = @Nombre, Id_Area = @Id_Area, Precio_Base = @Precio_Base, Duracion_Minutos = @Duracion_Minutos WHERE Id_Servicio = @Id_Servicio`);
         res.status(200).send("Servicio actualizado");
     } catch (err) {
         console.error(err);
