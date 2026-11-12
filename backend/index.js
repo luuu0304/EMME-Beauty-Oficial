@@ -6,7 +6,7 @@ const sql = require('mssql');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
-const { iniciarBot, enviarMensaje, getEstadoBot } = require('./whatsappBot');
+const { iniciarBot, reiniciarBot, enviarMensaje, getEstadoBot } = require('./whatsappBot');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -68,18 +68,85 @@ app.get('/api/bot/plantillas', async (req, res) => {
 app.put('/api/bot/plantillas/:id', async (req, res) => {
     const { id } = req.params;
     const { texto } = req.body;
+
+    if (!texto || !String(texto).trim()) {
+        return res.status(400).json({ error: 'El texto de la plantilla no puede estar vacío' });
+    }
     
     try {
         let pool = await sql.connect(dbConfig);
         await pool.request()
             .input('id', sql.Int, id)
-            .input('texto', sql.NVarChar, texto)
+            .input('texto', sql.NVarChar, String(texto).trim())
             .query('UPDATE Plantillas_Bot SET Texto_Mensaje = @texto WHERE Id_Plantilla = @id');
             
         res.json({ success: true, message: 'Plantilla actualizada correctamente' });
     } catch (error) {
         console.error('Error actualizando plantilla:', error);
         res.status(500).json({ error: 'Error al actualizar la plantilla en la base de datos' });
+    }
+});
+
+// RUTA PARA REINICIAR O CERRAR SESIÓN DEL BOT DE WHATSAPP
+app.post('/api/bot/reiniciar', async (req, res) => {
+    try {
+        const cerrarSesion = Boolean(req.body && req.body.cerrarSesion);
+        const resultado = await reiniciarBot(cerrarSesion);
+        if (!resultado.ok) {
+            return res.status(400).json({ error: resultado.error });
+        }
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error reiniciando bot:', error);
+        res.status(500).json({ error: 'No se pudo reiniciar el bot de WhatsApp' });
+    }
+});
+
+// RUTA PARA ENVIAR UN MENSAJE DE PRUEBA DESDE EL PANEL
+app.post('/api/bot/probar', async (req, res) => {
+    const { telefono, mensaje } = req.body || {};
+    if (!telefono || !String(telefono).trim()) {
+        return res.status(400).json({ error: 'Ingresá un número de teléfono válido para la prueba.' });
+    }
+
+    const textoEnvio = (mensaje && String(mensaje).trim())
+        ? String(mensaje).trim()
+        : '¡Hola! Este es un mensaje de prueba enviado desde el panel de EMME Beauty. ✨💅';
+
+    try {
+        const resultado = await enviarMensaje(String(telefono).trim(), textoEnvio);
+        if (!resultado || !resultado.ok) {
+            return res.status(400).json({ error: (resultado && resultado.error) || 'No se pudo enviar el mensaje. Verificá que el bot esté Conectado.' });
+        }
+        res.json({ ok: true, message: 'Mensaje de prueba enviado con éxito.' });
+    } catch (error) {
+        console.error('Error en prueba de bot:', error);
+        res.status(500).json({ error: 'Error interno al enviar el mensaje de prueba.' });
+    }
+});
+
+// RUTA PARA EJECUTAR MANUALMENTE UNA RUTINA DEL BOT DESDE EL PANEL
+app.post('/api/bot/ejecutar-rutina', async (req, res) => {
+    const { rutina } = req.body || {};
+    try {
+        let resultado;
+        if (rutina === 'recordatorios') {
+            resultado = await ejecutarRecordatorios24hs();
+        } else if (rutina === 'retorno') {
+            resultado = await ejecutarRetorno15Dias();
+        } else if (rutina === 'empleadas') {
+            resultado = await ejecutarAvisoEmpleadas();
+        } else {
+            return res.status(400).json({ error: 'Rutina no reconocida.' });
+        }
+
+        if (!resultado.ok) {
+            return res.status(400).json({ error: resultado.error });
+        }
+        res.json(resultado);
+    } catch (error) {
+        console.error('Error ejecutando rutina manual del bot:', error);
+        res.status(500).json({ error: 'Error al ejecutar la rutina solicitada.' });
     }
 });
 
@@ -353,13 +420,23 @@ app.put('/api/auth/perfil', verificarToken, async (req, res) => {
 // 3. MÓDULO DE CLIENTAS
 // ==========================================================================
 
+// Extrae únicamente YYYY-MM-DD para evitar desplazamientos de zona horaria en columnas tipo DATE
+function normalizarFechaISO(valor) {
+    if (!valor) return null;
+    const texto = String(valor).trim();
+    if (!texto || texto === 'null' || texto === 'undefined') return null;
+    const coincidencia = texto.match(/^(\d{4}-\d{2}-\d{2})/);
+    return coincidencia ? coincidencia[1] : null;
+}
+
 // Obtener todas las clientas (Calcula la fecha de su último turno automáticamente)
 app.get('/api/clientas', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
         let result = await pool.request().query(`
             SELECT 
-                c.Id_Clienta, c.Nombre, c.Apellido, c.Telefono, c.Observacion, c.Fecha_Nac,
+                c.Id_Clienta, c.Nombre, c.Apellido, c.Telefono, c.Observacion,
+                CONVERT(VARCHAR(10), c.Fecha_Nac, 23) AS Fecha_Nac,
                 MAX(t.Fecha_Hora) AS Fecha_Ultimo_Turno
             FROM Clienta c
             LEFT JOIN Turno t ON c.Id_Clienta = t.Id_Clienta
@@ -377,18 +454,19 @@ app.get('/api/clientas', async (req, res) => {
 app.post('/api/clientas', async (req, res) => {
     try {
         const { Nombre, Apellido, Fecha_Nac, Telefono, Observacion } = req.body;
+        const fechaNacISO = normalizarFechaISO(Fecha_Nac);
         let pool = await sql.connect(dbConfig);
         
         const resultado = await pool.request()
             .input('Nombre', sql.VarChar, Nombre)
             .input('Apellido', sql.VarChar, Apellido)
-            .input('Fecha_Nac', sql.Date, Fecha_Nac || null)
+            .input('Fecha_Nac', sql.VarChar(10), fechaNacISO)
             .input('Telefono', sql.VarChar, Telefono || null)
             .input('Observacion', sql.VarChar, Observacion || null)
             .query(`
                 INSERT INTO Clienta (Nombre, Apellido, Fecha_Nac, Telefono, Observacion)
                 OUTPUT inserted.Id_Clienta
-                VALUES (@Nombre, @Apellido, @Fecha_Nac, @Telefono, @Observacion)
+                VALUES (@Nombre, @Apellido, TRY_CONVERT(DATE, @Fecha_Nac, 23), @Telefono, @Observacion)
             `);
             
         res.status(201).json({ mensaje: "Clienta creada con éxito", Id_Clienta: resultado.recordset[0].Id_Clienta });
@@ -403,18 +481,19 @@ app.put('/api/clientas/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { Nombre, Apellido, Fecha_Nac, Telefono, Observacion } = req.body;
+        const fechaNacISO = normalizarFechaISO(Fecha_Nac);
         let pool = await sql.connect(dbConfig);
         
         await pool.request()
             .input('Id_Clienta', sql.Int, id)
             .input('Nombre', sql.VarChar, Nombre)
             .input('Apellido', sql.VarChar, Apellido)
-            .input('Fecha_Nac', sql.Date, Fecha_Nac || null)
+            .input('Fecha_Nac', sql.VarChar(10), fechaNacISO)
             .input('Telefono', sql.VarChar, Telefono || null)
             .input('Observacion', sql.VarChar, Observacion || null)
             .query(`
                 UPDATE Clienta 
-                SET Nombre = @Nombre, Apellido = @Apellido, Fecha_Nac = @Fecha_Nac, Telefono = @Telefono, Observacion = @Observacion
+                SET Nombre = @Nombre, Apellido = @Apellido, Fecha_Nac = TRY_CONVERT(DATE, @Fecha_Nac, 23), Telefono = @Telefono, Observacion = @Observacion
                 WHERE Id_Clienta = @Id_Clienta
             `);
             
@@ -1294,14 +1373,15 @@ app.get('/api/gastos', async (req, res) => {
 app.post('/api/gastos', async (req, res) => {
     try {
         const { Fecha, Descripcion, Monto, Id_Categoria, Id_Medio_Pago } = req.body; // Agregamos Id_Medio_Pago
+        const fechaISO = normalizarFechaISO(Fecha);
         let pool = await sql.connect(dbConfig);
         await pool.request()
-            .input('Fecha', sql.Date, Fecha)
+            .input('Fecha', sql.VarChar(10), fechaISO)
             .input('Descripcion', sql.VarChar, Descripcion)
             .input('Monto', sql.Decimal(12, 2), Monto)
             .input('Id_Categoria', sql.Int, Id_Categoria || null)
             .input('Id_Medio_Pago', sql.Int, Id_Medio_Pago || null) // Lo pasamos al query
-            .query(`INSERT INTO Gasto (Fecha, Descripcion, Monto, Id_Categoria, Id_Medio_Pago) VALUES (@Fecha, @Descripcion, @Monto, @Id_Categoria, @Id_Medio_Pago)`);
+            .query(`INSERT INTO Gasto (Fecha, Descripcion, Monto, Id_Categoria, Id_Medio_Pago) VALUES (TRY_CONVERT(DATE, @Fecha, 23), @Descripcion, @Monto, @Id_Categoria, @Id_Medio_Pago)`);
         res.status(201).send("Gasto registrado correctamente");
     } catch (error) { console.error(error); res.status(500).send("Error al registrar"); }
 });
@@ -1646,154 +1726,248 @@ app.get('/api/dashboard/medios-pago-usados', async (req, res) => {
 // ==========================================================================
 
 // =========================================================================
-// RUTINA DE RECORDATORIOS AUTOMÁTICOS (CRON JOB)
+// RUTINAS DE MENSAJERÍA AUTOMÁTICA Y BAJO DEMANDA (WHATSAPP BOT)
 // =========================================================================
-const programarRecordatorios = () => {
-    cron.schedule('0 10 * * *', async () => {
-        console.log('Ejecutando rutina de recordatorios diarios (Turnos de mañana)...');
-        
-        try {
-            let pool = await sql.connect(dbConfig);
-            
-            // 1. Buscamos la plantilla del mensaje en la base de datos
-            const resultPlantilla = await pool.request()
-                .input('funcion', sql.VarChar, 'Recordatorio_24hs')
-                .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
-            
-            if (resultPlantilla.recordset.length === 0) {
-                console.log('Error: No se encontró la plantilla del mensaje en la base de datos.');
-                return;
-            }
-            const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
 
-            // 2. Buscamos los turnos de mañana
-            const resultTurnos = await pool.request().query(`
-                SELECT t.Id_Turno, c.Nombre AS Nombre_Clienta, c.Telefono, s.Nombre AS Nombre_Servicio, t.Fecha_Hora
-                FROM Turno t
-                INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
-                INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, 1, GETDATE()) AS DATE)
-                AND t.Estado = 'Pendiente'
-            `);
+// Función auxiliar para reemplazar todas las ocurrencias de comodines en plantillas
+function reemplazarVariablesPlantilla(textoBase, variables) {
+    let resultado = String(textoBase || '');
+    for (const [clave, valor] of Object.entries(variables)) {
+        resultado = resultado.replaceAll(clave, valor !== undefined && valor !== null ? String(valor) : '');
+    }
+    return resultado;
+}
 
-            const turnosManana = resultTurnos.recordset;
-
-            if (turnosManana.length === 0) {
-                console.log('No hay turnos pendientes para mañana. Nada que enviar.');
-                return;
-            }
-
-            // 3. Recorremos los turnos, armamos el mensaje final y enviamos
-            for (let turno of turnosManana) {
-                if (turno.Telefono && turno.Telefono.length >= 10) {
-                    const fechaTurno = new Date(turno.Fecha_Hora);
-                    // Acá aplicamos el formato militar 24 hs
-                    const horaFormateada = fechaTurno.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-                    // Reemplazamos los comodines por los datos reales de la clienta
-                    let mensajeFinal = textoBase
-                        .replace('{Nombre_Clienta}', turno.Nombre_Clienta)
-                        .replace('{Nombre_Servicio}', turno.Nombre_Servicio)
-                        .replace('{Hora}', horaFormateada);
-
-                    await enviarMensaje(turno.Telefono, mensajeFinal);
-                }
-            }
-            console.log('Rutina de recordatorios finalizada con éxito.');
-        } catch (error) {
-            console.error('Error al ejecutar la rutina de recordatorios:', error);
+// 1. Recordatorios a clientas con turnos pendientes para mañana
+const ejecutarRecordatorios24hs = async () => {
+    console.log('Ejecutando rutina de recordatorios diarios (Turnos de mañana)...');
+    try {
+        const estadoActual = getEstadoBot();
+        if (estadoActual.estado !== 'Conectado') {
+            return { ok: false, error: `El bot no está conectado (Estado: ${estadoActual.estado}).` };
         }
+
+        let pool = await sql.connect(dbConfig);
+        
+        const resultPlantilla = await pool.request()
+            .input('funcion', sql.VarChar, 'Recordatorio_24hs')
+            .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
+        
+        if (resultPlantilla.recordset.length === 0) {
+            return { ok: false, error: 'No se encontró la plantilla Recordatorio_24hs en la base de datos.' };
+        }
+        const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
+
+        const resultTurnos = await pool.request().query(`
+            SELECT t.Id_Turno, c.Nombre AS Nombre_Clienta, c.Telefono, s.Nombre AS Nombre_Servicio, e.Nombre_Ap AS Nombre_Empleada, t.Fecha_Hora
+            FROM Turno t
+            INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+            INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            LEFT JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
+            WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, 1, GETDATE()) AS DATE)
+            AND t.Estado = 'Pendiente'
+            ORDER BY t.Fecha_Hora ASC
+        `);
+
+        const turnosManana = resultTurnos.recordset;
+
+        if (turnosManana.length === 0) {
+            console.log('No hay turnos pendientes para mañana. Nada que enviar.');
+            return { ok: true, enviados: 0, total: 0, message: 'No hay turnos pendientes agendados para mañana.' };
+        }
+
+        let enviados = 0;
+        for (let turno of turnosManana) {
+            if (turno.Telefono && String(turno.Telefono).replace(/\D/g, '').length >= 8) {
+                const fechaTurno = new Date(turno.Fecha_Hora);
+                const horaFormateada = fechaTurno.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                const mensajeFinal = reemplazarVariablesPlantilla(textoBase, {
+                    '{Nombre_Clienta}': turno.Nombre_Clienta,
+                    '{Nombre_Servicio}': turno.Nombre_Servicio,
+                    '{Hora}': horaFormateada,
+                    '{Nombre_Empleada}': turno.Nombre_Empleada || ''
+                });
+
+                const resEnvio = await enviarMensaje(turno.Telefono, mensajeFinal);
+                if (resEnvio && resEnvio.ok) enviados++;
+            }
+        }
+        console.log(`Rutina de recordatorios finalizada: ${enviados}/${turnosManana.length} enviados.`);
+        return {
+            ok: true,
+            enviados,
+            total: turnosManana.length,
+            message: `Recordatorios enviados: ${enviados} de ${turnosManana.length} turnos para mañana.`
+        };
+    } catch (error) {
+        console.error('Error al ejecutar la rutina de recordatorios:', error);
+        return { ok: false, error: 'Error interno al procesar los recordatorios.' };
+    }
+};
+
+// 2. Fidelización: retorno a los 15 días de un turno completado/pagado
+const ejecutarRetorno15Dias = async () => {
+    console.log('Ejecutando rutina de fidelización: 15 días...');
+    try {
+        const estadoActual = getEstadoBot();
+        if (estadoActual.estado !== 'Conectado') {
+            return { ok: false, error: `El bot no está conectado (Estado: ${estadoActual.estado}).` };
+        }
+
+        let pool = await sql.connect(dbConfig);
+        
+        const resultPlantilla = await pool.request()
+            .input('funcion', sql.VarChar, 'Retorno_15_Dias')
+            .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
+        
+        if (resultPlantilla.recordset.length === 0) {
+            return { ok: false, error: 'No se encontró la plantilla Retorno_15_Dias en la base de datos.' };
+        }
+        const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
+
+        // Considera tanto 'Pagado' (estado al cobrar turno) como 'Completado', y evita enviar si la clienta ya tiene un turno posterior o futuro agendado
+        const resultTurnos = await pool.request().query(`
+            SELECT c.Id_Clienta, c.Telefono, c.Nombre AS Nombre_Clienta, MAX(s.Nombre) AS Nombre_Servicio
+            FROM Turno t
+            INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+            INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, -15, GETDATE()) AS DATE)
+            AND t.Estado IN ('Completado', 'Pagado')
+            AND NOT EXISTS (
+                SELECT 1 FROM Turno t2
+                WHERE t2.Id_Clienta = t.Id_Clienta
+                AND t2.Estado != 'Cancelado'
+                AND CAST(t2.Fecha_Hora AS DATE) > CAST(DATEADD(day, -15, GETDATE()) AS DATE)
+            )
+            GROUP BY c.Id_Clienta, c.Telefono, c.Nombre
+        `);
+
+        const turnos15Dias = resultTurnos.recordset;
+        if (turnos15Dias.length === 0) {
+            return { ok: true, enviados: 0, total: 0, message: 'No hay clientas cumplidas hace 15 días pendientes de contacto hoy.' };
+        }
+
+        let enviados = 0;
+        for (let turno of turnos15Dias) {
+            if (turno.Telefono && String(turno.Telefono).replace(/\D/g, '').length >= 8) {
+                const mensajeFinal = reemplazarVariablesPlantilla(textoBase, {
+                    '{Nombre_Clienta}': turno.Nombre_Clienta,
+                    '{Nombre_Servicio}': turno.Nombre_Servicio
+                });
+                const resEnvio = await enviarMensaje(turno.Telefono, mensajeFinal);
+                if (resEnvio && resEnvio.ok) enviados++;
+            }
+        }
+
+        return {
+            ok: true,
+            enviados,
+            total: turnos15Dias.length,
+            message: `Mensajes de fidelización enviados: ${enviados} de ${turnos15Dias.length} clientas.`
+        };
+    } catch (error) {
+        console.error('Error en rutina 15 días:', error);
+        return { ok: false, error: 'Error interno al procesar la rutina de 15 días.' };
+    }
+};
+
+// 3. Envío de agenda del día siguiente a cada profesional
+const ejecutarAvisoEmpleadas = async () => {
+    console.log('Ejecutando envío de agenda a empleadas (Turnos de mañana)...');
+    try {
+        const estadoActual = getEstadoBot();
+        if (estadoActual.estado !== 'Conectado') {
+            return { ok: false, error: `El bot no está conectado (Estado: ${estadoActual.estado}).` };
+        }
+
+        let pool = await sql.connect(dbConfig);
+        
+        const resultPlantilla = await pool.request()
+            .input('funcion', sql.VarChar, 'Aviso_Empleadas')
+            .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
+        
+        if (resultPlantilla.recordset.length === 0) {
+            return { ok: false, error: 'No se encontró la plantilla Aviso_Empleadas en la base de datos.' };
+        }
+        const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
+
+        const resultTurnos = await pool.request().query(`
+            SELECT e.Id_Empleada, e.Nombre_Ap AS Nombre_Empleada, e.Telefono, c.Nombre + ' ' + ISNULL(c.Apellido, '') AS Nombre_Clienta, 
+                   s.Nombre AS Nombre_Servicio, t.Fecha_Hora
+            FROM Turno t
+            INNER JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada 
+            INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+            INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, 1, GETDATE()) AS DATE)
+            AND t.Estado = 'Pendiente'
+            ORDER BY e.Id_Empleada, t.Fecha_Hora
+        `);
+
+        if (resultTurnos.recordset.length === 0) {
+            return { ok: true, enviados: 0, total: 0, message: 'No hay turnos pendientes para mañana para enviar a las profesionales.' };
+        }
+
+        // Agrupamos los turnos por el ID de cada empleada
+        const agendaPorEmpleada = {};
+        for (let row of resultTurnos.recordset) {
+            const key = row.Id_Empleada;
+            if (!agendaPorEmpleada[key]) {
+                agendaPorEmpleada[key] = {
+                    nombre: row.Nombre_Empleada,
+                    telefono: row.Telefono,
+                    turnos: []
+                };
+            }
+            const hora = new Date(row.Fecha_Hora).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+            agendaPorEmpleada[key].turnos.push(`- ${hora} hs: ${row.Nombre_Clienta.trim()} (${row.Nombre_Servicio})`);
+        }
+
+        const totalProfesionales = Object.keys(agendaPorEmpleada).length;
+        let enviados = 0;
+
+        for (let key in agendaPorEmpleada) {
+            const datos = agendaPorEmpleada[key];
+            if (datos.telefono && String(datos.telefono).replace(/\D/g, '').length >= 8) {
+                const listaTexto = datos.turnos.join('\n');
+                const mensajeFinal = reemplazarVariablesPlantilla(textoBase, {
+                    '{Nombre_Empleada}': datos.nombre,
+                    '{Lista_Turnos}': listaTexto
+                });
+
+                const resEnvio = await enviarMensaje(datos.telefono, mensajeFinal);
+                if (resEnvio && resEnvio.ok) enviados++;
+            }
+        }
+
+        return {
+            ok: true,
+            enviados,
+            total: totalProfesionales,
+            message: `Agendas enviadas a ${enviados} de ${totalProfesionales} profesionales con turnos mañana.`
+        };
+    } catch (error) {
+        console.error('Error enviando agenda a empleadas:', error);
+        return { ok: false, error: 'Error interno al enviar la agenda a las empleadas.' };
+    }
+};
+
+// Programación automática diaria con node-cron
+const programarRecordatorios = () => {
+    cron.schedule('0 10 * * *', () => {
+        ejecutarRecordatorios24hs();
     });
 };
 
 const programarRetorno15Dias = () => {
-    cron.schedule('0 11 * * *', async () => {
-        console.log('Ejecutando rutina de fidelizacion: 15 dias...');
-        try {
-            let pool = await sql.connect(dbConfig);
-            
-            const resultPlantilla = await pool.request()
-                .input('funcion', sql.VarChar, 'Retorno_15_Dias')
-                .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
-            
-            if (resultPlantilla.recordset.length === 0) return;
-            const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
-
-            // Busca turnos de hace exactamente 15 días (Ajustá 'Completado' a cómo figure en tu BD)
-            const resultTurnos = await pool.request().query(`
-                SELECT c.Telefono, c.Nombre AS Nombre_Clienta, s.Nombre AS Nombre_Servicio
-                FROM Turno t
-                INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
-                INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, -15, GETDATE()) AS DATE)
-                AND t.Estado = 'Completado' 
-            `);
-
-            for (let turno of resultTurnos.recordset) {
-                if (turno.Telefono && turno.Telefono.length >= 10) {
-                    let mensajeFinal = textoBase
-                        .replace('{Nombre_Clienta}', turno.Nombre_Clienta)
-                        .replace('{Nombre_Servicio}', turno.Nombre_Servicio);
-                    await enviarMensaje(turno.Telefono, mensajeFinal);
-                }
-            }
-        } catch (error) {
-            console.error('Error en rutina 15 dias:', error);
-        }
+    cron.schedule('0 11 * * *', () => {
+        ejecutarRetorno15Dias();
     });
 };
 
 const programarAvisoEmpleadas = () => {
-    cron.schedule('0 22 * * *', async () => {
-        console.log('Ejecutando envío de agenda a empleadas (Turnos de mañana)...');
-        try {
-            let pool = await sql.connect(dbConfig);
-            
-            const resultPlantilla = await pool.request()
-                .input('funcion', sql.VarChar, 'Aviso_Empleadas')
-                .query('SELECT Texto_Mensaje FROM Plantillas_Bot WHERE Nombre_Funcion = @funcion');
-            
-            if (resultPlantilla.recordset.length === 0) return;
-            const textoBase = resultPlantilla.recordset[0].Texto_Mensaje;
-
-            // Busca todos los turnos de mañana y los agrupa por empleada
-            // Busca todos los turnos de mañana y los agrupa por empleada
-            const resultTurnos = await pool.request().query(`
-                SELECT e.Nombre_Ap AS Nombre_Empleada, e.Telefono, c.Nombre AS Nombre_Clienta, 
-                       s.Nombre AS Nombre_Servicio, t.Fecha_Hora
-                FROM Turno t
-                INNER JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada 
-                INNER JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
-                INNER JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-                WHERE CAST(t.Fecha_Hora AS DATE) = CAST(DATEADD(day, 1, GETDATE()) AS DATE)
-                AND t.Estado = 'Pendiente'
-                ORDER BY e.Id_Empleada, t.Fecha_Hora
-            `);
-
-            // Agrupamos los turnos por el teléfono de cada empleada
-            const agendaPorEmpleada = {};
-            for (let row of resultTurnos.recordset) {
-                if (!agendaPorEmpleada[row.Telefono]) {
-                    agendaPorEmpleada[row.Telefono] = { nombre: row.Nombre_Empleada, turnos: [] };
-                }
-                const hora = new Date(row.Fecha_Hora).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
-                agendaPorEmpleada[row.Telefono].turnos.push(`- ${hora} hs: ${row.Nombre_Clienta} (${row.Nombre_Servicio})`);
-            }
-
-            // Armamos y enviamos un solo mensaje por empleada
-            for (let telefono in agendaPorEmpleada) {
-                const datos = agendaPorEmpleada[telefono];
-                const listaTexto = datos.turnos.join('\n'); // Une todos los turnos con saltos de línea
-                
-                let mensajeFinal = textoBase
-                    .replace('{Nombre_Empleada}', datos.nombre)
-                    .replace('{Lista_Turnos}', listaTexto);
-                
-                await enviarMensaje(telefono, mensajeFinal);
-            }
-        } catch (error) {
-            console.error('Error enviando agenda a empleadas:', error);
-        }
+    cron.schedule('0 22 * * *', () => {
+        ejecutarAvisoEmpleadas();
     });
 };
 

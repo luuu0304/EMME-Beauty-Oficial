@@ -2494,9 +2494,12 @@ function renderizarClientas(clientasParaMostrar) {
     clientasParaMostrar.forEach(clienta => {
         let fechaNac = '-';
         if (clienta.Fecha_Nac) {
-            const fechaLimpia = clienta.Fecha_Nac.split('T')[0];
-            const opcionesFecha = { day: '2-digit', month: 'long' };
-            fechaNac = new Date(fechaLimpia + 'T12:00:00').toLocaleDateString('es-AR', opcionesFecha);
+            const fechaLimpia = String(clienta.Fecha_Nac).split('T')[0];
+            const partes = fechaLimpia.split('-');
+            if (partes.length === 3) {
+                const fechaLocal = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12, 0, 0);
+                fechaNac = fechaLocal.toLocaleDateString('es-AR', { day: '2-digit', month: 'long' });
+            }
         }
         const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
 
@@ -5002,56 +5005,173 @@ async function eliminarMedioPago(id) {
 }
 
 // ==========================================================================
-// 11. MÓDULO DE WHATSAPP BOT (Estado, QR y Envío de Mensajes)
+// 11. MÓDULO DE WHATSAPP BOT (Estado, QR, Acciones Manuales y Plantillas)
 // ==========================================================================
 
-// CONTROLADOR DEL PANEL DEL BOT DE WHATSAPP (FRONTEND)
-const chequearEstadoBot = async () => {
-    try {
-        // Consultamos la ruta que creamos en el backend
-        const respuesta = await fetch('http://localhost:3000/api/bot/status');
-        const data = await respuesta.json();
-        
-        const spanEstado = document.getElementById('bot-estado-texto');
-        const contenedorQr = document.getElementById('bot-qr-container');
-        const imgQr = document.getElementById('bot-qr-img');
-
-        if (!spanEstado || !contenedorQr || !imgQr) return; // Por si no estamos en la pestaña de configuración
-
-        spanEstado.innerText = data.estado;
-
-        // Si está esperando QR, usamos una API gratuita para dibujar la imagen
-        if (data.estado === 'Esperando QR' && data.qr) {
-            imgQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qr)}`;
-            contenedorQr.style.display = 'block';
-            spanEstado.style.color = '#e67e22'; // Naranja
-        } 
-        // Si el bot ya está conectado, escondemos el QR
-        else if (data.estado === 'Conectado') {
-            contenedorQr.style.display = 'none';
-            spanEstado.style.color = '#27ae60'; // Verde
-        } 
-        // Si está desconectado o apagado
-        else {
-            contenedorQr.style.display = 'none';
-            spanEstado.style.color = '#e74c3c'; // Rojo
-        }
-    } catch (error) {
-        console.error('Error al consultar el estado del bot:', error);
-        document.getElementById('bot-estado-texto').innerText = 'Backend apagado';
+const ETIQUETAS_FUNCIONES_BOT = {
+    'Recordatorio_24hs': {
+        titulo: 'Recordatorio 24 hs antes',
+        horario: 'Automático todos los días a las 10:00 hs',
+        variables: ['{Nombre_Clienta}', '{Nombre_Servicio}', '{Hora}', '{Nombre_Empleada}']
+    },
+    'Retorno_15_Dias': {
+        titulo: 'Fidelización a los 15 días',
+        horario: 'Automático todos los días a las 11:00 hs',
+        variables: ['{Nombre_Clienta}', '{Nombre_Servicio}']
+    },
+    'Aviso_Empleadas': {
+        titulo: 'Agenda diaria a Profesionales',
+        horario: 'Automático todos los días a las 22:00 hs',
+        variables: ['{Nombre_Empleada}', '{Lista_Turnos}']
     }
 };
 
-// Hacemos que la página chequee el estado automáticamente cada 3 segundos
-setInterval(chequearEstadoBot, 3000);
+// CONTROLADOR DEL PANEL DEL BOT DE WHATSAPP (FRONTEND)
+const chequearEstadoBot = async () => {
+    const spanEstado = document.getElementById('bot-estado-texto');
+    const contenedorQr = document.getElementById('bot-qr-container');
+    const imgQr = document.getElementById('bot-qr-img');
 
-// Ejecutamos la primera consulta apenas carga la página
+    if (!spanEstado || !contenedorQr || !imgQr) return;
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/bot/status');
+        const data = await respuesta.json();
+
+        spanEstado.innerText = data.estado || 'Desconocido';
+
+        if (data.estado === 'Esperando QR' && data.qr) {
+            imgQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(data.qr)}`;
+            contenedorQr.style.display = 'block';
+            spanEstado.style.color = '#e67e22';
+        } else if (data.estado === 'Conectado') {
+            contenedorQr.style.display = 'none';
+            spanEstado.style.color = '#27ae60';
+        } else {
+            contenedorQr.style.display = 'none';
+            spanEstado.style.color = '#e74c3c';
+        }
+    } catch (error) {
+        if (spanEstado) {
+            spanEstado.innerText = 'Backend apagado';
+            spanEstado.style.color = '#e74c3c';
+        }
+    }
+};
+
+// Chequeo periódico del estado cada 3 segundos
+setInterval(chequearEstadoBot, 3000);
 chequearEstadoBot();
 
-// CONTROLADORES DEL MODAL DE PLANTILLAS DEL BOT
-let plantillasEnMemoria = []; // Guardamos los datos temporalmente para no volver a consultar
+// Reiniciar conexión o cerrar sesión actual para escanear nuevo QR
+async function reiniciarConexionBot(cerrarSesion = false) {
+    if (cerrarSesion) {
+        const confirmar = await pedirConfirmacion(
+            '¿Querés desvincular el WhatsApp actual y generar un nuevo código QR para conectar otro dispositivo?',
+            { textoConfirmar: 'Sí, desvincular', colorBoton: '#dc3545' }
+        );
+        if (!confirmar) return;
+    }
 
-// Modificamos sutilmente la función anterior para guardar los datos en memoria
+    try {
+        mostrarNotificacion(cerrarSesion ? 'Cerrando sesión de WhatsApp...' : 'Reconectando motor de WhatsApp...', 'info');
+        const respuesta = await fetch('http://localhost:3000/api/bot/reiniciar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cerrarSesion })
+        });
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarNotificacion(data.message || 'Proceso iniciado correctamente.', 'success');
+            setTimeout(chequearEstadoBot, 1000);
+        } else {
+            mostrarNotificacion(data.error || 'No se pudo reiniciar el bot.', 'error');
+        }
+    } catch (error) {
+        console.error('Error al reiniciar bot:', error);
+        mostrarNotificacion('Error de conexión con el servidor.', 'error');
+    }
+}
+
+// Enviar un mensaje de prueba a un número específico
+async function enviarMensajePruebaBot() {
+    const inputTel = document.getElementById('botTelefonoPrueba');
+    const btn = document.getElementById('btnProbarBot');
+    const telefono = inputTel ? inputTel.value.trim() : '';
+
+    if (!telefono) {
+        mostrarNotificacion('Ingresá un número de teléfono (ej. 3874123456) para enviar la prueba.', 'warning');
+        return;
+    }
+
+    const textoOriginal = btn ? btn.textContent : 'Enviar Prueba';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+    }
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/bot/probar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telefono })
+        });
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarNotificacion(data.message || '¡Mensaje de prueba enviado!', 'success');
+        } else {
+            mostrarNotificacion(data.error || 'No se pudo enviar el mensaje de prueba.', 'error');
+        }
+    } catch (error) {
+        console.error('Error enviando prueba:', error);
+        mostrarNotificacion('Error de conexión con el servidor.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }
+    }
+}
+
+// Disparar manualmente cualquiera de las 3 rutinas programadas
+async function ejecutarRutinaManualBot(rutina) {
+    const descripciones = {
+        recordatorios: 'Se enviarán ahora los recordatorios de WhatsApp a todas las clientas con turno pendiente para mañana.',
+        retorno: 'Se enviarán ahora los mensajes de fidelización a las clientas que se atendieron hace 15 días y aún no agendaron un nuevo turno.',
+        empleadas: 'Se enviará ahora por WhatsApp la hoja de ruta con los turnos de mañana a cada profesional.'
+    };
+
+    const confirmar = await pedirConfirmacion(
+        descripciones[rutina] || '¿Deseás ejecutar esta rutina ahora?',
+        { textoConfirmar: 'Sí, enviar ahora', colorBoton: '#28a745' }
+    );
+    if (!confirmar) return;
+
+    try {
+        mostrarNotificacion('Procesando envíos por WhatsApp...', 'info');
+        const respuesta = await fetch('http://localhost:3000/api/bot/ejecutar-rutina', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rutina })
+        });
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarNotificacion(data.message || 'Rutina ejecutada con éxito.', 'success');
+        } else {
+            mostrarNotificacion(data.error || 'No se pudo completar la rutina.', 'error');
+        }
+    } catch (error) {
+        console.error('Error ejecutando rutina manual:', error);
+        mostrarNotificacion('Error de conexión con el servidor.', 'error');
+    }
+}
+
+// CONTROLADORES DEL MODAL DE PLANTILLAS DEL BOT
+let plantillasEnMemoria = [];
+
 const cargarTablaPlantillasBot = async () => {
     const tbody = document.getElementById('tablaPlantillasBotBody');
     if (!tbody) return;
@@ -5060,7 +5180,7 @@ const cargarTablaPlantillasBot = async () => {
         const respuesta = await fetch('http://localhost:3000/api/bot/plantillas');
         const plantillas = await respuesta.json();
         
-        plantillasEnMemoria = plantillas; // Guardamos en la variable global
+        plantillasEnMemoria = plantillas;
         tbody.innerHTML = ''; 
 
         if (plantillas.length === 0) {
@@ -5069,15 +5189,25 @@ const cargarTablaPlantillasBot = async () => {
         }
 
         plantillas.forEach(plan => {
+            const meta = ETIQUETAS_FUNCIONES_BOT[plan.Nombre_Funcion] || {
+                titulo: plan.Nombre_Funcion,
+                horario: 'Envío automático',
+                variables: []
+            };
+
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--borde)';
             
             tr.innerHTML = `
-                <td style="padding: 11px 14px; color: var(--texto-oscuro); font-weight: 500;">${plan.Nombre_Funcion}</td>
-                <td style="padding: 11px 14px; color: var(--texto-claro); max-width: 400px; white-space: pre-wrap;">${plan.Texto_Mensaje}</td>
-                <td style="padding: 11px 14px; text-align: center;">
-                    <button onclick="abrirModalEditarPlantilla(${plan.Id_Plantilla})" style="background: none; border: none; cursor: pointer; color: #666;" title="Editar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <td style="padding: 12px 14px; color: var(--texto-oscuro);">
+                    <div style="font-weight: 600; color: #2c3e50;">${meta.titulo}</div>
+                    <div style="font-size: 11.5px; color: #888; margin-top: 2px;">${meta.horario}</div>
+                    <span style="display: inline-block; margin-top: 5px; font-size: 11px; background: #f1f3f5; color: #555; padding: 2px 7px; border-radius: 4px; font-family: monospace;">${plan.Nombre_Funcion}</span>
+                </td>
+                <td style="padding: 12px 14px; color: var(--texto-claro); max-width: 480px; white-space: pre-wrap; line-height: 1.45;">${plan.Texto_Mensaje}</td>
+                <td style="padding: 12px 14px; text-align: center;">
+                    <button class="btn-icon" onclick="abrirModalEditarPlantilla(${plan.Id_Plantilla})" style="color: #17a2b8; border-color: #b8daff;" title="Editar mensaje">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
                 </td>
             `;
@@ -5085,6 +5215,7 @@ const cargarTablaPlantillasBot = async () => {
         });
     } catch (error) {
         console.error('Error al cargar plantillas:', error);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#d9534f;">Error al cargar las plantillas del bot.</td></tr>';
     }
 };
 
@@ -5092,19 +5223,67 @@ const abrirModalEditarPlantilla = (id) => {
     const plantilla = plantillasEnMemoria.find(p => p.Id_Plantilla === id);
     if (!plantilla) return;
     
+    const meta = ETIQUETAS_FUNCIONES_BOT[plantilla.Nombre_Funcion];
+    const tituloEl = document.getElementById('tituloModalPlantillaBot');
+    if (tituloEl) {
+        tituloEl.textContent = meta ? `Editar: ${meta.titulo}` : `Editar Plantilla (${plantilla.Nombre_Funcion})`;
+    }
+
+    // Mostrar las variables recomendadas para esta plantilla específica
+    const contenedorVars = document.getElementById('variablesPlantillaContainer');
+    if (contenedorVars) {
+        const listaVars = (meta && meta.variables && meta.variables.length > 0)
+            ? meta.variables
+            : ['{Nombre_Clienta}', '{Nombre_Servicio}', '{Hora}', '{Nombre_Empleada}', '{Lista_Turnos}'];
+
+        contenedorVars.innerHTML = listaVars.map(v => `
+            <button type="button" onclick="insertarVariablePlantilla('${v}')" style="background: #fff; border: 1px solid #d4a347; color: #6b521e; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                ${v}
+            </button>
+        `).join('');
+    }
+
     document.getElementById('idPlantillaEdit').value = plantilla.Id_Plantilla;
     document.getElementById('textoPlantillaEdit').value = plantilla.Texto_Mensaje;
     
-    document.getElementById('modalEditarPlantillaBot').style.display = 'flex';
+    const modal = document.getElementById('modalEditarPlantillaBot');
+    if (modal) modal.classList.add('active');
+};
+
+const insertarVariablePlantilla = (variable) => {
+    const textarea = document.getElementById('textoPlantillaEdit');
+    if (!textarea) return;
+
+    const inicio = textarea.selectionStart || 0;
+    const fin = textarea.selectionEnd || 0;
+    const textoActual = textarea.value;
+
+    textarea.value = textoActual.substring(0, inicio) + variable + textoActual.substring(fin);
+    textarea.focus();
+    const nuevaPos = inicio + variable.length;
+    textarea.setSelectionRange(nuevaPos, nuevaPos);
 };
 
 const cerrarModalPlantillaBot = () => {
-    document.getElementById('modalEditarPlantillaBot').style.display = 'none';
+    const modal = document.getElementById('modalEditarPlantillaBot');
+    if (modal) modal.classList.remove('active');
 };
+
+document.addEventListener('click', (event) => {
+    const modal = document.getElementById('modalEditarPlantillaBot');
+    if (modal && event.target === modal) {
+        cerrarModalPlantillaBot();
+    }
+});
 
 const guardarPlantillaBot = async () => {
     const id = document.getElementById('idPlantillaEdit').value;
-    const nuevoTexto = document.getElementById('textoPlantillaEdit').value;
+    const nuevoTexto = document.getElementById('textoPlantillaEdit').value.trim();
+
+    if (!nuevoTexto) {
+        mostrarNotificacion('El mensaje de la plantilla no puede quedar vacío.', 'warning');
+        return;
+    }
     
     try {
         const response = await fetch(`http://localhost:3000/api/bot/plantillas/${id}`, {
@@ -5114,12 +5293,15 @@ const guardarPlantillaBot = async () => {
         });
         
         if (response.ok) {
+            mostrarNotificacion('¡Plantilla de WhatsApp actualizada con éxito!', 'success');
             cerrarModalPlantillaBot();
-            cargarTablaPlantillasBot(); // Recargamos la tabla para ver el texto nuevo
+            cargarTablaPlantillasBot();
         } else {
-            console.error('Error al guardar en el servidor');
+            const err = await response.json().catch(() => ({}));
+            mostrarNotificacion(err.error || 'Error al guardar la plantilla en el servidor.', 'error');
         }
     } catch (error) {
         console.error('Error de conexión:', error);
+        mostrarNotificacion('Error de conexión con el servidor.', 'error');
     }
 };
