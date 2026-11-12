@@ -219,6 +219,15 @@ CREATE TABLE Usuario (
 -- ALTER TABLE Turno ADD Comentario_Empleada VARCHAR(500) NULL;
 ALTER TABLE Turno ADD Id_Liquidacion INT NULL;
 
+-- 4.5 Tabla de Tarjeta de Fidelidad (10 sellos mensuales)
+CREATE TABLE Sello_Fidelidad (
+    Id_Sello INT IDENTITY(1,1) PRIMARY KEY,
+    Id_Clienta INT NOT NULL FOREIGN KEY REFERENCES Clienta(Id_Clienta) ON DELETE CASCADE,
+    Fecha_Sello DATE NOT NULL,
+    Numero_Slot INT NOT NULL CHECK (Numero_Slot BETWEEN 1 AND 10),
+    Activo BIT NOT NULL DEFAULT 1 -- 1 = parte de la tarjeta en curso, 0 = historial de tarjetas ya completadas o reiniciadas
+);
+
 
 -- =======================================================================
 -- BLOQUE 5: INSERCIÓN DE DATOS INICIALES (Semillas / Seeding)

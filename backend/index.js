@@ -32,6 +32,8 @@ const SECRET_KEY = process.env.SECRET_KEY; // Llave secreta para firmar los toke
 // ==========================================================================
 app.use(cors()); // Permite que el Frontend (que corre en otro puerto/dominio) consulte esta API
 app.use(express.json()); // Habilita la lectura de datos en formato JSON desde el req.body
+app.use(express.static(path.join(__dirname, '../frontend')));
+app.use('/frontend', express.static(path.join(__dirname, '../frontend')));
 
 // Configuración de la base de datos leyendo desde el .env por seguridad
 const dbConfig = {
@@ -525,6 +527,321 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
     } catch (err) {
         console.error("Error trayendo historial: ", err);
         res.status(500).send("Error conectando a la base de datos");
+    }
+});
+
+// ==========================================================================
+// 3.1. TARJETA DE FIDELIDAD (10 SELLOS MENSUALES)
+// ==========================================================================
+
+let tablaSelloVerificada = false;
+async function asegurarTablaSelloFidelidad(pool) {
+    if (tablaSelloVerificada) return;
+    try {
+        await pool.request().query(`
+            IF OBJECT_ID('Sello_Fidelidad', 'U') IS NULL
+            BEGIN
+                CREATE TABLE Sello_Fidelidad (
+                    Id_Sello INT IDENTITY(1,1) PRIMARY KEY,
+                    Id_Clienta INT NOT NULL FOREIGN KEY REFERENCES Clienta(Id_Clienta) ON DELETE CASCADE,
+                    Fecha_Sello DATE NOT NULL,
+                    Numero_Slot INT NOT NULL CHECK (Numero_Slot BETWEEN 1 AND 10),
+                    Activo BIT NOT NULL DEFAULT 1
+                );
+                CREATE INDEX IX_Sello_Fidelidad_Clienta_Activo
+                    ON Sello_Fidelidad (Id_Clienta, Activo, Numero_Slot);
+            END
+        `);
+        tablaSelloVerificada = true;
+    } catch (e) {
+        console.warn("Aviso al verificar tabla Sello_Fidelidad:", e.message);
+    }
+}
+
+function calcularMetadatosFidelidad(sellosActivos = []) {
+    const hoy = new Date();
+    const anioActual = hoy.getFullYear();
+    const mesActual = hoy.getMonth() + 1; // 1..12
+    const indiceMesActual = anioActual * 12 + (mesActual - 1);
+
+    let yaTieneSelloEsteMes = false;
+    let maxIndiceMesSello = -1;
+
+    for (const sello of sellosActivos) {
+        const fechaStr = normalizarFechaISO(sello.Fecha_Sello);
+        if (fechaStr) {
+            const [y, m] = fechaStr.split('-').map(Number);
+            if (y === anioActual && m === mesActual) {
+                yaTieneSelloEsteMes = true;
+            }
+            const idx = y * 12 + (m - 1);
+            if (idx > maxIndiceMesSello) {
+                maxIndiceMesSello = idx;
+            }
+        }
+    }
+
+    const cantidadSellos = sellosActivos.length;
+    const tarjetaCompleta = cantidadSellos >= 10;
+
+    // Detecta si tiene sellos activos en curso (< 10), no sumó este mes y su último sello es anterior al mes calendario previo
+    const mesPasadoSinSello = (
+        cantidadSellos > 0 &&
+        !tarjetaCompleta &&
+        !yaTieneSelloEsteMes &&
+        maxIndiceMesSello !== -1 &&
+        maxIndiceMesSello < (indiceMesActual - 1)
+    );
+
+    let proximoSlot = 1;
+    if (!tarjetaCompleta && cantidadSellos > 0) {
+        const slotsOcupados = new Set(sellosActivos.map(s => Number(s.Numero_Slot)));
+        const maxSlot = Math.max(...Array.from(slotsOcupados));
+        if (maxSlot < 10 && !slotsOcupados.has(maxSlot + 1)) {
+            proximoSlot = maxSlot + 1;
+        } else {
+            for (let slot = 1; slot <= 10; slot++) {
+                if (!slotsOcupados.has(slot)) {
+                    proximoSlot = slot;
+                    break;
+                }
+            }
+        }
+    }
+
+    return {
+        cantidadSellos,
+        yaTieneSelloEsteMes,
+        mesPasadoSinSello,
+        proximoSlot,
+        tarjetaCompleta
+    };
+}
+
+// Obtener sellos activos y metadatos de fidelidad de una clienta
+app.get('/api/clientas/:id/fidelidad', async (req, res) => {
+    try {
+        const idClienta = parseInt(req.params.id, 10);
+        if (isNaN(idClienta)) {
+            return res.status(400).json({ error: "ID de clienta inválido" });
+        }
+
+        let pool = await sql.connect(dbConfig);
+        await asegurarTablaSelloFidelidad(pool);
+
+        const resultSellos = await pool.request()
+            .input('Id_Clienta', sql.Int, idClienta)
+            .query(`
+                SELECT 
+                    Id_Sello,
+                    Id_Clienta,
+                    CONVERT(VARCHAR(10), Fecha_Sello, 23) AS Fecha_Sello,
+                    CONVERT(VARCHAR(5), Fecha_Sello, 103) AS Fecha_Formateada,
+                    Numero_Slot,
+                    Activo
+                FROM Sello_Fidelidad
+                WHERE Id_Clienta = @Id_Clienta AND Activo = 1
+                ORDER BY Numero_Slot ASC
+            `);
+
+        const resultClienta = await pool.request()
+            .input('Id_Clienta', sql.Int, idClienta)
+            .query(`SELECT Nombre, Apellido, Telefono FROM Clienta WHERE Id_Clienta = @Id_Clienta`);
+
+        const sellos = resultSellos.recordset || [];
+        const meta = calcularMetadatosFidelidad(sellos);
+        const infoClienta = resultClienta.recordset[0] || null;
+
+        res.json({
+            sellos,
+            ...meta,
+            telefonoClienta: infoClienta ? infoClienta.Telefono : null
+        });
+    } catch (err) {
+        console.error("Error obteniendo fidelidad de la clienta:", err);
+        res.status(500).json({ error: "Error al consultar la tarjeta de fidelidad" });
+    }
+});
+
+// Agregar, editar o quitar un sello manualmente desde el perfil de la clienta
+app.post('/api/clientas/:id/fidelidad/sello', async (req, res) => {
+    try {
+        const idClienta = parseInt(req.params.id, 10);
+        const { numeroSlot, fechaSello, accion } = req.body || {};
+        const slot = parseInt(numeroSlot, 10);
+
+        if (isNaN(idClienta) || isNaN(slot) || slot < 1 || slot > 10) {
+            return res.status(400).json({ error: "Datos de cliente o número de casillero (1-10) inválidos." });
+        }
+
+        let pool = await sql.connect(dbConfig);
+        await asegurarTablaSelloFidelidad(pool);
+
+        if (accion === 'eliminar' || accion === 'quitar') {
+            await pool.request()
+                .input('Id_Clienta', sql.Int, idClienta)
+                .input('Numero_Slot', sql.Int, slot)
+                .query(`
+                    DELETE FROM Sello_Fidelidad
+                    WHERE Id_Clienta = @Id_Clienta AND Numero_Slot = @Numero_Slot AND Activo = 1
+                `);
+            return res.json({ ok: true, message: `Sello #${slot} eliminado correctamente.` });
+        }
+
+        const hoy = new Date();
+        const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+        const fechaISO = normalizarFechaISO(fechaSello) || hoyISO;
+
+        const existente = await pool.request()
+            .input('Id_Clienta', sql.Int, idClienta)
+            .input('Numero_Slot', sql.Int, slot)
+            .query(`
+                SELECT Id_Sello
+                FROM Sello_Fidelidad
+                WHERE Id_Clienta = @Id_Clienta AND Numero_Slot = @Numero_Slot AND Activo = 1
+            `);
+
+        if (existente.recordset.length > 0) {
+            await pool.request()
+                .input('Id_Sello', sql.Int, existente.recordset[0].Id_Sello)
+                .input('Fecha_Sello', sql.VarChar(10), fechaISO)
+                .query(`
+                    UPDATE Sello_Fidelidad
+                    SET Fecha_Sello = TRY_CONVERT(DATE, @Fecha_Sello, 23)
+                    WHERE Id_Sello = @Id_Sello
+                `);
+            return res.json({ ok: true, message: `Fecha del sello #${slot} actualizada.` });
+        } else {
+            await pool.request()
+                .input('Id_Clienta', sql.Int, idClienta)
+                .input('Numero_Slot', sql.Int, slot)
+                .input('Fecha_Sello', sql.VarChar(10), fechaISO)
+                .query(`
+                    INSERT INTO Sello_Fidelidad (Id_Clienta, Fecha_Sello, Numero_Slot, Activo)
+                    VALUES (@Id_Clienta, TRY_CONVERT(DATE, @Fecha_Sello, 23), @Numero_Slot, 1)
+                `);
+            return res.status(201).json({ ok: true, message: `Sello #${slot} registrado correctamente.` });
+        }
+    } catch (err) {
+        console.error("Error guardando sello manual:", err);
+        res.status(500).json({ error: "Error interno al guardar el sello." });
+    }
+});
+
+// Reiniciar la tarjeta de fidelidad (archiva los sellos actuales con Activo = 0)
+app.post('/api/clientas/:id/fidelidad/reiniciar', async (req, res) => {
+    try {
+        const idClienta = parseInt(req.params.id, 10);
+        if (isNaN(idClienta)) {
+            return res.status(400).json({ error: "ID de clienta inválido" });
+        }
+
+        let pool = await sql.connect(dbConfig);
+        await asegurarTablaSelloFidelidad(pool);
+
+        await pool.request()
+            .input('Id_Clienta', sql.Int, idClienta)
+            .query(`
+                UPDATE Sello_Fidelidad
+                SET Activo = 0
+                WHERE Id_Clienta = @Id_Clienta AND Activo = 1
+            `);
+
+        res.json({ ok: true, message: "Tarjeta de fidelidad reiniciada con éxito." });
+    } catch (err) {
+        console.error("Error reiniciando tarjeta de fidelidad:", err);
+        res.status(500).json({ error: "Error interno al reiniciar la tarjeta." });
+    }
+});
+
+// Endpoint público para que las clientas consulten su tarjeta de fidelidad por teléfono
+app.get('/api/public/fidelidad/:telefono', async (req, res) => {
+    try {
+        const telLimpio = String(req.params.telefono || '').replace(/\D/g, '');
+        if (!telLimpio || telLimpio.length < 6) {
+            return res.status(400).json({ error: "Por favor ingresá un número de WhatsApp válido." });
+        }
+
+        let pool = await sql.connect(dbConfig);
+        await asegurarTablaSelloFidelidad(pool);
+
+        // Limpiamos caracteres no numéricos comunes en la base de datos y buscamos coincidencia exacta o por últimos dígitos
+        const sufijoBusqueda = telLimpio.length >= 8 ? telLimpio.slice(-8) : telLimpio;
+        const resultClientas = await pool.request()
+            .input('TelExacto', sql.VarChar(30), telLimpio)
+            .input('TelSufijo', sql.VarChar(30), `%${sufijoBusqueda}`)
+            .query(`
+                SELECT 
+                    Id_Clienta,
+                    Nombre,
+                    Apellido,
+                    Telefono,
+                    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefono, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') AS Tel_Normalizado
+                FROM Clienta
+                WHERE Telefono IS NOT NULL
+                  AND LTRIM(RTRIM(Telefono)) != ''
+                  AND (
+                      REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefono, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = @TelExacto
+                      OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefono, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') LIKE @TelSufijo
+                  )
+            `);
+
+        if (resultClientas.recordset.length === 0) {
+            return res.status(404).json({ error: "No encontramos una tarjeta asociada a ese número de WhatsApp." });
+        }
+
+        // Priorizamos coincidencia exacta sobre coincidencia por sufijo
+        const clienta = resultClientas.recordset.find(c => c.Tel_Normalizado === telLimpio) || resultClientas.recordset[0];
+
+        const resultSellos = await pool.request()
+            .input('Id_Clienta', sql.Int, clienta.Id_Clienta)
+            .query(`
+                SELECT 
+                    Numero_Slot,
+                    CONVERT(VARCHAR(10), Fecha_Sello, 23) AS Fecha_Sello,
+                    CONVERT(VARCHAR(5), Fecha_Sello, 103) AS Fecha_Formateada
+                FROM Sello_Fidelidad
+                WHERE Id_Clienta = @Id_Clienta AND Activo = 1
+                ORDER BY Numero_Slot ASC
+            `);
+
+        const resultVisitas = await pool.request()
+            .input('Id_Clienta', sql.Int, clienta.Id_Clienta)
+            .query(`
+                SELECT TOP 5
+                    t.Id_Turno,
+                    t.Fecha_Hora,
+                    CONVERT(VARCHAR(10), t.Fecha_Hora, 103) AS Fecha_Formateada,
+                    CONVERT(VARCHAR(5), t.Fecha_Hora, 108) AS Hora_Formateada,
+                    s.Nombre AS Nombre_Servicio,
+                    e.Nombre_Ap AS Nombre_Empleada,
+                    t.Color
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                LEFT JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
+                WHERE t.Id_Clienta = @Id_Clienta
+                  AND t.Estado IN ('Pagado', 'Completado')
+                ORDER BY t.Fecha_Hora DESC
+            `);
+
+        const sellos = resultSellos.recordset || [];
+        const meta = calcularMetadatosFidelidad(sellos);
+
+        res.json({
+            clienta: {
+                Id_Clienta: clienta.Id_Clienta,
+                Nombre: clienta.Nombre,
+                Apellido: clienta.Apellido,
+                Nombre_Completo: `${clienta.Nombre || ''} ${clienta.Apellido || ''}`.trim(),
+                Telefono: clienta.Telefono
+            },
+            sellos,
+            ...meta,
+            ultimasVisitas: resultVisitas.recordset || []
+        });
+    } catch (err) {
+        console.error("Error en consulta pública de fidelidad:", err);
+        res.status(500).json({ error: "Error interno al consultar la tarjeta." });
     }
 });
 
@@ -1026,7 +1343,7 @@ app.get('/api/turnos', async (req, res) => {
         let pool = await sql.connect(dbConfig);
         const resultado = await pool.request().query(`
             SELECT 
-                t.Id_Turno AS id, t.Id_Turno, t.Id_Empleada,
+                t.Id_Turno AS id, t.Id_Turno, t.Id_Clienta, t.Id_Empleada,
                 c.Nombre + ' ' + c.Apellido + ' - ' + s.Nombre + ' (' + e.Nombre_Ap + ')' AS title,
                 t.Fecha_Hora AS start, t.Fecha_Hora_Fin AS [end],
                 c.Nombre + ' ' + c.Apellido AS Nombre_Clienta, s.Nombre AS Nombre_Servicio, s.Precio_Base AS Precio
@@ -1052,7 +1369,7 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
             .input('FechaBuscada', sql.VarChar, fecha)
             .query(`
                 SELECT 
-                    t.Id_Turno, t.Fecha_Hora, c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
+                    t.Id_Turno, t.Id_Clienta, t.Fecha_Hora, c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
                     s.Nombre AS Nombre_Servicio, s.Duracion_Minutos, s.Precio_Base, 
                     t.Id_Empleada, e.Nombre_Ap, t.Estado, t.Color, t.Sena_Monto, t.Comentario_Admin,
                     a.Nombre AS Nombre_Area
@@ -1445,17 +1762,22 @@ app.post('/api/ingresos/manual', async (req, res) => {
 
 app.post('/api/cobrar-turno', async (req, res) => {
     try {
-        const { idTurno, montoTotal, idMedioPago, descuento, extras, color, comentarioAdmin } = req.body;
+        const { idTurno, montoTotal, idMedioPago, descuento, extras, color, comentarioAdmin, sumarSello, reiniciarRachaPrevia } = req.body;
         const colorFinal = color !== undefined ? color : req.body.Color;
         const comentarioFinal = comentarioAdmin !== undefined ? comentarioAdmin : req.body.Comentario_Admin;
         let pool = await sql.connect(dbConfig);
+        await asegurarTablaSelloFidelidad(pool);
         
         const chequeo = await pool.request().input('Id_Turno', sql.Int, idTurno).query(`
-                SELECT t.Estado, s.Nombre AS NombreServicio FROM Turno t JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio WHERE t.Id_Turno = @Id_Turno
+                SELECT t.Estado, t.Id_Clienta, s.Nombre AS NombreServicio
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE t.Id_Turno = @Id_Turno
             `);
         if (chequeo.recordset.length === 0) return res.status(404).send("Turno no encontrado");
         if (chequeo.recordset[0].Estado === 'Pagado') return res.status(400).send("¡Ojo! Este turno ya fue cobrado.");
 
+        const idClientaTurno = chequeo.recordset[0].Id_Clienta;
         const nombreDelServicio = chequeo.recordset[0].NombreServicio;
         const conceptoDinamico = `Turno: ${nombreDelServicio}`;
 
@@ -1495,6 +1817,58 @@ app.post('/api/cobrar-turno', async (req, res) => {
                         END
                     WHERE Id_Turno = @Id_Turno
                 `);
+
+            // --- LÓGICA DE TARJETA DE FIDELIDAD ---
+            if (idClientaTurno) {
+                if (Boolean(reiniciarRachaPrevia)) {
+                    await new sql.Request(transaction)
+                        .input('Id_Clienta', sql.Int, idClientaTurno)
+                        .query(`
+                            UPDATE Sello_Fidelidad
+                            SET Activo = 0
+                            WHERE Id_Clienta = @Id_Clienta AND Activo = 1
+                        `);
+                }
+
+                if (Boolean(sumarSello)) {
+                    const sellosRes = await new sql.Request(transaction)
+                        .input('Id_Clienta', sql.Int, idClientaTurno)
+                        .query(`
+                            SELECT Id_Sello, Numero_Slot, CONVERT(VARCHAR(10), Fecha_Sello, 23) AS Fecha_Sello
+                            FROM Sello_Fidelidad
+                            WHERE Id_Clienta = @Id_Clienta AND Activo = 1
+                            ORDER BY Numero_Slot ASC
+                        `);
+
+                    let sellosActivos = sellosRes.recordset || [];
+                    const metaActual = calcularMetadatosFidelidad(sellosActivos);
+
+                    if (!metaActual.yaTieneSelloEsteMes) {
+                        // Si ya tenía los 10 sellos completos de meses previos, archivamos esa tarjeta y empezamos en 1
+                        if (sellosActivos.length >= 10) {
+                            await new sql.Request(transaction)
+                                .input('Id_Clienta', sql.Int, idClientaTurno)
+                                .query(`
+                                    UPDATE Sello_Fidelidad
+                                    SET Activo = 0
+                                    WHERE Id_Clienta = @Id_Clienta AND Activo = 1
+                                `);
+                            sellosActivos = [];
+                        }
+
+                        const metaParaInsertar = calcularMetadatosFidelidad(sellosActivos);
+                        const slotCorrespondiente = metaParaInsertar.proximoSlot;
+
+                        await new sql.Request(transaction)
+                            .input('Id_Clienta', sql.Int, idClientaTurno)
+                            .input('Numero_Slot', sql.Int, slotCorrespondiente)
+                            .query(`
+                                INSERT INTO Sello_Fidelidad (Id_Clienta, Fecha_Sello, Numero_Slot, Activo)
+                                VALUES (@Id_Clienta, CAST(GETDATE() AS DATE), @Numero_Slot, 1)
+                            `);
+                    }
+                }
+            }
             
             await transaction.commit(); res.status(200).json({ message: "¡Cobro registrado exitosamente!" });
         } catch (err) { await transaction.rollback(); throw err; }

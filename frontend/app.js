@@ -1567,7 +1567,8 @@ async function cargarTurnosSemana() {
                                 senaPagada, 
                                 turno.Comentario_Admin,
                                 turno.Nombre_Area || '',
-                                turno.Nombre_Ap || ''
+                                turno.Nombre_Ap || '',
+                                turno.Id_Clienta || null
                             );
                         };
                         celda.appendChild(tarjeta);
@@ -1645,7 +1646,8 @@ function abrirModalTurnosAgrupados(turnos, fechaSlot = '', horaSlot = '') {
                 senaPagada,
                 turno.Comentario_Admin,
                 turno.Nombre_Area || '',
-                turno.Nombre_Ap || ''
+                turno.Nombre_Ap || '',
+                turno.Id_Clienta || null
             );
         };
         
@@ -1890,7 +1892,8 @@ async function cargarTurnosAgenda() {
                         senaPagada,
                         turno.Comentario_Admin || '',
                         turno.Nombre_Area || '',
-                        turno.Nombre_Ap || ''
+                        turno.Nombre_Ap || '',
+                        turno.Id_Clienta || null
                     );
                 };
 
@@ -2048,6 +2051,7 @@ let precioBaseActual = 0;
 let clientaActualCobro = '';
 let servicioActualCobro = '';
 let empleadaActualCobro = '';
+let estadoFidelidadCobroActual = null;
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 
 if (modalDetalleTurno) {
@@ -2056,7 +2060,7 @@ if (modalDetalleTurno) {
     });
 }
 
-function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '', nombreEmpleada = '') {
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '', nombreEmpleada = '', idClienta = null) {
     precioBaseActual = parseFloat(precioBase) || 0;
     clientaActualCobro = nombreClienta || 'No especificada';
     servicioActualCobro = nombreServicio || 'No especificado';
@@ -2064,6 +2068,8 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     const senaActual = parseFloat(sena) || 0;
     
     document.getElementById('idTurnoCobroOculto').value = idTurno;
+    const inputIdClientaCobro = document.getElementById('idClientaCobroOculto');
+    if (inputIdClientaCobro) inputIdClientaCobro.value = idClienta || '';
     document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
     
     document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${nombreServicio}`;
@@ -2211,8 +2217,224 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     if (typeof recalcularTotalCobro === 'function') {
         recalcularTotalCobro();
     }
+
+    cargarFidelidadEnCobro(idTurno, idClienta, estado);
     
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
+}
+
+async function cargarFidelidadEnCobro(idTurno, idClienta, estadoTurno) {
+    const seccionFidelidad = document.getElementById('seccionFidelidadCobro');
+    const badgeResumen = document.getElementById('badgeFidelidadResumenCobro');
+    const contenedor = document.getElementById('contenidoFidelidadCobro');
+    const alertaPremio = document.getElementById('alertaPremioFidelidadCobro');
+
+    if (!seccionFidelidad || !contenedor) return;
+
+    estadoFidelidadCobroActual = null;
+    if (alertaPremio) {
+        alertaPremio.style.display = 'none';
+        alertaPremio.innerHTML = '';
+    }
+    if (badgeResumen) badgeResumen.textContent = 'Cargando...';
+    contenedor.innerHTML = '<span style="color: #888; font-size: 12.5px;">Consultando tarjeta de fidelidad...</span>';
+
+    try {
+        let idClientaFinal = idClienta;
+        if (!idClientaFinal && idTurno) {
+            const resTurno = await fetch(`http://localhost:3000/api/turnos/${idTurno}`);
+            if (resTurno.ok) {
+                const datosTurno = await resTurno.json();
+                idClientaFinal = datosTurno.Id_Clienta;
+                const inputIdClienta = document.getElementById('idClientaCobroOculto');
+                if (inputIdClienta && idClientaFinal) inputIdClienta.value = idClientaFinal;
+            }
+        }
+
+        if (!idClientaFinal) {
+            if (badgeResumen) badgeResumen.textContent = 'Sin datos';
+            contenedor.innerHTML = '<span style="color: #888; font-size: 12.5px;">No se pudo identificar a la clienta para consultar fidelidad.</span>';
+            return;
+        }
+
+        const resFid = await fetch(`http://localhost:3000/api/clientas/${idClientaFinal}/fidelidad`);
+        if (!resFid.ok) throw new Error('Error consultando fidelidad');
+        const data = await resFid.json();
+        estadoFidelidadCobroActual = data;
+
+        const cantActual = Number(data.cantidadSellos || 0);
+        const proximoSlot = Number(data.proximoSlot || 1);
+
+        if (badgeResumen) {
+            badgeResumen.textContent = `${cantActual}/10 sellos`;
+        }
+
+        // Si el turno ya está Pagado o Cancelado, mostramos vista informativa de solo lectura
+        if (estadoTurno === 'Pagado' || estadoTurno === 'Cancelado') {
+            contenedor.innerHTML = `
+                <div style="font-size: 12.5px; color: #555; background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #eee;">
+                     Sellos activos actuales en su tarjeta: <strong>${cantActual}/10</strong>
+                </div>
+            `;
+            return;
+        }
+
+        // Caso A: Ya sumó sello este mes
+        if (data.yaTieneSelloEsteMes) {
+            contenedor.innerHTML = `
+                <div style="background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; padding: 9px 12px; border-radius: 6px; font-weight: 600; font-size: 12.5px; display: flex; align-items: center; gap: 6px;">
+                    <span>✓ Ya sumó su sello de este mes (${cantActual}/10)</span>
+                </div>
+                <input type="checkbox" id="checkSumarSelloCobro" disabled style="display: none;">
+            `;
+        }
+        // Caso C: Salteó el mes pasado (Racha interrumpida)
+        else if (data.mesPasadoSinSello) {
+            contenedor.innerHTML = `
+                <div style="background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 12px;">
+                    <div style="font-weight: 700; color: #856404; font-size: 12.5px; margin-bottom: 8px;">
+                        ⚠️ No registra sello el mes pasado (tenía ${cantActual}/10). ¿Qué deseas hacer?
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #333;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="opcionRachaFidelidad" value="continuar" checked onchange="actualizarEstadoPremioCobro()" style="accent-color: var(--mostaza); cursor: pointer;">
+                            <span>Perdonar mes y continuar racha (suma el sello ${proximoSlot})</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="opcionRachaFidelidad" value="reiniciar" onchange="actualizarEstadoPremioCobro()" style="accent-color: var(--mostaza); cursor: pointer;">
+                            <span>Reiniciar tarjeta y empezar de 1/10</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="radio" name="opcionRachaFidelidad" value="no_sumar" onchange="actualizarEstadoPremioCobro()" style="accent-color: var(--mostaza); cursor: pointer;">
+                            <span>No sumar sello hoy</span>
+                        </label>
+                    </div>
+                </div>
+            `;
+        }
+        // Caso B: Puede sumar y viene al día
+        else {
+            const notaNuevaTarjeta = data.tarjetaCompleta
+                ? `<div style="font-size: 11.5px; color: #856404; margin-top: 4px;">Completó 10/10 en su tarjeta anterior: al sumar hoy inicia una tarjeta nueva (1/10).</div>`
+                : '';
+            contenedor.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #2C2C2C; background: #ffffff; padding: 9px 12px; border-radius: 6px; border: 1px solid #e6c883; margin: 0;">
+                    <input type="checkbox" id="checkSumarSelloCobro" checked onchange="actualizarEstadoPremioCobro()" style="width: 16px; height: 16px; accent-color: var(--mostaza); cursor: pointer;">
+                    <span>Sumar sello del mes (pasa al ${proximoSlot}/10)</span>
+                </label>
+                ${notaNuevaTarjeta}
+            `;
+        }
+
+        actualizarEstadoPremioCobro();
+    } catch (err) {
+        console.error("Error cargando fidelidad en modal de cobro:", err);
+        if (badgeResumen) badgeResumen.textContent = 'Error';
+        contenedor.innerHTML = '<span style="color: #dc3545; font-size: 12.5px;">No se pudo consultar el estado de fidelidad.</span>';
+    }
+}
+
+function obtenerDecisionFidelidadCobro() {
+    if (!estadoFidelidadCobroActual) {
+        return { sumarSello: false, reiniciarRachaPrevia: false, slotObjetivo: 0 };
+    }
+
+    const cantActual = Number(estadoFidelidadCobroActual.cantidadSellos || 0);
+    const proximoSlot = Number(estadoFidelidadCobroActual.proximoSlot || 1);
+
+    if (estadoFidelidadCobroActual.yaTieneSelloEsteMes) {
+        return {
+            sumarSello: false,
+            reiniciarRachaPrevia: false,
+            slotObjetivo: cantActual
+        };
+    }
+
+    if (estadoFidelidadCobroActual.mesPasadoSinSello) {
+        const seleccionado = document.querySelector('input[name="opcionRachaFidelidad"]:checked')?.value || 'continuar';
+        if (seleccionado === 'continuar') {
+            return {
+                sumarSello: true,
+                reiniciarRachaPrevia: false,
+                slotObjetivo: proximoSlot
+            };
+        } else if (seleccionado === 'reiniciar') {
+            return {
+                sumarSello: true,
+                reiniciarRachaPrevia: true,
+                slotObjetivo: 1
+            };
+        } else {
+            return {
+                sumarSello: false,
+                reiniciarRachaPrevia: false,
+                slotObjetivo: cantActual
+            };
+        }
+    }
+
+    const check = document.getElementById('checkSumarSelloCobro');
+    const quiereSumar = Boolean(check && !check.disabled && check.checked);
+    return {
+        sumarSello: quiereSumar,
+        reiniciarRachaPrevia: false,
+        slotObjetivo: quiereSumar ? proximoSlot : cantActual
+    };
+}
+
+function actualizarEstadoPremioCobro() {
+    const alertaPremio = document.getElementById('alertaPremioFidelidadCobro');
+    if (!alertaPremio || !estadoFidelidadCobroActual) return;
+
+    const cantActual = Number(estadoFidelidadCobroActual.cantidadSellos || 0);
+    const decision = obtenerDecisionFidelidadCobro();
+    const slotQueAlcanza = decision.slotObjetivo;
+
+    // Verificamos si el sello actual o el que está por sumar es el 5 (50% OFF) o el 10 (100% OFF en servicio de manos)
+    let porcentajePremio = 0;
+    let textoMotivo = '';
+
+    if ((decision.sumarSello && slotQueAlcanza === 10) || (!decision.sumarSello && cantActual === 10)) {
+        porcentajePremio = 100;
+        textoMotivo = decision.sumarSello
+            ? '¡Con este turno alcanza el Sello #10! Beneficio de 100% OFF en servicio de manos.'
+            : '¡La clienta tiene el Sello #10 activo! Beneficio de 100% OFF en servicio de manos.';
+    } else if ((decision.sumarSello && slotQueAlcanza === 5) || (!decision.sumarSello && cantActual === 5)) {
+        porcentajePremio = 50;
+        textoMotivo = decision.sumarSello
+            ? '¡Con este turno alcanza el Sello #5! Beneficio de 50% OFF sobre el servicio base.'
+            : '¡La clienta tiene el Sello #5 activo! Beneficio de 50% OFF sobre el servicio base.';
+    }
+
+    if (porcentajePremio > 0) {
+        const montoSugerido = Math.round((precioBaseActual || 0) * (porcentajePremio / 100));
+        alertaPremio.style.display = 'block';
+        alertaPremio.innerHTML = `
+            <div style="background: linear-gradient(135deg, #fffdf6 0%, #fef5d8 100%); border: 1.5px solid var(--mostaza); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 12.5px; color: #6b521e; font-weight: 600; line-height: 1.35;">
+                    🎁 ${textoMotivo}
+                </div>
+                <button type="button" onclick="aplicarDescuentoFidelidad(${porcentajePremio})" style="background: var(--mostaza); color: white; border: none; padding: 7px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer; align-self: flex-start; box-shadow: 0 2px 5px rgba(212,163,71,0.25);">
+                    Aplicar ${porcentajePremio}% en Descuento (-$${montoSugerido.toLocaleString('es-AR')})
+                </button>
+            </div>
+        `;
+    } else {
+        alertaPremio.style.display = 'none';
+        alertaPremio.innerHTML = '';
+    }
+}
+
+function aplicarDescuentoFidelidad(porcentaje) {
+    const montoDescuento = Math.round((precioBaseActual || 0) * (porcentaje / 100));
+    const inputDescuento = document.getElementById('descuentoCobroInput');
+    if (inputDescuento) {
+        inputDescuento.value = montoDescuento;
+    }
+    if (typeof recalcularTotalCobro === 'function') {
+        recalcularTotalCobro();
+    }
+    mostrarNotificacion(`Descuento de fidelidad (${porcentaje}% OFF: -$${montoDescuento.toLocaleString('es-AR')}) aplicado.`, "success");
 }
 
 async function cancelarTurnoDesdeModal() {
@@ -2441,12 +2663,23 @@ async function confirmarCobroTurno() {
     let totalFinal = precioBaseActual + sumaExtras + recargo - descuento - senaAbonada;
     if (totalFinal < 0) totalFinal = 0;
 
+    const decisionFidelidad = obtenerDecisionFidelidadCobro();
+    let resumenFidelidadTexto = 'No suma sello en este cobro';
+    if (decisionFidelidad.sumarSello && decisionFidelidad.reiniciarRachaPrevia) {
+        resumenFidelidadTexto = 'Reinicia tarjeta y suma sello (1/10)';
+    } else if (decisionFidelidad.sumarSello) {
+        resumenFidelidadTexto = `Suma sello del mes (pasa a ${decisionFidelidad.slotObjetivo}/10)`;
+    } else if (estadoFidelidadCobroActual && estadoFidelidadCobroActual.yaTieneSelloEsteMes) {
+        resumenFidelidadTexto = `Ya tenía su sello del mes (${estadoFidelidadCobroActual.cantidadSellos}/10)`;
+    }
+
     const resumenHtml = `
         ¿Estás segura de que deseás confirmar y cobrar este turno?
         <div style="margin-top: 14px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; text-align: left; font-size: 14px; line-height: 1.7; color: #333;">
             <div><strong>Clienta:</strong> ${clientaActualCobro}</div>
             <div><strong>Servicio:</strong> ${servicioActualCobro}</div>
             <div><strong>Empleada:</strong> ${empleadaActualCobro}</div>
+            <div><strong>Fidelidad:</strong> <span style="color: #856404; font-weight: 600;">${resumenFidelidadTexto}</span></div>
             <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #dcdcdc; font-size: 15px;">
                 <strong>Monto a cobrar:</strong> <span style="color: #28a745; font-weight: 700;">$${totalFinal.toLocaleString('es-AR')}</span>
             </div>
@@ -2468,7 +2701,9 @@ async function confirmarCobroTurno() {
         recargo: recargo, 
         extras: extrasSeleccionados,
         color: coloresFinales,
-        comentarioAdmin: comentario
+        comentarioAdmin: comentario,
+        sumarSello: decisionFidelidad.sumarSello,
+        reiniciarRachaPrevia: decisionFidelidad.reiniciarRachaPrevia
     };
 
     try {
@@ -2597,8 +2832,15 @@ window.addEventListener('click', function(e) {
     }
 });
 
+let sellosPerfilClientaActual = [];
+
 async function verPerfilClienta(idClienta, nombre, apellido) {
-    document.getElementById('nombrePerfilClienta').textContent = `Historial de ${nombre} ${apellido}`;
+    document.getElementById('nombrePerfilClienta').textContent = `Perfil de ${nombre} ${apellido}`;
+    const inputIdPerfil = document.getElementById('idClientaPerfilOculto');
+    if (inputIdPerfil) inputIdPerfil.value = idClienta;
+
+    cerrarEditorSelloPerfil();
+    cargarFidelidadPerfilClienta(idClienta);
     
     const listaHistorial = document.getElementById('listaHistorialClienta');
     listaHistorial.innerHTML = '<p style="text-align:center; color:#888;">Cargando historial...</p>';
@@ -2673,6 +2915,222 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
     } catch (error) {
         console.error("Error cargando historial:", error);
         listaHistorial.innerHTML = '<p style="text-align:center; color:#d9534f;">Hubo un error al cargar los datos.</p>';
+    }
+}
+
+async function cargarFidelidadPerfilClienta(idClienta) {
+    const grilla = document.getElementById('grillaFidelidadPerfil');
+    const contador = document.getElementById('contadorSellosPerfil');
+    const linkPublico = document.getElementById('linkTarjetaPublicaPerfil');
+    if (!grilla) return;
+
+    grilla.innerHTML = '<div style="text-align: center; color: white; font-size: 13px; padding: 12px;">Cargando sellos...</div>';
+
+    try {
+        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad`);
+        if (!res.ok) throw new Error('Error al obtener fidelidad');
+        const data = await res.json();
+
+        sellosPerfilClientaActual = data.sellos || [];
+        const cant = Number(data.cantidadSellos || 0);
+
+        if (contador) {
+            contador.textContent = `${cant}/10 visitas`;
+        }
+
+        if (linkPublico) {
+            const telLimpio = data.telefonoClienta ? String(data.telefonoClienta).replace(/\D/g, '') : '';
+            linkPublico.href = telLimpio ? `tarjeta.html?tel=${encodeURIComponent(telLimpio)}` : 'tarjeta.html';
+            linkPublico.style.display = 'inline-flex';
+        }
+
+        renderizarGrillaFidelidadPerfil(sellosPerfilClientaActual);
+    } catch (err) {
+        console.error("Error cargando tarjeta de fidelidad en perfil:", err);
+        grilla.innerHTML = '<div style="text-align: center; color: #fff; font-size: 12.5px; padding: 10px;">No se pudo cargar la tarjeta de fidelidad.</div>';
+    }
+}
+
+function renderizarGrillaFidelidadPerfil(sellos = []) {
+    const grilla = document.getElementById('grillaFidelidadPerfil');
+    if (!grilla) return;
+
+    const mapaSellos = {};
+    sellos.forEach(s => {
+        mapaSellos[Number(s.Numero_Slot)] = s;
+    });
+
+    const construirFila = (inicioSlot, finSlot, textoPremio) => {
+        let circulosHTML = '';
+        for (let slot = inicioSlot; slot <= finSlot; slot++) {
+            const sello = mapaSellos[slot];
+            if (sello) {
+                const fechaTexto = sello.Fecha_Formateada || (sello.Fecha_Sello ? `${sello.Fecha_Sello.slice(8, 10)}/${sello.Fecha_Sello.slice(5, 7)}` : '✓');
+                circulosHTML += `
+                    <button type="button" onclick="abrirEditorSelloPerfil(${slot})" title="Sello #${slot} (${sello.Fecha_Sello}) - Click para editar o quitar"
+                        style="width: 50px; height: 50px; border-radius: 50%; background: #ffffff; border: 2px solid #6b521e; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.16); transition: transform 0.15s ease; padding: 0; position: relative;">
+                        <span style="font-size: 9px; font-weight: 700; color: #999; line-height: 1; margin-bottom: 2px;">#${slot}</span>
+                        <span style="font-size: 12px; font-weight: 800; color: #2C2C2C; font-style: italic; letter-spacing: -0.3px; transform: rotate(-6deg);">${fechaTexto}</span>
+                    </button>
+                `;
+            } else {
+                circulosHTML += `
+                    <button type="button" onclick="abrirEditorSelloPerfil(${slot})" title="Casillero #${slot} vacío - Click para cargar fecha manual"
+                        style="width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.88); border: 2px dashed rgba(107,82,30,0.35); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s ease; padding: 0;">
+                        <span style="font-size: 10px; font-weight: 700; color: #8b6d3b;">${slot}</span>
+                        <span style="font-size: 12px; color: #b59449; line-height: 1;">+</span>
+                    </button>
+                `;
+            }
+        }
+
+        return `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; justify-content: space-between; flex: 1;">
+                    ${circulosHTML}
+                </div>
+                <div style="min-width: 52px; text-align: center; background: rgba(255,255,255,0.22); border: 1.5px solid rgba(255,255,255,0.85); color: #ffffff; font-weight: 800; font-size: 12.5px; padding: 6px 6px; border-radius: 8px; letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                    ${textoPremio}
+                </div>
+            </div>
+        `;
+    };
+
+    grilla.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${construirFila(1, 5, '50%')}
+            ${construirFila(6, 10, '100%')}
+        </div>
+    `;
+}
+
+function abrirEditorSelloPerfil(numeroSlot) {
+    const panel = document.getElementById('panelEdicionSelloPerfil');
+    const titulo = document.getElementById('tituloSlotSeleccionadoPerfil');
+    const inputSlot = document.getElementById('slotSeleccionadoPerfilInput');
+    const inputFecha = document.getElementById('fechaSelloManualInput');
+    const btnQuitar = document.getElementById('btnQuitarSelloPerfil');
+
+    if (!panel || !inputSlot || !inputFecha) return;
+
+    inputSlot.value = numeroSlot;
+    const selloExistente = (sellosPerfilClientaActual || []).find(s => Number(s.Numero_Slot) === Number(numeroSlot));
+
+    const hoy = new Date();
+    const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+    if (selloExistente) {
+        if (titulo) titulo.textContent = `Editar o quitar Sello #${numeroSlot}`;
+        inputFecha.value = (selloExistente.Fecha_Sello || '').split('T')[0] || hoyISO;
+        if (btnQuitar) btnQuitar.style.display = 'inline-block';
+    } else {
+        if (titulo) titulo.textContent = `Cargar Sello Manual en Casillero #${numeroSlot}`;
+        inputFecha.value = hoyISO;
+        if (btnQuitar) btnQuitar.style.display = 'none';
+    }
+
+    panel.style.display = 'block';
+    inputFecha.focus();
+}
+
+function cerrarEditorSelloPerfil() {
+    const panel = document.getElementById('panelEdicionSelloPerfil');
+    if (panel) panel.style.display = 'none';
+}
+
+async function guardarSelloManualPerfil() {
+    const idClienta = document.getElementById('idClientaPerfilOculto')?.value;
+    const numeroSlot = document.getElementById('slotSeleccionadoPerfilInput')?.value;
+    const fechaSello = document.getElementById('fechaSelloManualInput')?.value;
+
+    if (!idClienta || !numeroSlot || !fechaSello) {
+        mostrarNotificacion("Seleccioná una fecha válida para guardar el sello.", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad/sello`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                numeroSlot: parseInt(numeroSlot, 10),
+                fechaSello
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+            mostrarNotificacion(data.message || `Sello #${numeroSlot} guardado.`, "success");
+            cerrarEditorSelloPerfil();
+            await cargarFidelidadPerfilClienta(idClienta);
+        } else {
+            mostrarNotificacion(data.error || "No se pudo guardar el sello.", "error");
+        }
+    } catch (err) {
+        console.error("Error guardando sello manual:", err);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
+async function quitarSelloManualPerfil() {
+    const idClienta = document.getElementById('idClientaPerfilOculto')?.value;
+    const numeroSlot = document.getElementById('slotSeleccionadoPerfilInput')?.value;
+    if (!idClienta || !numeroSlot) return;
+
+    try {
+        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad/sello`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                numeroSlot: parseInt(numeroSlot, 10),
+                accion: 'eliminar'
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+            mostrarNotificacion(data.message || `Sello #${numeroSlot} quitado.`, "success");
+            cerrarEditorSelloPerfil();
+            await cargarFidelidadPerfilClienta(idClienta);
+        } else {
+            mostrarNotificacion(data.error || "No se pudo quitar el sello.", "error");
+        }
+    } catch (err) {
+        console.error("Error quitando sello manual:", err);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
+async function reiniciarTarjetaDesdePerfil() {
+    const idClienta = document.getElementById('idClientaPerfilOculto')?.value;
+    if (!idClienta) return;
+
+    const confirmar = await pedirConfirmacion(
+        "¿Estás segura de que deseás reiniciar la Tarjeta de Fidelidad de esta clienta? Todos los sellos actuales pasarán al historial y la tarjeta volverá a 0/10.",
+        {
+            colorBoton: '#dc3545',
+            textoBoton: 'Sí, reiniciar tarjeta'
+        }
+    );
+    if (!confirmar) return;
+
+    try {
+        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad/reiniciar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+            mostrarNotificacion(data.message || "Tarjeta reiniciada con éxito.", "success");
+            cerrarEditorSelloPerfil();
+            await cargarFidelidadPerfilClienta(idClienta);
+        } else {
+            mostrarNotificacion(data.error || "No se pudo reiniciar la tarjeta.", "error");
+        }
+    } catch (err) {
+        console.error("Error reiniciando tarjeta:", err);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
     }
 }
 
