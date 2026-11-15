@@ -1,6 +1,0 @@
-2026/09/25-18:32:21.680 c208e Reusing MANIFEST /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2026/09/25-18:32:21.681 c208e Recovering log #30
-2026/09/25-18:32:21.682 c208e Reusing old log /Users/luciananavarro/Documents/EMME-MVP/backend/.wwebjs_auth/session/Default/Local Storage/leveldb/000030.log 
-2026/09/25-18:33:21.687 c2093 Level-0 table #34: started
-2026/09/25-18:33:21.692 c2093 Level-0 table #34: 13090 bytes OK
-2026/09/25-18:33:21.697 c2093 Delete type=0 #30

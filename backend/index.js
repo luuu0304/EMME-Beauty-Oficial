@@ -2355,6 +2355,16 @@ programarRecordatorios();
 programarRetorno15Dias();
 programarAvisoEmpleadas();
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Servidor corriendo impecable en http://localhost:${port} `);
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`\n[ERROR CRÍTICO] El puerto ${port} ya está en uso por otro proceso.`);
+        console.error(`Asegurate de cerrar cualquier otra terminal o proceso de Node que esté corriendo el servidor.\n`);
+    } else {
+        console.error('Error al iniciar el servidor:', err);
+    }
+    process.exit(1);
 });

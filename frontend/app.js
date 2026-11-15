@@ -21,7 +21,7 @@
 // --- Sistema de Notificaciones (Toasts) ---
 function mostrarNotificacion(mensaje, tipo = 'success') {
     const contenedor = document.getElementById('toastContainer');
-    if (!contenedor) return;
+    if (!contenedor) return null;
 
     const toast = document.createElement('div');
     toast.classList.add('toast', tipo);
@@ -29,12 +29,29 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
 
     contenedor.appendChild(toast);
 
-    setTimeout(() => {
-        toast.style.animation = 'deslizarDesaparecer 0.4s forwards';
-        setTimeout(() => {
-            toast.remove();
-        }, 400);
+    let temporizador = setTimeout(() => {
+        cerrarToast(toast);
     }, 3500);
+
+    const cerrar = () => {
+        if (temporizador) {
+            clearTimeout(temporizador);
+            temporizador = null;
+        }
+        cerrarToast(toast);
+    };
+
+    return { elemento: toast, cerrar };
+}
+
+function cerrarToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    toast.style.animation = 'deslizarDesaparecer 0.4s forwards';
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 400);
 }
 
 // --- Sistema de Confirmación Personalizado ---
@@ -5774,14 +5791,19 @@ async function reiniciarConexionBot(cerrarSesion = false) {
         if (!confirmar) return;
     }
 
+    let notifCarga = null;
     try {
-        mostrarNotificacion(cerrarSesion ? 'Cerrando sesión de WhatsApp...' : 'Reconectando motor de WhatsApp...', 'info');
+        notifCarga = mostrarNotificacion(cerrarSesion ? 'Cerrando sesión de WhatsApp...' : 'Reconectando motor de WhatsApp...', 'info');
         const respuesta = await fetch('http://localhost:3000/api/bot/reiniciar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cerrarSesion })
         });
         const data = await respuesta.json();
+
+        if (notifCarga && notifCarga.cerrar) {
+            notifCarga.cerrar();
+        }
 
         if (respuesta.ok) {
             mostrarNotificacion(data.message || 'Proceso iniciado correctamente.', 'success');
@@ -5790,6 +5812,9 @@ async function reiniciarConexionBot(cerrarSesion = false) {
             mostrarNotificacion(data.error || 'No se pudo reiniciar el bot.', 'error');
         }
     } catch (error) {
+        if (notifCarga && notifCarga.cerrar) {
+            notifCarga.cerrar();
+        }
         console.error('Error al reiniciar bot:', error);
         mostrarNotificacion('Error de conexión con el servidor.', 'error');
     }
@@ -5850,8 +5875,9 @@ async function ejecutarRutinaManualBot(rutina) {
     );
     if (!confirmar) return;
 
+    let notifCarga = null;
     try {
-        mostrarNotificacion('Procesando envíos por WhatsApp...', 'info');
+        notifCarga = mostrarNotificacion('Procesando envíos por WhatsApp...', 'info');
         const respuesta = await fetch('http://localhost:3000/api/bot/ejecutar-rutina', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5859,12 +5885,19 @@ async function ejecutarRutinaManualBot(rutina) {
         });
         const data = await respuesta.json();
 
+        if (notifCarga && notifCarga.cerrar) {
+            notifCarga.cerrar();
+        }
+
         if (respuesta.ok) {
             mostrarNotificacion(data.message || 'Rutina ejecutada con éxito.', 'success');
         } else {
             mostrarNotificacion(data.error || 'No se pudo completar la rutina.', 'error');
         }
     } catch (error) {
+        if (notifCarga && notifCarga.cerrar) {
+            notifCarga.cerrar();
+        }
         console.error('Error ejecutando rutina manual:', error);
         mostrarNotificacion('Error de conexión con el servidor.', 'error');
     }
