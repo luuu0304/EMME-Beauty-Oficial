@@ -4977,6 +4977,7 @@ function cambiarVistaConfig(vista) {
         if (vistaServicios) vistaServicios.style.display = 'block';
         if (btnServicios) btnServicios.classList.add('active');
         cargarTablaConfigServicios();
+        cargarTablaConfigExtras();
         cargarTablaConfigAreas();
     
     } else if (vista === 'horarios') {
@@ -5403,6 +5404,130 @@ async function eliminarServicio(id) {
             mostrarNotificacion("No se pudo eliminar el servicio.", "error");
         }
     } catch (error) {
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+// --- CONFIG: EXTRAS ---
+const modalExtra = document.getElementById('modalNuevoExtra');
+
+async function cargarTablaConfigExtras() {
+    const tbody = document.getElementById('tablaConfigExtrasBody');
+    if (!tbody) return;
+
+    try {
+        const respuesta = await fetch('/api/extras');
+        const extras = await respuesta.json();
+
+        tbody.innerHTML = '';
+
+        if (!extras || extras.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--texto-claro);">No hay extras registrados.</td></tr>';
+            return;
+        }
+
+        extras.forEach(extra => {
+            const idExtra = extra.Id_Extra || extra.id_extra;
+            const precioSeguro = Number(extra.Precio || extra.precio || 0);
+            const nombreExtra = String(extra.Nombre || extra.nombre || '').replace(/'/g, "\\'");
+
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--borde)';
+            tr.innerHTML = `
+                <td style="padding: 11px 14px; color: var(--texto-claro); font-weight: 500;">${idExtra}</td>
+                <td style="padding: 11px 14px; font-weight: 500; color: var(--texto-oscuro);">${extra.Nombre || extra.nombre}</td>
+                <td style="padding: 11px 14px; font-weight: 600; color: #333;">$${precioSeguro.toLocaleString('es-AR')}</td>
+                <td style="padding: 11px 14px; text-align: center;">
+                    <button class="btn-icon" style="color: #17a2b8; border-color: #b8daff; margin-right: 8px;" onclick="editarExtra(${idExtra}, '${nombreExtra}', ${precioSeguro})" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button class="btn-icon" style="color: #dc3545; border-color: #f5c6cb;" onclick="eliminarExtra(${idExtra})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error("Error al cargar extras:", error);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#d9534f;">Error al cargar la tabla de extras.</td></tr>';
+    }
+}
+
+function abrirModalNuevoExtra() {
+    document.getElementById('tituloModalExtra').textContent = 'Nuevo Extra';
+    document.getElementById('idExtraOculto').value = '';
+    document.getElementById('nombreNuevoExtraInput').value = '';
+    document.getElementById('precioNuevoExtraInput').value = '';
+    if (modalExtra) modalExtra.classList.add('active');
+}
+
+function editarExtra(id, nombre, precio) {
+    document.getElementById('tituloModalExtra').textContent = 'Editar Extra';
+    document.getElementById('idExtraOculto').value = id;
+    document.getElementById('nombreNuevoExtraInput').value = nombre;
+    document.getElementById('precioNuevoExtraInput').value = precio;
+    if (modalExtra) modalExtra.classList.add('active');
+}
+
+function cerrarModalExtra() {
+    if (modalExtra) modalExtra.classList.remove('active');
+}
+
+async function guardarExtra() {
+    const idOculto = document.getElementById('idExtraOculto').value;
+    const nombre = document.getElementById('nombreNuevoExtraInput').value.trim();
+    const precio = document.getElementById('precioNuevoExtraInput').value;
+
+    if (!nombre || precio === '' || isNaN(precio) || parseFloat(precio) < 0) {
+        mostrarNotificacion("Por favor ingresá un nombre y un precio válido.", "warning");
+        return;
+    }
+
+    const url = idOculto ? `/api/extras/${idOculto}` : '/api/extras';
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
+    try {
+        const respuesta = await fetch(url, {
+            method: metodoElegido,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                Nombre: nombre,
+                Precio: parseFloat(precio)
+            })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion(idOculto ? "Extra actualizado con éxito." : "¡Extra creado!", "success");
+            cerrarModalExtra();
+            cargarTablaConfigExtras();
+            if (typeof cargarExtrasDisponibles === 'function') cargarExtrasDisponibles();
+        } else {
+            const errorMsg = await respuesta.text();
+            mostrarNotificacion(errorMsg || "Hubo un error al guardar el extra.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+async function eliminarExtra(id) {
+    const confirmacion = await pedirConfirmacion("¿Atención: estás segura de que querés borrar este adicional / extra?");
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`/api/extras/${id}`, { method: 'DELETE' });
+        if (respuesta.ok) {
+            mostrarNotificacion("Extra eliminado con éxito.", "success");
+            cargarTablaConfigExtras();
+            if (typeof cargarExtrasDisponibles === 'function') cargarExtrasDisponibles();
+        } else {
+            const errorMsg = await respuesta.text();
+            mostrarNotificacion(errorMsg || "No se pudo eliminar el extra.", "error");
+        }
+    } catch (error) {
+        console.error(error);
         mostrarNotificacion("Error de conexión.", "error");
     }
 }

@@ -1333,6 +1333,67 @@ app.get('/api/extras', async (req, res) => {
     }
 });
 
+app.post('/api/extras', async (req, res) => {
+    try {
+        const { Nombre, Precio } = req.body;
+        if (!Nombre || Precio === undefined || isNaN(Precio)) {
+            return res.status(400).send("Nombre y precio son requeridos");
+        }
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Nombre', sql.VarChar, Nombre.trim())
+            .input('Precio', sql.Decimal(10, 2), Precio)
+            .query(`INSERT INTO Extra (Nombre, Precio) VALUES (@Nombre, @Precio)`);
+        res.status(201).send("Extra creado");
+    } catch (err) {
+        console.error("Error al crear extra:", err);
+        res.status(500).send("Error al crear extra");
+    }
+});
+
+app.put('/api/extras/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre, Precio } = req.body;
+        if (!Nombre || Precio === undefined || isNaN(Precio)) {
+            return res.status(400).send("Nombre y precio son requeridos");
+        }
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Extra', sql.Int, id)
+            .input('Nombre', sql.VarChar, Nombre.trim())
+            .input('Precio', sql.Decimal(10, 2), Precio)
+            .query(`UPDATE Extra SET Nombre = @Nombre, Precio = @Precio WHERE Id_Extra = @Id_Extra`);
+        res.status(200).send("Extra actualizado");
+    } catch (err) {
+        console.error("Error al actualizar extra:", err);
+        res.status(500).send("Error al actualizar extra");
+    }
+});
+
+app.delete('/api/extras/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+
+        const checkUso = await pool.request()
+            .input('Id_Extra', sql.Int, id)
+            .query(`SELECT COUNT(*) AS total FROM Turno_Extra WHERE Id_Extra = @Id_Extra`);
+
+        if (checkUso.recordset[0].total > 0) {
+            return res.status(400).send("No se puede eliminar el extra porque ya está asociado a turnos registrados.");
+        }
+
+        await pool.request()
+            .input('Id_Extra', sql.Int, id)
+            .query(`DELETE FROM Extra WHERE Id_Extra = @Id_Extra`);
+        res.status(200).send("Extra eliminado");
+    } catch (err) {
+        console.error("Error al eliminar extra:", err);
+        res.status(500).send("Error al eliminar extra");
+    }
+});
+
 // ==========================================================================
 // 6. MÓDULO DE AGENDA Y TURNOS
 // ==========================================================================
