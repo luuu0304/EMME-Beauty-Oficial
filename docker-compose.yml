@@ -1,0 +1,72 @@
+services:
+  db:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: emme_db
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD}
+      MSSQL_PID: "Developer"
+      # Limita la memoria interna que el motor SQL reclama al sistema
+      MSSQL_MEMORY_LIMIT_MB: "768"
+      TZ: "America/Argentina/Buenos_Aires"
+    ports:
+      - "127.0.0.1:1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+      - ./database:/docker-entrypoint-initdb.d:ro
+    # Límite duro de RAM en Docker para proteger los 2GB del VPS
+    mem_limit: 900m
+    memswap_limit: 1200m
+    deploy:
+      resources:
+        limits:
+          memory: 900M
+        reservations:
+          memory: 512M
+    networks:
+      - emme_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: emme_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: "production"
+      PORT: ${PORT:-3000}
+      DB_SERVER: "db"
+      DB_USER: ${DB_USER:-sa}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-EmmE_Beauty_V2}
+      SECRET_KEY: ${SECRET_KEY}
+      TZ: "America/Argentina/Buenos_Aires"
+    ports:
+      - "${PORT:-3000}:3000"
+    # Memoria compartida ampliada para evitar crashes de Chromium/Puppeteer (whatsapp-web.js)
+    shm_size: "256mb"
+    mem_limit: 850m
+    deploy:
+      resources:
+        limits:
+          memory: 850M
+    volumes:
+      # Persistencia de la sesión de WhatsApp para no re-escanear el QR en cada reinicio
+      - whatsapp_auth:/usr/src/app/backend/.wwebjs_auth
+      - whatsapp_cache:/usr/src/app/backend/.wwebjs_cache
+    networks:
+      - emme_net
+
+volumes:
+  sql_data:
+  whatsapp_auth:
+  whatsapp_cache:
+
+networks:
+  emme_net:
+    driver: bridge

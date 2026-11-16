@@ -102,7 +102,7 @@ async function iniciarSesion() {
     btn.style.opacity = '0.7';
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/auth/login', {
+        const respuesta = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ Username: inputUsuario, Password: inputPassword })
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
             initialView: 'timeGridWeek', locale: 'es', height: 'auto',
             headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,timeGridDay' },
             slotMinTime: '09:30:00', slotMaxTime: '21:30:00', allDaySlot: false, 
-            events: 'http://localhost:3000/api/turnos', eventColor: 'var(--mostaza)'
+            events: '/api/turnos', eventColor: 'var(--mostaza)'
         });
         calendar.render();
     }
@@ -791,7 +791,7 @@ async function abrirEdicionTurno() {
     if (!idTurno) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}`);
+        const respuesta = await fetch(`/api/turnos/${idTurno}`);
         if (!respuesta.ok) throw new Error("No se pudo traer el turno");
         const turno = await respuesta.json();
 
@@ -837,7 +837,7 @@ async function abrirEdicionTurno() {
 
 async function cargarServicios() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/servicios');
+        const respuesta = await fetch('/api/servicios');
         listaServiciosGlobal = await respuesta.json(); 
         await cargarAreasEnModalTurno();
     } catch (error) {
@@ -847,7 +847,7 @@ async function cargarServicios() {
 
 async function cargarAreasEnModalTurno() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const respuesta = await fetch('/api/areas');
         const areas = await respuesta.json();
         
         const selectArea = document.getElementById('areaTurno');
@@ -920,7 +920,7 @@ async function filtrarProfesionalesPorServicio() {
     }
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/servicio/${idServicio}`);
+        const respuesta = await fetch(`/api/empleadas/servicio/${idServicio}`);
         const empleadasHabilitadas = await respuesta.json();
         
         selectEmpleada.innerHTML = '<option value="">Seleccioná a la profesional...</option>';
@@ -972,7 +972,7 @@ async function guardarTurno() {
         }
         
         try {
-            const respuestaClienta = await fetch('http://localhost:3000/api/clientas', {
+            const respuestaClienta = await fetch('/api/clientas', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ Nombre: nombreExp, Apellido: apellidoExp, Telefono: "", Email: "" })
@@ -1010,7 +1010,7 @@ async function guardarTurno() {
     }
 
     try {
-        const resHorarios = await fetch('http://localhost:3000/api/horarios');
+        const resHorarios = await fetch('/api/horarios');
         const horariosVal = await resHorarios.json();
         
         const idDia = obtenerIdDiaSemana(fecha);
@@ -1070,7 +1070,7 @@ async function guardarTurno() {
         Sena_Monto: montoSena 
     };
 
-    const url = idAEditar ? `http://localhost:3000/api/turnos/${idAEditar}` : 'http://localhost:3000/api/turnos';
+    const url = idAEditar ? `/api/turnos/${idAEditar}` : '/api/turnos';
     const metodo = idAEditar ? 'PUT' : 'POST';
 
     try {
@@ -1117,7 +1117,7 @@ function agendarTurnoRapido(idClienta, nombre, apellido) {
 
 async function cargarBotonesAreasAgenda() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const respuesta = await fetch('/api/areas');
         const areas = await respuesta.json();
         const selectFiltro = document.getElementById('selectFiltroArea');
         
@@ -1172,10 +1172,10 @@ function generarBloques(apertura, cierre) {
 async function inicializarAgendaDiaria() {
     try {
         await cargarBotonesAreasAgenda();
-        const resEmp = await fetch('http://localhost:3000/api/empleadas');
+        const resEmp = await fetch('/api/empleadas');
         empleadasAgendaGlobal = await resEmp.json();
 
-        const resHor = await fetch('http://localhost:3000/api/horarios');
+        const resHor = await fetch('/api/horarios');
         horariosAgendaGlobal = await resHor.json();
 
         const agendaHeader = document.getElementById('agendaHeader');
@@ -1501,7 +1501,7 @@ async function cargarTurnosSemana() {
             const fDia = String(fechaDia.getDate()).padStart(2, '0');
             const fechaStr = `${fAño}-${fMes}-${fDia}`;
 
-            const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${fechaStr}`);
+            const respuesta = await fetch(`/api/turnos/fecha/${fechaStr}`);
             if (respuesta.ok) {
                 const turnosDia = await respuesta.json();
                 todosLosTurnos.push(...turnosDia.filter(t => t.Estado !== 'Cancelado')); 
@@ -1756,7 +1756,7 @@ async function inicializarAgendaSemanal() {
     headerSemanal.innerHTML = htmlHeader;
 
     try {
-        const resHor = await fetch('http://localhost:3000/api/horarios');
+        const resHor = await fetch('/api/horarios');
         const horarios = await resHor.json();
         const horarioRef = horarios.find(h => h.Laborable === true) || horarios[0];
 
@@ -1856,7 +1856,7 @@ async function cargarTurnosAgenda() {
     if (!inputFecha || !inputFecha.value) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${inputFecha.value}`);
+        const respuesta = await fetch(`/api/turnos/fecha/${inputFecha.value}`);
         const turnos = await respuesta.json();
 
         document.querySelectorAll('.turno-card').forEach(card => card.remove());
@@ -1978,7 +1978,7 @@ async function cargarHorariosDisponibles() {
     selectHora.disabled = true;
 
     try {
-        const respHorarios = await fetch('http://localhost:3000/api/horarios');
+        const respHorarios = await fetch('/api/horarios');
         const horariosSemana = await respHorarios.json();
 
         const fechaObj = new Date(fechaInput + 'T00:00:00'); 
@@ -2003,7 +2003,7 @@ async function cargarHorariosDisponibles() {
         const apertura2 = extraerMinutos(configDia.Hora_Apertura_2);
         const cierre2 = extraerMinutos(configDia.Hora_Cierre_2);
 
-        const respTurnos = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/agenda/${fechaInput}`);
+        const respTurnos = await fetch(`/api/empleadas/${idEmpleada}/agenda/${fechaInput}`);
         const turnosOcupados = await respTurnos.json();
 
         let horariosPosibles = [];
@@ -2259,7 +2259,7 @@ async function cargarFidelidadEnCobro(idTurno, idClienta, estadoTurno) {
     try {
         let idClientaFinal = idClienta;
         if (!idClientaFinal && idTurno) {
-            const resTurno = await fetch(`http://localhost:3000/api/turnos/${idTurno}`);
+            const resTurno = await fetch(`/api/turnos/${idTurno}`);
             if (resTurno.ok) {
                 const datosTurno = await resTurno.json();
                 idClientaFinal = datosTurno.Id_Clienta;
@@ -2274,7 +2274,7 @@ async function cargarFidelidadEnCobro(idTurno, idClienta, estadoTurno) {
             return;
         }
 
-        const resFid = await fetch(`http://localhost:3000/api/clientas/${idClientaFinal}/fidelidad`);
+        const resFid = await fetch(`/api/clientas/${idClientaFinal}/fidelidad`);
         if (!resFid.ok) throw new Error('Error consultando fidelidad');
         const data = await resFid.json();
         estadoFidelidadCobroActual = data;
@@ -2462,7 +2462,7 @@ async function cancelarTurnoDesdeModal() {
     if (!confirma) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/cancelar`, {
+        const respuesta = await fetch(`/api/turnos/${idTurno}/cancelar`, {
             method: 'PUT'
         });
 
@@ -2513,7 +2513,7 @@ async function guardarDetallesTurno() {
     }
     
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
+        const respuesta = await fetch(`/api/turnos/${idTurno}/detalles`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -2581,7 +2581,7 @@ function actualizarInputOcultoColores() {
 
 async function cargarExtrasDisponibles() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/extras');
+        const respuesta = await fetch('/api/extras');
         const extras = await respuesta.json();
 
         const contenedor = document.getElementById('contenedorExtras');
@@ -2724,7 +2724,7 @@ async function confirmarCobroTurno() {
     };
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
+        const respuesta = await fetch('/api/cobrar-turno', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(datosCobro)
@@ -2757,7 +2757,7 @@ async function guardarSenaIndependiente() {
     if (!idTurno) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/sena`, {
+        const respuesta = await fetch(`/api/turnos/${idTurno}/sena`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -2868,7 +2868,7 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
     }
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/clientas/${idClienta}/historial`);
+        const respuesta = await fetch(`/api/clientas/${idClienta}/historial`);
         const historial = await respuesta.json();
 
         listaHistorial.innerHTML = ''; 
@@ -2944,7 +2944,7 @@ async function cargarFidelidadPerfilClienta(idClienta) {
     grilla.innerHTML = '<div style="text-align: center; color: white; font-size: 13px; padding: 12px;">Cargando sellos...</div>';
 
     try {
-        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad`);
+        const res = await fetch(`/api/clientas/${idClienta}/fidelidad`);
         if (!res.ok) throw new Error('Error al obtener fidelidad');
         const data = await res.json();
 
@@ -3066,7 +3066,7 @@ async function guardarSelloManualPerfil() {
     }
 
     try {
-        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad/sello`, {
+        const res = await fetch(`/api/clientas/${idClienta}/fidelidad/sello`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3095,7 +3095,7 @@ async function quitarSelloManualPerfil() {
     if (!idClienta || !numeroSlot) return;
 
     try {
-        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad/sello`, {
+        const res = await fetch(`/api/clientas/${idClienta}/fidelidad/sello`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3132,7 +3132,7 @@ async function reiniciarTarjetaDesdePerfil() {
     if (!confirmar) return;
 
     try {
-        const res = await fetch(`http://localhost:3000/api/clientas/${idClienta}/fidelidad/reiniciar`, {
+        const res = await fetch(`/api/clientas/${idClienta}/fidelidad/reiniciar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -3172,7 +3172,7 @@ function cambiarVistaClientas(vista) {
 
 async function cargarClientas() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/clientas');
+        const respuesta = await fetch('/api/clientas');
         listaGlobalClientas = await respuesta.json();
         renderizarClientas(listaGlobalClientas);
     } catch (error) {
@@ -3304,8 +3304,8 @@ async function guardarClienta() {
     };
 
     const url = idOculto 
-        ? `http://localhost:3000/api/clientas/${idOculto}` 
-        : 'http://localhost:3000/api/clientas';
+        ? `/api/clientas/${idOculto}` 
+        : '/api/clientas';
         
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
@@ -3651,8 +3651,8 @@ async function guardarEmpleada() {
     }
 
     const url = idOculto 
-        ? `http://localhost:3000/api/empleadas/${idOculto}` 
-        : 'http://localhost:3000/api/empleadas';
+        ? `/api/empleadas/${idOculto}` 
+        : '/api/empleadas';
         
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
@@ -3684,7 +3684,7 @@ async function guardarEmpleada() {
 
 async function cargarEmpleadas() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/empleadas');
+        const respuesta = await fetch('/api/empleadas');
         const empleadas = await respuesta.json();
 
         const selectEmpleada = document.getElementById('selectEmpleadaTurno');
@@ -3767,7 +3767,7 @@ async function eliminarEmpleada(id) {
     if (!confirmacion) return; 
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${id}`, {
+        const respuesta = await fetch(`/api/empleadas/${id}`, {
             method: 'DELETE'
         });
 
@@ -3804,7 +3804,7 @@ async function verDetalleSueldo(idEmpleada, nombre) {
     if (modal) modal.classList.add('active');
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/sueldo-detalle`);
+        const respuesta = await fetch(`/api/empleadas/${idEmpleada}/sueldo-detalle`);
         const detalles = await respuesta.json();
         
         tbody.innerHTML = '';
@@ -3840,7 +3840,7 @@ async function liquidarSueldo(idEmpleada, nombre) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidar`, { 
+        const respuesta = await fetch(`/api/empleadas/${idEmpleada}/liquidar`, { 
             method: 'POST' 
         });
         
@@ -3872,10 +3872,10 @@ async function abrirModalEspecialidades(idEmpleada, nombre) {
     if (modal) modal.classList.add('active');
 
     try {
-        const resAreas = await fetch('http://localhost:3000/api/areas');
+        const resAreas = await fetch('/api/areas');
         const areasDisponibles = await resAreas.json();
         
-        const resAsignadas = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/areas`);
+        const resAsignadas = await fetch(`/api/empleadas/${idEmpleada}/areas`);
         const areasAsignadas = await resAsignadas.json();
         
         contenedor.innerHTML = '';
@@ -3947,7 +3947,7 @@ async function guardarEspecialidades() {
     });
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/areas`, {
+        const respuesta = await fetch(`/api/empleadas/${idEmpleada}/areas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ areas: areasParaGuardar })
@@ -3998,7 +3998,7 @@ function cambiarVistaEmpleadas(vista) {
 
 async function cargarHistorialCobros() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/liquidaciones');
+        const respuesta = await fetch('/api/liquidaciones');
         memoriaLiquidaciones = await respuesta.json();
         aplicarFiltrosCobros(); 
     } catch (error) {
@@ -4079,7 +4079,7 @@ async function abrirDetalleCobro(idLiquidacion) {
     modal.classList.add('active'); 
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/liquidaciones/${idLiquidacion}/detalles`);
+        const respuesta = await fetch(`/api/liquidaciones/${idLiquidacion}/detalles`);
         
         if (!respuesta.ok) {
             throw new Error("Error en la respuesta del servidor");
@@ -4139,7 +4139,7 @@ async function cargarMisPagos() {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const idEmpleada = payload.idEmpleada || payload.Id_Empleada || payload.id; 
 
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidaciones`);
+        const respuesta = await fetch(`/api/empleadas/${idEmpleada}/liquidaciones`);
         
         if (!respuesta.ok) throw new Error("Error al traer los pagos");
         
@@ -4236,7 +4236,7 @@ function prepararNuevoGasto() {
 
 async function cargarCategoriasGasto() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const respuesta = await fetch('/api/categorias-gastos');
         const categorias = await respuesta.json();
         
         const selectModal = document.getElementById('selectCategoriaGasto');
@@ -4257,7 +4257,7 @@ async function cargarCategoriasGasto() {
 
 async function cargarGastos() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/gastos');
+        const respuesta = await fetch('/api/gastos');
         memoriaGastos = await respuesta.json(); 
         aplicarFiltrosGastos(); 
     } catch (error) {
@@ -4384,7 +4384,7 @@ async function guardarGasto() {
     };
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/gastos', {
+        const respuesta = await fetch('/api/gastos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(nuevoGasto)
@@ -4408,7 +4408,7 @@ async function eliminarGasto(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/gastos/${id}`, { method: 'DELETE' });
+        const respuesta = await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
         if (respuesta.ok) {
             mostrarNotificacion("Gasto eliminado con éxito.", "success");
             cargarGastos();
@@ -4422,7 +4422,7 @@ async function eliminarGasto(id) {
 
 async function cargarIngresos() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/ingresos');
+        const respuesta = await fetch('/api/ingresos');
         const ingresos = await respuesta.json();
         
         const tbody = document.getElementById('tablaIngresosBody');
@@ -4551,7 +4551,7 @@ function filtrarIngresos() {
 
 async function cargarMediosDePago() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/medios-pago');
+        const respuesta = await fetch('/api/medios-pago');
         const medios = await respuesta.json();
         
         const selectCobroTurno = document.getElementById('selectMedioPago');
@@ -4582,7 +4582,7 @@ async function cargarTablaMediosPago() {
     if (!tbody) return;
     
     try {
-        const respuesta = await fetch('http://localhost:3000/api/medios-pago');
+        const respuesta = await fetch('/api/medios-pago');
         const medios = await respuesta.json();
         
         tbody.innerHTML = '';
@@ -4651,7 +4651,7 @@ async function guardarIngresoManual() {
     const fechaActual = `${yyyy}-${mm}-${dd}`;
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/ingresos/manual', {
+        const respuesta = await fetch('/api/ingresos/manual', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4749,7 +4749,7 @@ async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
             urlParams.append('idEmpleada', idEmpleada);
         }
 
-        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?${urlParams.toString()}`);
+        const respuesta = await fetch(`/api/dashboard/kpis?${urlParams.toString()}`);
         const kpis = await respuesta.json();
 
         // Rellenamos las tarjetas correctas según el rol
@@ -4780,7 +4780,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
             // ==========================================
 
             // 1. Gráfico Mis Servicios Más Pedidos
-            const respServ = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}&idEmpleada=${idEmpleada}`);
+            const respServ = await fetch(`/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}&idEmpleada=${idEmpleada}`);
             if (respServ.ok) {
                 const datosServ = await respServ.json();
                 const ctxMisServ = document.getElementById('graficoMisServicios').getContext('2d');
@@ -4802,7 +4802,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
             }
 
             // 2. Gráfico Mis Horarios Frecuentes
-            const respHorarios = await fetch(`http://localhost:3000/api/dashboard/horarios-frecuentes?desde=${desde}&hasta=${hasta}&idEmpleada=${idEmpleada}`);
+            const respHorarios = await fetch(`/api/dashboard/horarios-frecuentes?desde=${desde}&hasta=${hasta}&idEmpleada=${idEmpleada}`);
             if (respHorarios.ok) {
                 const datosHorarios = await respHorarios.json();
                 const ctxHorarios = document.getElementById('graficoMisHorarios').getContext('2d');
@@ -4827,7 +4827,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
             // GRÁFICOS ADMINISTRADORA (Originales)
             // ==========================================
             
-            const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
+            const respuesta = await fetch(`/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
             if (!respuesta.ok) return;
             const datos = await respuesta.json();
 
@@ -4864,7 +4864,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
             });
 
             // Gráfico Servicios Estrella (Admin)
-            const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
+            const respServicios = await fetch(`/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
             if (respServicios.ok) {
                 const datosServicios = await respServicios.json();
                 const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
@@ -4877,7 +4877,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
             }
 
             // Gráfico Top Empleadas
-            const respEmp = await fetch(`http://localhost:3000/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
+            const respEmp = await fetch(`/api/dashboard/top-empleadas?desde=${desde}&hasta=${hasta}`);
             if (respEmp.ok) {
                 const datosEmp = await respEmp.json();
                 const ctxEmpleadas = document.getElementById('graficoEmpleadas').getContext('2d');
@@ -4890,7 +4890,7 @@ async function cargarGraficoDashboard(desde, hasta, rol, idEmpleada) {
             }
 
             // Gráfico Ingresos por Medio de Pago (Admin)
-            const respMediosPago = await fetch(`http://localhost:3000/api/dashboard/medios-pago-usados?desde=${desde}&hasta=${hasta}`);
+            const respMediosPago = await fetch(`/api/dashboard/medios-pago-usados?desde=${desde}&hasta=${hasta}`);
             if (respMediosPago.ok) {
                 const datosMedios = await respMediosPago.json();
                 const ctxMedios = document.getElementById('graficoMediosPago').getContext('2d');
@@ -5023,7 +5023,7 @@ async function cargarDatosPerfil() {
     if (inputPassConfirmar) inputPassConfirmar.value = '';
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/auth/perfil', {
+        const respuesta = await fetch('/api/auth/perfil', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -5100,7 +5100,7 @@ async function guardarCambiosPerfil() {
     }
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/auth/perfil', {
+        const respuesta = await fetch('/api/auth/perfil', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -5151,7 +5151,7 @@ async function cargarTablaConfigCategorias() {
     if (!tbody) return;
     
     try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const respuesta = await fetch('/api/categorias-gastos');
         const categorias = await respuesta.json();
         
         tbody.innerHTML = '';
@@ -5213,8 +5213,8 @@ async function guardarNuevaCategoria() {
     }
 
     const url = idOculto 
-        ? `http://localhost:3000/api/categorias-gastos/${idOculto}` 
-        : 'http://localhost:3000/api/categorias-gastos';
+        ? `/api/categorias-gastos/${idOculto}` 
+        : '/api/categorias-gastos';
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
     try {
@@ -5243,7 +5243,7 @@ async function eliminarCategoriaGasto(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/categorias-gastos/${id}`, { method: 'DELETE' });
+        const respuesta = await fetch(`/api/categorias-gastos/${id}`, { method: 'DELETE' });
         if (respuesta.ok) {
             mostrarNotificacion("Categoría eliminada con éxito.", "success");
             cargarTablaConfigCategorias();
@@ -5264,7 +5264,7 @@ async function cargarTablaConfigServicios() {
     if (!tbody) return;
     
     try {
-        const respuesta = await fetch('http://localhost:3000/api/servicios');
+        const respuesta = await fetch('/api/servicios');
         const servicios = await respuesta.json();
         
         tbody.innerHTML = '';
@@ -5307,7 +5307,7 @@ async function cargarTablaConfigServicios() {
 
 async function cargarAreasEnModal() {
     try {
-        const res = await fetch('http://localhost:3000/api/areas'); 
+        const res = await fetch('/api/areas'); 
         const areas = await res.json();
         const select = document.getElementById('areaNuevoServicioInput');
         select.innerHTML = '<option value="">Seleccionar área...</option>';
@@ -5360,8 +5360,8 @@ async function guardarNuevoServicio() {
     }
 
     const url = idOculto 
-        ? `http://localhost:3000/api/servicios/${idOculto}` 
-        : 'http://localhost:3000/api/servicios';
+        ? `/api/servicios/${idOculto}` 
+        : '/api/servicios';
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
     try {
@@ -5395,7 +5395,7 @@ async function eliminarServicio(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/servicios/${id}`, { method: 'DELETE' });
+        const respuesta = await fetch(`/api/servicios/${id}`, { method: 'DELETE' });
         if (respuesta.ok) {
             mostrarNotificacion("Servicio eliminado con éxito.", "success");
             cargarTablaConfigServicios();
@@ -5415,7 +5415,7 @@ async function cargarTablaConfigAreas() {
     if (!tbody) return;
     
     try {
-        const respuesta = await fetch('http://localhost:3000/api/areas');
+        const respuesta = await fetch('/api/areas');
         const areas = await respuesta.json();
         
         tbody.innerHTML = '';
@@ -5477,8 +5477,8 @@ async function guardarArea() {
     }
 
     const url = idOculto 
-        ? `http://localhost:3000/api/areas/${idOculto}`
-        : 'http://localhost:3000/api/areas';
+        ? `/api/areas/${idOculto}`
+        : '/api/areas';
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
     try {
@@ -5507,7 +5507,7 @@ async function eliminarArea(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/areas/${id}`, { method: 'DELETE' });
+        const respuesta = await fetch(`/api/areas/${id}`, { method: 'DELETE' });
         if (respuesta.ok) {
             mostrarNotificacion("Área eliminada.", "success");
             cargarTablaConfigAreas();
@@ -5552,7 +5552,7 @@ async function cargarTablaConfigHorarios() {
     if (!visor) return;
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/horarios');
+        const respuesta = await fetch('/api/horarios');
         const horarios = await respuesta.json();
 
         visor.innerHTML = '';
@@ -5624,7 +5624,7 @@ async function guardarHorarioEnLote(event) {
             btnGuardar.style.opacity = '0.7';
         }
 
-        const respuesta = await fetch('http://localhost:3000/api/horarios/bulk', {
+        const respuesta = await fetch('/api/horarios/bulk', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -5676,7 +5676,7 @@ async function guardarMedioPago() {
         return;
     }
 
-    const url = id ? `http://localhost:3000/api/medios-pago/${id}` : 'http://localhost:3000/api/medios-pago';
+    const url = id ? `/api/medios-pago/${id}` : '/api/medios-pago';
     const metodo = id ? 'PUT' : 'POST';
 
     try {
@@ -5705,7 +5705,7 @@ async function eliminarMedioPago(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/medios-pago/${id}`, {
+        const respuesta = await fetch(`/api/medios-pago/${id}`, {
             method: 'DELETE'
         });
 
@@ -5753,7 +5753,7 @@ const chequearEstadoBot = async () => {
     if (!spanEstado || !contenedorQr || !imgQr) return;
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/bot/status');
+        const respuesta = await fetch('/api/bot/status');
         const data = await respuesta.json();
 
         spanEstado.innerText = data.estado || 'Desconocido';
@@ -5794,7 +5794,7 @@ async function reiniciarConexionBot(cerrarSesion = false) {
     let notifCarga = null;
     try {
         notifCarga = mostrarNotificacion(cerrarSesion ? 'Cerrando sesión de WhatsApp...' : 'Reconectando motor de WhatsApp...', 'info');
-        const respuesta = await fetch('http://localhost:3000/api/bot/reiniciar', {
+        const respuesta = await fetch('/api/bot/reiniciar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cerrarSesion })
@@ -5838,7 +5838,7 @@ async function enviarMensajePruebaBot() {
     }
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/bot/probar', {
+        const respuesta = await fetch('/api/bot/probar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ telefono })
@@ -5878,7 +5878,7 @@ async function ejecutarRutinaManualBot(rutina) {
     let notifCarga = null;
     try {
         notifCarga = mostrarNotificacion('Procesando envíos por WhatsApp...', 'info');
-        const respuesta = await fetch('http://localhost:3000/api/bot/ejecutar-rutina', {
+        const respuesta = await fetch('/api/bot/ejecutar-rutina', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ rutina })
@@ -5911,7 +5911,7 @@ const cargarTablaPlantillasBot = async () => {
     if (!tbody) return;
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/bot/plantillas');
+        const respuesta = await fetch('/api/bot/plantillas');
         const plantillas = await respuesta.json();
         
         plantillasEnMemoria = plantillas;
@@ -6020,7 +6020,7 @@ const guardarPlantillaBot = async () => {
     }
     
     try {
-        const response = await fetch(`http://localhost:3000/api/bot/plantillas/${id}`, {
+        const response = await fetch(`/api/bot/plantillas/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ texto: nuevoTexto })
