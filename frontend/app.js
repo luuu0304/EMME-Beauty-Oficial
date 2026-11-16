@@ -2069,6 +2069,98 @@ let clientaActualCobro = '';
 let servicioActualCobro = '';
 let empleadaActualCobro = '';
 let estadoFidelidadCobroActual = null;
+let tipoDescuentoCobroActual = 'Ninguno';
+
+function resetearSelectorTipoDescuento() {
+    tipoDescuentoCobroActual = 'Ninguno';
+    const contenedor = document.getElementById('contenedorTipoDescuento');
+    if (contenedor) contenedor.style.display = 'none';
+
+    const radioFidelidad = document.getElementById('radioDescFidelidad');
+    const radioPromo = document.getElementById('radioDescPromocion');
+    if (radioFidelidad) radioFidelidad.checked = false;
+    if (radioPromo) radioPromo.checked = false;
+
+    const lblFidelidad = document.getElementById('lblTipoDescuentoFidelidad');
+    const lblPromo = document.getElementById('lblTipoDescuentoPromocion');
+    if (lblFidelidad) {
+        lblFidelidad.style.borderColor = '#dcdcdc';
+        lblFidelidad.style.background = '#ffffff';
+    }
+    if (lblPromo) {
+        lblPromo.style.borderColor = '#dcdcdc';
+        lblPromo.style.background = '#ffffff';
+    }
+
+    const textoExp = document.getElementById('textoExplicativoComision');
+    if (textoExp) {
+        textoExp.style.display = 'none';
+        textoExp.innerHTML = '';
+    }
+}
+
+function seleccionarTipoDescuentoManual(tipo) {
+    tipoDescuentoCobroActual = tipo;
+    let sumaExtras = 0;
+    document.querySelectorAll('.check-extra:checked').forEach(chk => {
+        sumaExtras += parseFloat(chk.value) || 0;
+    });
+    const descVal = parseFloat(document.getElementById('descuentoCobroInput')?.value) || 0;
+    actualizarEstilosYExplicacionDescuento(sumaExtras, descVal);
+}
+
+function actualizarEstilosYExplicacionDescuento(sumaExtras, descuento) {
+    const contenedor = document.getElementById('contenedorTipoDescuento');
+    if (!contenedor) return;
+
+    if (descuento <= 0) {
+        contenedor.style.display = 'none';
+        return;
+    }
+    contenedor.style.display = 'block';
+
+    if (tipoDescuentoCobroActual === 'Ninguno') {
+        tipoDescuentoCobroActual = 'Promocion';
+    }
+
+    const radioFidelidad = document.getElementById('radioDescFidelidad');
+    const radioPromo = document.getElementById('radioDescPromocion');
+    if (radioFidelidad) radioFidelidad.checked = (tipoDescuentoCobroActual === 'Fidelidad');
+    if (radioPromo) radioPromo.checked = (tipoDescuentoCobroActual === 'Promocion');
+
+    const lblFidelidad = document.getElementById('lblTipoDescuentoFidelidad');
+    const lblPromo = document.getElementById('lblTipoDescuentoPromocion');
+    if (lblFidelidad) {
+        lblFidelidad.style.borderColor = (tipoDescuentoCobroActual === 'Fidelidad') ? 'var(--mostaza)' : '#dcdcdc';
+        lblFidelidad.style.background = (tipoDescuentoCobroActual === 'Fidelidad') ? '#fdfaf2' : '#ffffff';
+    }
+    if (lblPromo) {
+        lblPromo.style.borderColor = (tipoDescuentoCobroActual === 'Promocion') ? '#2e7d32' : '#dcdcdc';
+        lblPromo.style.background = (tipoDescuentoCobroActual === 'Promocion') ? '#f2f8f3' : '#ffffff';
+    }
+
+    const textoExp = document.getElementById('textoExplicativoComision');
+    if (textoExp) {
+        const totalServicio = (precioBaseActual || 0) + (sumaExtras || 0);
+        if (tipoDescuentoCobroActual === 'Fidelidad') {
+            textoExp.style.display = 'block';
+            textoExp.style.borderLeftColor = 'var(--mostaza)';
+            textoExp.innerHTML = `
+                <div style="font-weight: 600; color: #6b521e;">Descuento a cargo del salón</div>
+                <div style="color: #555; margin-top: 2px;">La comisión para la empleada se calculará sobre el <strong>precio original ($${totalServicio.toLocaleString('es-AR')})</strong>.</div>
+            `;
+        } else {
+            const baseConDesc = Math.max(0, totalServicio - descuento);
+            textoExp.style.display = 'block';
+            textoExp.style.borderLeftColor = '#2e7d32';
+            textoExp.innerHTML = `
+                <div style="font-weight: 600; color: #2e7d32;">Promoción especial</div>
+                <div style="color: #555; margin-top: 2px;">La comisión para la empleada se calculará sobre el <strong>monto con descuento ($${baseConDesc.toLocaleString('es-AR')})</strong>.</div>
+            `;
+        }
+    }
+}
+
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 
 if (modalDetalleTurno) {
@@ -2230,6 +2322,7 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBa
     document.getElementById('descuentoCobroInput').value = 0;
     if(inputRecargo) inputRecargo.value = 0;
     checkboxes.forEach(chk => chk.checked = false);
+    resetearSelectorTipoDescuento();
     
     if (typeof recalcularTotalCobro === 'function') {
         recalcularTotalCobro();
@@ -2428,8 +2521,9 @@ function actualizarEstadoPremioCobro() {
         alertaPremio.style.display = 'block';
         alertaPremio.innerHTML = `
             <div style="background: linear-gradient(135deg, #fffdf6 0%, #fef5d8 100%); border: 1.5px solid var(--mostaza); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;">
-                <div style="font-size: 12.5px; color: #6b521e; font-weight: 600; line-height: 1.35;">
-                    🎁 ${textoMotivo}
+                <div style="font-size: 12.5px; color: #6b521e; font-weight: 600; line-height: 1.35; display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"></path><circle cx="18" cy="12" r="2"></circle></svg>
+                    <span>${textoMotivo}</span>
                 </div>
                 <button type="button" onclick="aplicarDescuentoFidelidad(${porcentajePremio})" style="background: var(--mostaza); color: white; border: none; padding: 7px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 700; cursor: pointer; align-self: flex-start; box-shadow: 0 2px 5px rgba(212,163,71,0.25);">
                     Aplicar ${porcentajePremio}% en Descuento (-$${montoSugerido.toLocaleString('es-AR')})
@@ -2448,6 +2542,7 @@ function aplicarDescuentoFidelidad(porcentaje) {
     if (inputDescuento) {
         inputDescuento.value = montoDescuento;
     }
+    seleccionarTipoDescuentoManual('Fidelidad');
     if (typeof recalcularTotalCobro === 'function') {
         recalcularTotalCobro();
     }
@@ -2616,7 +2711,7 @@ function recalcularTotalCobro() {
     
     const checkboxes = document.querySelectorAll('.check-extra:checked');
     checkboxes.forEach(chk => {
-        sumaExtras += parseFloat(chk.value);
+        sumaExtras += parseFloat(chk.value) || 0;
     });
 
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
@@ -2633,6 +2728,8 @@ function recalcularTotalCobro() {
     if (totalFinal < 0) totalFinal = 0;
 
     document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
+
+    actualizarEstilosYExplicacionDescuento(sumaExtras, descuento);
 }
 
 const inputDescuento = document.getElementById('descuentoCobroInput');
@@ -2690,6 +2787,19 @@ async function confirmarCobroTurno() {
         resumenFidelidadTexto = `Ya tenía su sello del mes (${estadoFidelidadCobroActual.cantidadSellos}/10)`;
     }
 
+    let detalleDescuentoHtml = '';
+    if (descuento > 0) {
+        const esFidelidad = (tipoDescuentoCobroActual === 'Fidelidad');
+        const descTexto = esFidelidad ? 'Fidelidad / Salón (no afecta comisión)' : 'Promoción especial (afecta comisión)';
+        const baseComisionable = esFidelidad 
+            ? (precioBaseActual + sumaExtras) 
+            : Math.max(0, precioBaseActual + sumaExtras - descuento);
+        detalleDescuentoHtml = `
+            <div><strong>Descuento:</strong> -$${descuento.toLocaleString('es-AR')} <span style="font-size: 12px; color: #666;">(${descTexto})</span></div>
+            <div><strong>Base comisionable:</strong> <span style="color: #2e7d32; font-weight: 600;">$${baseComisionable.toLocaleString('es-AR')}</span></div>
+        `;
+    }
+
     const resumenHtml = `
         ¿Estás segura de que deseás confirmar y cobrar este turno?
         <div style="margin-top: 14px; padding: 12px 16px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; text-align: left; font-size: 14px; line-height: 1.7; color: #333;">
@@ -2697,6 +2807,7 @@ async function confirmarCobroTurno() {
             <div><strong>Servicio:</strong> ${servicioActualCobro}</div>
             <div><strong>Empleada:</strong> ${empleadaActualCobro}</div>
             <div><strong>Fidelidad:</strong> <span style="color: #856404; font-weight: 600;">${resumenFidelidadTexto}</span></div>
+            ${detalleDescuentoHtml}
             <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #dcdcdc; font-size: 15px;">
                 <strong>Monto a cobrar:</strong> <span style="color: #28a745; font-weight: 700;">$${totalFinal.toLocaleString('es-AR')}</span>
             </div>
@@ -2715,6 +2826,8 @@ async function confirmarCobroTurno() {
         montoTotal: totalFinal,
         idMedioPago: parseInt(medioPago),
         descuento: descuento,
+        tipoDescuento: (descuento > 0) ? tipoDescuentoCobroActual : 'Ninguno',
+        descuentoAfectaComision: (descuento > 0 && tipoDescuentoCobroActual === 'Promocion'),
         recargo: recargo, 
         extras: extrasSeleccionados,
         color: coloresFinales,
@@ -3818,14 +3931,27 @@ async function verDetalleSueldo(idEmpleada, nombre) {
             const fechaObj = new Date(d.Fecha_Hora);
             const fechaLimpia = fechaObj.toLocaleDateString('es-AR') + ' ' + fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             
+            let desgloseMontoHtml = `$${(d.Total_Servicio || d.Total_Abonado || 0).toLocaleString('es-AR')}`;
+            if (d.Descuento > 0 && d.Descuento_Afecta_Comision) {
+                desgloseMontoHtml = `
+                    <div style="font-weight: 600;">$${(d.Base_Comisionable || 0).toLocaleString('es-AR')}</div>
+                    <div style="font-size: 11px; color: #2e7d32;">(Servicio $${(d.Total_Servicio || 0).toLocaleString('es-AR')} - Promo $${d.Descuento.toLocaleString('es-AR')})</div>
+                `;
+            } else if (d.Descuento > 0 && !d.Descuento_Afecta_Comision) {
+                desgloseMontoHtml = `
+                    <div style="font-weight: 600;">$${(d.Total_Servicio || d.Total_Abonado || 0).toLocaleString('es-AR')}</div>
+                    <div style="font-size: 11px; color: #856404;">(Desc. $${d.Descuento.toLocaleString('es-AR')} absorbido por salón)</div>
+                `;
+            }
+
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 11px 14px;">${fechaLimpia}</td>
                     <td style="padding: 11px 14px; font-weight: 500;">${d.Nombre_Clienta}</td>
                     <td style="padding: 11px 14px; color: #555;">${d.Nombre_Servicio}</td>
-                    <td style="padding: 11px 14px; text-align: right;">$${d.Total_Abonado.toLocaleString('es-AR')}</td>
-                    <td style="padding: 11px 14px; text-align: center; color: var(--mostaza); font-weight: bold;">${d.Porcentaje_Comision * 100}%</td>
-                    <td style="padding: 11px 14px; text-align: right; font-weight: bold; color: #28a745;">$${d.A_Cobrar.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: right;">${desgloseMontoHtml}</td>
+                    <td style="padding: 11px 14px; text-align: center; color: var(--mostaza); font-weight: bold;">${Math.round(d.Porcentaje_Comision * 100)}%</td>
+                    <td style="padding: 11px 14px; text-align: right; font-weight: bold; color: #28a745;">$${Math.round(d.A_Cobrar).toLocaleString('es-AR')}</td>
                 </tr>
             `;
         });
@@ -4098,14 +4224,27 @@ async function abrirDetalleCobro(idLiquidacion) {
             const fechaObj = new Date(item.Fecha_Hora);
             const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
             
+            let desgloseHistorialHtml = `$${(item.Total_Servicio || item.Monto_Abonado || 0).toLocaleString('es-AR')}`;
+            if (item.Descuento > 0 && item.Descuento_Afecta_Comision) {
+                desgloseHistorialHtml = `
+                    <div style="font-weight: 600;">$${(item.Base_Comisionable || 0).toLocaleString('es-AR')}</div>
+                    <div style="font-size: 11px; color: #2e7d32;">(Servicio $${(item.Total_Servicio || item.Monto_Abonado || 0).toLocaleString('es-AR')} - Promo $${item.Descuento.toLocaleString('es-AR')})</div>
+                `;
+            } else if (item.Descuento > 0 && !item.Descuento_Afecta_Comision) {
+                desgloseHistorialHtml = `
+                    <div style="font-weight: 600;">$${(item.Total_Servicio || item.Monto_Abonado || 0).toLocaleString('es-AR')}</div>
+                    <div style="font-size: 11px; color: #856404;">(Desc. $${item.Descuento.toLocaleString('es-AR')} absorbido por salón)</div>
+                `;
+            }
+
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 11px 14px; color: #555;">${fechaLimpia}</td>
                     <td style="padding: 11px 14px;">${item.Nombre_Clienta}</td>
                     <td style="padding: 11px 14px; color: #666;">${item.Nombre_Servicio}</td>
-                    <td style="padding: 11px 14px; text-align: right;">$${item.Monto_Abonado.toLocaleString('es-AR')}</td>
-                    <td style="padding: 11px 14px; text-align: center; color: #888;">${item.Porcentaje}%</td>
-                    <td style="padding: 11px 14px; text-align: right; font-weight: 600; color: #28a745;">$${item.Comision.toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: right;">${desgloseHistorialHtml}</td>
+                    <td style="padding: 11px 14px; text-align: center; color: #888;">${Math.round(item.Porcentaje)}%</td>
+                    <td style="padding: 11px 14px; text-align: right; font-weight: 600; color: #28a745;">$${Math.round(item.Comision).toLocaleString('es-AR')}</td>
                 </tr>
             `;
         });

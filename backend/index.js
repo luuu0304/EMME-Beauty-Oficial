@@ -558,6 +558,24 @@ async function asegurarTablaSelloFidelidad(pool) {
     }
 }
 
+let columnasDescuentoVerificadas = false;
+async function asegurarColumnasDescuentoTurno(pool) {
+    if (columnasDescuentoVerificadas) return;
+    try {
+        await pool.request().query(`
+            IF COL_LENGTH('Turno', 'Descuento') IS NULL
+                ALTER TABLE Turno ADD Descuento DECIMAL(10,2) NOT NULL DEFAULT 0;
+            IF COL_LENGTH('Turno', 'Tipo_Descuento') IS NULL
+                ALTER TABLE Turno ADD Tipo_Descuento VARCHAR(20) NOT NULL DEFAULT 'Ninguno';
+            IF COL_LENGTH('Turno', 'Descuento_Afecta_Comision') IS NULL
+                ALTER TABLE Turno ADD Descuento_Afecta_Comision BIT NOT NULL DEFAULT 0;
+        `);
+        columnasDescuentoVerificadas = true;
+    } catch (e) {
+        console.warn("Aviso al verificar columnas de descuento en Turno:", e.message);
+    }
+}
+
 function calcularMetadatosFidelidad(sellosActivos = []) {
     const hoy = new Date();
     const anioActual = hoy.getFullYear();
@@ -853,6 +871,7 @@ app.get('/api/public/fidelidad/:telefono', async (req, res) => {
 app.get('/api/empleadas', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnasDescuentoTurno(pool);
         let result = await pool.request().query(`
             SELECT 
                 e.Id_Empleada, e.Nombre_Ap, e.DNI, e.Telefono,
@@ -862,7 +881,14 @@ app.get('/api/empleadas', async (req, res) => {
                 AreasInfo.Areas
             FROM Empleada e
             LEFT JOIN (
-                SELECT t.Id_Empleada, SUM((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS Saldo_Acumulado
+                SELECT t.Id_Empleada, SUM(
+                    (CASE 
+                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)
+                ) AS Saldo_Acumulado
                 FROM Turno t
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                 LEFT JOIN Area a ON s.Id_Area = a.Id_Area 
@@ -1056,14 +1082,31 @@ app.get('/api/empleadas/:id/sueldo-detalle', async (req, res) => {
     try {
         const { id } = req.params;
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnasDescuentoTurno(pool);
         let result = await pool.request()
             .input('Id_Empleada', sql.Int, id)
             .query(`
                 SELECT 
                     t.Id_Turno, t.Fecha_Hora, c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
-                    s.Nombre AS Nombre_Servicio, (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Total_Abonado,
+                    s.Nombre AS Nombre_Servicio, 
+                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Total_Abonado,
+                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Total_Servicio,
+                    ISNULL(t.Descuento, 0) AS Descuento,
+                    ISNULL(t.Tipo_Descuento, 'Ninguno') AS Tipo_Descuento,
+                    ISNULL(t.Descuento_Afecta_Comision, 0) AS Descuento_Afecta_Comision,
+                    (CASE 
+                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                    END) AS Base_Comisionable,
                     ISNULL(ea.Porcentaje_Comision, 0.50) AS Porcentaje_Comision,
-                    ((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS A_Cobrar
+                    ((CASE 
+                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS A_Cobrar
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -1087,12 +1130,20 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
     const { id } = req.params;
     try {
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnasDescuentoTurno(pool);
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         try {
             const requestCalc = new sql.Request(transaction);
             const resultCalc = await requestCalc.input('Id_Empleada', sql.Int, id).query(`
-                    SELECT ISNULL(SUM((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)), 0) AS Monto_A_Pagar
+                    SELECT ISNULL(SUM(
+                        (CASE 
+                            WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                                CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                     ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                            ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                        END) * ISNULL(ea.Porcentaje_Comision, 0.50)
+                    ), 0) AS Monto_A_Pagar
                     FROM Turno t
                     JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                     LEFT JOIN Area a ON s.Id_Area = a.Id_Area
@@ -1176,13 +1227,29 @@ app.get('/api/liquidaciones/:id/detalles', async (req, res) => {
     const { id } = req.params;
     try {
         let pool = await sql.connect(dbConfig);
+        await asegurarColumnasDescuentoTurno(pool);
         const result = await pool.request()
             .input('Id_Liquidacion', sql.Int, id)
             .query(`
                 SELECT t.Fecha_Hora, c.Nombre + ' ' + c.Apellido AS Nombre_Clienta, s.Nombre AS Nombre_Servicio,
                     (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Monto_Abonado,
+                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Total_Servicio,
+                    ISNULL(t.Descuento, 0) AS Descuento,
+                    ISNULL(t.Tipo_Descuento, 'Ninguno') AS Tipo_Descuento,
+                    ISNULL(t.Descuento_Afecta_Comision, 0) AS Descuento_Afecta_Comision,
+                    (CASE 
+                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                    END) AS Base_Comisionable,
                     ISNULL(ea.Porcentaje_Comision, 0.50) * 100 AS Porcentaje,
-                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50) AS Comision
+                    ((CASE 
+                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS Comision
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -1823,11 +1890,16 @@ app.post('/api/ingresos/manual', async (req, res) => {
 
 app.post('/api/cobrar-turno', async (req, res) => {
     try {
-        const { idTurno, montoTotal, idMedioPago, descuento, extras, color, comentarioAdmin, sumarSello, reiniciarRachaPrevia } = req.body;
+        const { 
+            idTurno, montoTotal, idMedioPago, descuento, 
+            tipoDescuento, descuentoAfectaComision,
+            extras, color, comentarioAdmin, sumarSello, reiniciarRachaPrevia 
+        } = req.body;
         const colorFinal = color !== undefined ? color : req.body.Color;
         const comentarioFinal = comentarioAdmin !== undefined ? comentarioAdmin : req.body.Comentario_Admin;
         let pool = await sql.connect(dbConfig);
         await asegurarTablaSelloFidelidad(pool);
+        await asegurarColumnasDescuentoTurno(pool);
         
         const chequeo = await pool.request().input('Id_Turno', sql.Int, idTurno).query(`
                 SELECT t.Estado, t.Id_Clienta, s.Nombre AS NombreServicio
@@ -1842,6 +1914,10 @@ app.post('/api/cobrar-turno', async (req, res) => {
         const nombreDelServicio = chequeo.recordset[0].NombreServicio;
         const conceptoDinamico = `Turno: ${nombreDelServicio}`;
 
+        const descuentoNum = parseFloat(descuento) || 0;
+        const tipoDescuentoFinal = (descuentoNum > 0) ? (tipoDescuento || 'Ninguno') : 'Ninguno';
+        const afectaComisionFinal = (descuentoNum > 0 && Boolean(descuentoAfectaComision)) ? 1 : 0;
+
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         try {
@@ -1851,7 +1927,7 @@ app.post('/api/cobrar-turno', async (req, res) => {
                 .input('Concepto', sql.VarChar, conceptoDinamico)
                 .input('Monto_Total', sql.Decimal(12, 2), montoTotal)
                 .input('Id_Medio_Pago', sql.Int, idMedioPago) // Usamos la columna nueva
-                .input('Descuento', sql.Decimal(12, 2), descuento)
+                .input('Descuento', sql.Decimal(12, 2), descuentoNum)
                 .query(`INSERT INTO Ingreso (Id_Turno, Fecha, Concepto, Monto_Total, Id_Medio_Pago, Descuento) VALUES (@Id_Turno, GETDATE(), @Concepto, @Monto_Total, @Id_Medio_Pago, @Descuento)`);
             
             if (extras && extras.length > 0) {
@@ -1863,11 +1939,17 @@ app.post('/api/cobrar-turno', async (req, res) => {
             const requestEstado = new sql.Request(transaction);
             await requestEstado
                 .input('Id_Turno', sql.Int, idTurno)
+                .input('Descuento', sql.Decimal(10, 2), descuentoNum)
+                .input('Tipo_Descuento', sql.VarChar(20), tipoDescuentoFinal)
+                .input('Descuento_Afecta_Comision', sql.Bit, afectaComisionFinal)
                 .input('Color', sql.VarChar, colorFinal !== undefined && colorFinal !== null ? colorFinal.trim() : null)
                 .input('Comentario', sql.VarChar, comentarioFinal !== undefined && comentarioFinal !== null ? comentarioFinal.trim() : null)
                 .query(`
                     UPDATE Turno 
                     SET Estado = 'Pagado',
+                        Descuento = @Descuento,
+                        Tipo_Descuento = @Tipo_Descuento,
+                        Descuento_Afecta_Comision = @Descuento_Afecta_Comision,
                         Color = CASE 
                             WHEN @Color IS NOT NULL THEN NULLIF(@Color, '') 
                             ELSE Color 
