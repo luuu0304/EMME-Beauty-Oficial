@@ -569,10 +569,14 @@ async function asegurarColumnasDescuentoTurno(pool) {
                 ALTER TABLE Turno ADD Tipo_Descuento VARCHAR(20) NOT NULL DEFAULT 'Ninguno';
             IF COL_LENGTH('Turno', 'Descuento_Afecta_Comision') IS NULL
                 ALTER TABLE Turno ADD Descuento_Afecta_Comision BIT NOT NULL DEFAULT 0;
+            IF COL_LENGTH('Turno', 'Comision_Ajustada') IS NULL
+                ALTER TABLE Turno ADD Comision_Ajustada DECIMAL(10,2) NULL;
+            IF COL_LENGTH('Turno', 'Motivo_Ajuste_Comision') IS NULL
+                ALTER TABLE Turno ADD Motivo_Ajuste_Comision VARCHAR(255) NULL;
         `);
         columnasDescuentoVerificadas = true;
     } catch (e) {
-        console.warn("Aviso al verificar columnas de descuento en Turno:", e.message);
+        console.warn("Aviso al verificar columnas de descuento y comisiones en Turno:", e.message);
     }
 }
 
@@ -882,12 +886,14 @@ app.get('/api/empleadas', async (req, res) => {
             FROM Empleada e
             LEFT JOIN (
                 SELECT t.Id_Empleada, SUM(
-                    (CASE 
-                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
-                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
-                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
-                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
-                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)
+                    ISNULL(t.Comision_Ajustada,
+                        (CASE 
+                            WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                                CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                     ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                            ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                        END) * ISNULL(ea.Porcentaje_Comision, 0.50)
+                    )
                 ) AS Saldo_Acumulado
                 FROM Turno t
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -1106,7 +1112,17 @@ app.get('/api/empleadas/:id/sueldo-detalle', async (req, res) => {
                             CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
                                  ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
                         ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
-                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS A_Cobrar
+                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS Comision_Calculada,
+                    t.Comision_Ajustada,
+                    t.Motivo_Ajuste_Comision,
+                    ISNULL(t.Comision_Ajustada, 
+                        ((CASE 
+                            WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                                CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                     ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                            ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                        END) * ISNULL(ea.Porcentaje_Comision, 0.50))
+                    ) AS A_Cobrar
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -1137,12 +1153,14 @@ app.post('/api/empleadas/:id/liquidar', async (req, res) => {
             const requestCalc = new sql.Request(transaction);
             const resultCalc = await requestCalc.input('Id_Empleada', sql.Int, id).query(`
                     SELECT ISNULL(SUM(
-                        (CASE 
-                            WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
-                                CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
-                                     ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
-                            ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
-                        END) * ISNULL(ea.Porcentaje_Comision, 0.50)
+                        ISNULL(t.Comision_Ajustada, 
+                            (CASE 
+                                WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                                    CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                         ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                                ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                            END) * ISNULL(ea.Porcentaje_Comision, 0.50)
+                        )
                     ), 0) AS Monto_A_Pagar
                     FROM Turno t
                     JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -1244,12 +1262,16 @@ app.get('/api/liquidaciones/:id/detalles', async (req, res) => {
                         ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
                     END) AS Base_Comisionable,
                     ISNULL(ea.Porcentaje_Comision, 0.50) * 100 AS Porcentaje,
-                    ((CASE 
-                        WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
-                            CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
-                                 ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
-                        ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
-                    END) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS Comision
+                    t.Comision_Ajustada,
+                    t.Motivo_Ajuste_Comision,
+                    ISNULL(t.Comision_Ajustada, 
+                        ((CASE 
+                            WHEN ISNULL(t.Descuento_Afecta_Comision, 0) = 1 THEN 
+                                CASE WHEN (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) < 0 THEN 0
+                                     ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0) - ISNULL(t.Descuento, 0)) END
+                            ELSE (s.Precio_Base + ISNULL(Extras.Total_Extras, 0))
+                        END) * ISNULL(ea.Porcentaje_Comision, 0.50))
+                    ) AS Comision
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -1718,6 +1740,66 @@ app.put('/api/turnos/:id/sena', async (req, res) => {
     } catch (err) {
         console.error("Error al actualizar seña:", err);
         res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+
+// Ajustar comisión manual de un turno pendiente de liquidación
+app.put('/api/turnos/:id/ajustar-comision', async (req, res) => {
+    const { id } = req.params;
+    const { nuevaComision, motivo, restablecer } = req.body;
+    try {
+        let pool = await sql.connect(dbConfig);
+        await asegurarColumnasDescuentoTurno(pool);
+
+        const turnoActual = await pool.request()
+            .input('Id', sql.Int, id)
+            .query('SELECT Estado, Liquidado FROM Turno WHERE Id_Turno = @Id');
+
+        if (turnoActual.recordset.length === 0) {
+            return res.status(404).json({ error: "Turno no encontrado." });
+        }
+
+        const t = turnoActual.recordset[0];
+        if (t.Liquidado === 1 || t.Liquidado === true) {
+            return res.status(400).json({ error: "No es posible modificar la comisión de un turno que ya fue liquidado." });
+        }
+
+        if (restablecer) {
+            await pool.request()
+                .input('Id', sql.Int, id)
+                .query(`
+                    UPDATE Turno 
+                    SET Comision_Ajustada = NULL, 
+                        Motivo_Ajuste_Comision = NULL 
+                    WHERE Id_Turno = @Id
+                `);
+            return res.json({ message: "Se restableció el cálculo original de la comisión." });
+        }
+
+        const montoNum = parseFloat(nuevaComision);
+        if (isNaN(montoNum) || montoNum < 0) {
+            return res.status(400).json({ error: "El monto de la comisión debe ser un número mayor o igual a 0." });
+        }
+
+        if (!motivo || !motivo.trim()) {
+            return res.status(400).json({ error: "El motivo del ajuste es obligatorio para auditoría." });
+        }
+
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .input('Comision', sql.Decimal(10, 2), montoNum)
+            .input('Motivo', sql.VarChar(255), motivo.trim())
+            .query(`
+                UPDATE Turno 
+                SET Comision_Ajustada = @Comision, 
+                    Motivo_Ajuste_Comision = @Motivo 
+                WHERE Id_Turno = @Id
+            `);
+
+        res.json({ message: "Comisión ajustada con éxito." });
+    } catch (err) {
+        console.error("Error al ajustar comisión del turno:", err);
+        res.status(500).json({ error: "Error interno al ajustar la comisión." });
     }
 });
 

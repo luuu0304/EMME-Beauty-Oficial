@@ -3903,18 +3903,135 @@ if (modalDetalleSueldo) {
     });
 }
 
+let empleadaActualIdDetalle = null;
+let empleadaActualNombreDetalle = '';
+
 function cerrarModalDetalleSueldo() {
     const modal = document.getElementById('modalDetalleSueldo');
     if (modal) modal.classList.remove('active');
 }
 
+function cerrarModalAjustarComision() {
+    const modal = document.getElementById('modalAjustarComision');
+    if (modal) modal.classList.remove('active');
+}
+
+const modalAjustarComisionEl = document.getElementById('modalAjustarComision');
+if (modalAjustarComisionEl) {
+    modalAjustarComisionEl.addEventListener('click', function(e) {
+        if (e.target === modalAjustarComisionEl) cerrarModalAjustarComision();
+    });
+}
+
+function abrirModalAjustarComision(idTurno, servicio, clienta, comisionOriginal, comisionAjustada, motivo) {
+    document.getElementById('ajusteComisionIdTurno').value = idTurno;
+    document.getElementById('ajusteComisionIdEmpleada').value = empleadaActualIdDetalle || '';
+    document.getElementById('ajusteComisionServicio').textContent = servicio;
+    document.getElementById('ajusteComisionClienta').textContent = clienta;
+    document.getElementById('ajusteComisionOriginal').textContent = `$${comisionOriginal.toLocaleString('es-AR')}`;
+    
+    const inputNueva = document.getElementById('inputNuevaComision');
+    const inputMotivo = document.getElementById('inputMotivoAjusteComision');
+    const contenedorRestablecer = document.getElementById('btnRestablecerCalculoContenedor');
+
+    if (comisionAjustada !== null && comisionAjustada !== undefined && comisionAjustada !== 'null') {
+        inputNueva.value = comisionAjustada;
+        inputMotivo.value = motivo || '';
+        if (contenedorRestablecer) contenedorRestablecer.style.display = 'block';
+    } else {
+        inputNueva.value = comisionOriginal;
+        inputMotivo.value = '';
+        if (contenedorRestablecer) contenedorRestablecer.style.display = 'none';
+    }
+
+    const modal = document.getElementById('modalAjustarComision');
+    if (modal) modal.classList.add('active');
+}
+
+async function guardarAjusteComision() {
+    const idTurno = document.getElementById('ajusteComisionIdTurno').value;
+    const inputNueva = document.getElementById('inputNuevaComision');
+    const inputMotivo = document.getElementById('inputMotivoAjusteComision');
+
+    const nuevaComision = parseFloat(inputNueva.value);
+    const motivo = (inputMotivo.value || '').trim();
+
+    if (isNaN(nuevaComision) || nuevaComision < 0) {
+        mostrarNotificacion("Por favor ingresá un monto válido para la comisión.", "warning");
+        return;
+    }
+
+    if (!motivo) {
+        mostrarNotificacion("Por favor ingresá el motivo del ajuste (es obligatorio para auditoría).", "warning");
+        inputMotivo.focus();
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`/api/turnos/${idTurno}/ajustar-comision`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nuevaComision, motivo })
+        });
+
+        const resultado = await respuesta.json();
+        if (respuesta.ok) {
+            mostrarNotificacion("Comisión ajustada con éxito.", "success");
+            cerrarModalAjustarComision();
+            if (empleadaActualIdDetalle) {
+                await verDetalleSueldo(empleadaActualIdDetalle, empleadaActualNombreDetalle);
+                cargarEmpleadas();
+            }
+        } else {
+            mostrarNotificacion(resultado.error || "No se pudo ajustar la comisión.", "error");
+        }
+    } catch (err) {
+        console.error("Error al guardar ajuste de comisión:", err);
+        mostrarNotificacion("Error de conexión al ajustar la comisión.", "error");
+    }
+}
+
+async function restablecerComisionOriginal() {
+    const idTurno = document.getElementById('ajusteComisionIdTurno').value;
+    const confirma = await pedirConfirmacion("¿Deseás anular el ajuste manual y volver al cálculo automático de este turno?");
+    if (!confirma) return;
+
+    try {
+        const respuesta = await fetch(`/api/turnos/${idTurno}/ajustar-comision`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ restablecer: true })
+        });
+
+        const resultado = await respuesta.json();
+        if (respuesta.ok) {
+            mostrarNotificacion("Cálculo original restablecido.", "success");
+            cerrarModalAjustarComision();
+            if (empleadaActualIdDetalle) {
+                await verDetalleSueldo(empleadaActualIdDetalle, empleadaActualNombreDetalle);
+                cargarEmpleadas();
+            }
+        } else {
+            mostrarNotificacion(resultado.error || "No se pudo restablecer la comisión.", "error");
+        }
+    } catch (err) {
+        console.error("Error al restablecer comisión:", err);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
 async function verDetalleSueldo(idEmpleada, nombre) {
+    empleadaActualIdDetalle = idEmpleada;
+    empleadaActualNombreDetalle = nombre;
     document.getElementById('tituloModalDetalleSueldo').textContent = `Detalle de ${nombre}`;
     const tbody = document.getElementById('tablaDetalleSueldoBody');
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">Cargando historial...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: #888;">Cargando historial...</td></tr>';
     
     const modal = document.getElementById('modalDetalleSueldo');
     if (modal) modal.classList.add('active');
+
+    const rolUsuario = localStorage.getItem('emme_rol');
+    const esAdmin = (rolUsuario !== 'Empleada');
 
     try {
         const respuesta = await fetch(`/api/empleadas/${idEmpleada}/sueldo-detalle`);
@@ -3923,7 +4040,7 @@ async function verDetalleSueldo(idEmpleada, nombre) {
         tbody.innerHTML = '';
         
         if (detalles.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">No hay comisiones pendientes de cobro.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: #888;">No hay comisiones pendientes de cobro.</td></tr>';
             return;
         }
         
@@ -3944,6 +4061,37 @@ async function verDetalleSueldo(idEmpleada, nombre) {
                 `;
             }
 
+            const estaAjustada = (d.Comision_Ajustada !== null && d.Comision_Ajustada !== undefined);
+            let columnaComisionHtml = '';
+            if (estaAjustada) {
+                columnaComisionHtml = `
+                    <div style="font-weight: 700; color: #28a745;">$${Math.round(d.A_Cobrar).toLocaleString('es-AR')}</div>
+                    <div style="margin-top: 2px;">
+                        <span style="display: inline-block; font-size: 10px; background: #fff3cd; color: #856404; padding: 1px 6px; border-radius: 4px; font-weight: 700; border: 1px solid #ffeeba;">Ajustado</span>
+                    </div>
+                    <div style="font-size: 11px; color: #777; font-style: italic; margin-top: 2px;" title="${(d.Motivo_Ajuste_Comision || '').replace(/"/g, '&quot;')}">
+                        ${d.Motivo_Ajuste_Comision ? (d.Motivo_Ajuste_Comision.length > 28 ? d.Motivo_Ajuste_Comision.substring(0, 26) + '...' : d.Motivo_Ajuste_Comision) : ''}
+                    </div>
+                `;
+            } else {
+                columnaComisionHtml = `<div style="font-weight: bold; color: #28a745;">$${Math.round(d.A_Cobrar).toLocaleString('es-AR')}</div>`;
+            }
+
+            let botonAccionHtml = '-';
+            if (esAdmin) {
+                const srvEscapado = (d.Nombre_Servicio || '').replace(/'/g, "\\'");
+                const clientaEscapada = (d.Nombre_Clienta || '').replace(/'/g, "\\'");
+                const motivoEscapado = (d.Motivo_Ajuste_Comision || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const comOriginal = Math.round(d.Comision_Calculada || d.A_Cobrar);
+                const comAjustadaVal = estaAjustada ? d.Comision_Ajustada : 'null';
+
+                botonAccionHtml = `
+                    <button type="button" class="btn-icon" style="padding: 5px 8px; border: 1px solid #dcdcdc; border-radius: 4px; background: #fff; cursor: pointer; color: #555; display: inline-flex; align-items: center; justify-content: center;" onclick="abrirModalAjustarComision(${d.Id_Turno}, '${srvEscapado}', '${clientaEscapada}', ${comOriginal}, ${comAjustadaVal}, '${motivoEscapado}')" title="Ajustar comisión por excepción">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                `;
+            }
+
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 11px 14px;">${fechaLimpia}</td>
@@ -3951,13 +4099,14 @@ async function verDetalleSueldo(idEmpleada, nombre) {
                     <td style="padding: 11px 14px; color: #555;">${d.Nombre_Servicio}</td>
                     <td style="padding: 11px 14px; text-align: right;">${desgloseMontoHtml}</td>
                     <td style="padding: 11px 14px; text-align: center; color: var(--mostaza); font-weight: bold;">${Math.round(d.Porcentaje_Comision * 100)}%</td>
-                    <td style="padding: 11px 14px; text-align: right; font-weight: bold; color: #28a745;">$${Math.round(d.A_Cobrar).toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: right;">${columnaComisionHtml}</td>
+                    <td style="padding: 11px 8px; text-align: center;">${botonAccionHtml}</td>
                 </tr>
             `;
         });
     } catch (error) {
         console.error(error);
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: #d9534f; padding: 20px;">Error al cargar los datos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #d9534f; padding: 20px;">Error al cargar los datos.</td></tr>';
     }
 }
 
@@ -4237,6 +4386,22 @@ async function abrirDetalleCobro(idLiquidacion) {
                 `;
             }
 
+            const estaAjustada = (item.Comision_Ajustada !== null && item.Comision_Ajustada !== undefined);
+            let columnaComisionHistorialHtml = '';
+            if (estaAjustada) {
+                columnaComisionHistorialHtml = `
+                    <div style="font-weight: 600; color: #28a745;">$${Math.round(item.Comision).toLocaleString('es-AR')}</div>
+                    <div style="margin-top: 2px;">
+                        <span style="display: inline-block; font-size: 10px; background: #fff3cd; color: #856404; padding: 1px 6px; border-radius: 4px; font-weight: 700; border: 1px solid #ffeeba;">Ajustado</span>
+                    </div>
+                    <div style="font-size: 11px; color: #777; font-style: italic; margin-top: 2px;" title="${(item.Motivo_Ajuste_Comision || '').replace(/"/g, '&quot;')}">
+                        ${item.Motivo_Ajuste_Comision ? (item.Motivo_Ajuste_Comision.length > 28 ? item.Motivo_Ajuste_Comision.substring(0, 26) + '...' : item.Motivo_Ajuste_Comision) : ''}
+                    </div>
+                `;
+            } else {
+                columnaComisionHistorialHtml = `<div style="font-weight: 600; color: #28a745;">$${Math.round(item.Comision).toLocaleString('es-AR')}</div>`;
+            }
+
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 11px 14px; color: #555;">${fechaLimpia}</td>
@@ -4244,7 +4409,7 @@ async function abrirDetalleCobro(idLiquidacion) {
                     <td style="padding: 11px 14px; color: #666;">${item.Nombre_Servicio}</td>
                     <td style="padding: 11px 14px; text-align: right;">${desgloseHistorialHtml}</td>
                     <td style="padding: 11px 14px; text-align: center; color: #888;">${Math.round(item.Porcentaje)}%</td>
-                    <td style="padding: 11px 14px; text-align: right; font-weight: 600; color: #28a745;">$${Math.round(item.Comision).toLocaleString('es-AR')}</td>
+                    <td style="padding: 11px 14px; text-align: right;">${columnaComisionHistorialHtml}</td>
                 </tr>
             `;
         });

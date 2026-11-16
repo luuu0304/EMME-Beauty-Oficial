@@ -1776,6 +1776,7 @@
                             <th style="padding: 12px 14px; text-align: right;">Abonado</th>
                             <th style="padding: 12px 14px; text-align: center;">%</th>
                             <th style="padding: 12px 14px; text-align: right;">Comisión</th>
+                            <th style="padding: 12px 14px; text-align: center; width: 60px;">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tablaDetalleSueldoBody">
@@ -1785,6 +1786,52 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModalDetalleSueldo()">Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === MODAL: AJUSTAR COMISIÓN DE TURNO (Excepciones) === -->
+    <div class="modal-overlay" id="modalAjustarComision" style="z-index: 1050;">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #2C2C2C; font-size: 17px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Ajuste Excepcional de Comisión
+                </h3>
+            </div>
+            <div style="padding: 15px 0 5px 0;">
+                <input type="hidden" id="ajusteComisionIdTurno">
+                <input type="hidden" id="ajusteComisionIdEmpleada">
+                
+                <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px 14px; margin-bottom: 15px; font-size: 13px; line-height: 1.6;">
+                    <div><strong>Servicio:</strong> <span id="ajusteComisionServicio">-</span></div>
+                    <div><strong>Clienta:</strong> <span id="ajusteComisionClienta">-</span></div>
+                    <div><strong>Comisión según sistema:</strong> <span id="ajusteComisionOriginal" style="color: #666; font-weight: 600;">$0</span></div>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label for="inputNuevaComision" style="display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px;">
+                        Nueva comisión a liquidar ($):
+                    </label>
+                    <input type="number" id="inputNuevaComision" min="0" step="100" placeholder="0" style="width: 100%; padding: 9px 12px; border: 1.5px solid #dcdcdc; border-radius: 6px; font-size: 15px; font-weight: 700; color: #28a745; background: white; text-align: right;">
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label for="inputMotivoAjusteComision" style="display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px;">
+                        Motivo del ajuste (Obligatorio para auditoría):
+                    </label>
+                    <textarea id="inputMotivoAjusteComision" rows="2" placeholder="Ej: Error en caja: se compensa extra de retiro no cobrado..." style="width: 100%; padding: 8px 10px; border: 1px solid #dcdcdc; border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+
+                <div id="btnRestablecerCalculoContenedor" style="display: none; margin-top: 10px; text-align: right;">
+                    <button type="button" onclick="restablecerComisionOriginal()" style="background: none; border: none; color: #d9534f; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0;">
+                        Restablecer al cálculo automático del sistema
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 15px; gap: 10px;">
+                <button type="button" class="btn-secondary" onclick="cerrarModalAjustarComision()">Cancelar</button>
+                <button type="button" class="btn-primary" id="btnGuardarAjusteComision" onclick="guardarAjusteComision()" style="background: var(--mostaza); color: white; border: none; font-weight: 600; padding: 9px 18px;">Guardar Ajuste</button>
             </div>
         </div>
     </div>
