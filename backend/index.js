@@ -188,6 +188,25 @@ function verificarToken(req, res, next) {
     }
 }
 
+// Middleware para verificar que el usuario no tenga rol 'Empleada' en acciones restringidas (como cobrar o modificar turnos)
+function verificarNoEmpleada(req, res, next) {
+    const authHeader = req.headers['authorization'] || req.headers['x-access-token'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
+
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, SECRET_KEY);
+            if (decoded.rol === 'Empleada') {
+                return res.status(403).json({ error: "Acceso denegado. Las profesionales no tienen autorización para realizar esta acción." });
+            }
+            req.usuario = decoded;
+        } catch (err) {
+            return res.status(401).json({ error: "Sesión inválida o expirada. Por favor, volvé a iniciar sesión." });
+        }
+    }
+    next();
+}
+
 // Registrar un nuevo usuario (Usado para crear el Admin por primera vez o accesos de empleadas)
 app.post('/api/auth/register', async (req, res) => {
     const { Username, Password, Rol, Id_Empleada, Nombre } = req.body;
@@ -1662,7 +1681,7 @@ app.put('/api/turnos/:id', async (req, res) => {
 });
 
 // Guardar notas internas y colores en el turno
-app.put('/api/turnos/:id/detalles', async (req, res) => {
+app.put('/api/turnos/:id/detalles', verificarNoEmpleada, async (req, res) => {
     try {
         const { id } = req.params;
         const { Color, Comentario_Admin } = req.body; 
@@ -1686,7 +1705,7 @@ app.put('/api/turnos/:id/detalles', async (req, res) => {
 });
 
 // Registrar o actualizar seña tardía (Calculando la diferencia)
-app.put('/api/turnos/:id/sena', async (req, res) => {
+app.put('/api/turnos/:id/sena', verificarNoEmpleada, async (req, res) => {
     const { id } = req.params;
     const { Sena_Monto, Nombre_Clienta } = req.body; 
     
@@ -1970,7 +1989,7 @@ app.post('/api/ingresos/manual', async (req, res) => {
     }
 });
 
-app.post('/api/cobrar-turno', async (req, res) => {
+app.post('/api/cobrar-turno', verificarNoEmpleada, async (req, res) => {
     try {
         const { 
             idTurno, montoTotal, idMedioPago, descuento, 

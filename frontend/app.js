@@ -1565,13 +1565,17 @@ async function cargarTurnosSemana() {
                             </div>
                         `;
 
+                        const esRolEmpleada = (rolUsuario === 'Empleada');
                         tarjeta.innerHTML = `
                             <div class="turno-titulo" style="font-weight: 600; color: #333; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${turno.Nombre_Clienta || 'Clienta'}</div>
                             <div class="turno-detalle" style="color: #666; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${turno.Nombre_Servicio || 'Servicio'}</div>
                             ${badgeHTML}
                         `;
                         
+                        tarjeta.style.cursor = esRolEmpleada ? 'default' : 'pointer';
+
                         tarjeta.onclick = () => {
+                            if (localStorage.getItem('emme_rol') === 'Empleada') return;
                             const precioServicio = turno.Precio_Base || 0; 
                             const senaPagada = turno.Sena_Monto || 0;
                             abrirModalDetalleTurno(
@@ -1638,6 +1642,8 @@ function abrirModalTurnosAgrupados(turnos, fechaSlot = '', horaSlot = '') {
     const fechaTexto = fechaSlot || formatoFechaSQL(fechaObj);
     titulo.textContent = `Turnos de las ${horaTexto} hs`;
 
+    const esRolEmpleada = (localStorage.getItem('emme_rol') === 'Empleada');
+
     turnos.forEach(turno => {
         const tarjeta = document.createElement('div');
         tarjeta.style.padding = '15px';
@@ -1645,9 +1651,10 @@ function abrirModalTurnosAgrupados(turnos, fechaSlot = '', horaSlot = '') {
         tarjeta.style.borderRadius = '8px';
         tarjeta.style.borderLeft = `4px solid ${turno.Color ? turno.Color.split(' | ')[0] : '#f6c23e'}`;
         tarjeta.style.backgroundColor = '#fafafa';
-        tarjeta.style.cursor = 'pointer'; 
+        tarjeta.style.cursor = esRolEmpleada ? 'default' : 'pointer'; 
 
         tarjeta.onclick = () => {
+            if (localStorage.getItem('emme_rol') === 'Empleada') return;
             modal.style.display = 'none'; 
             
             const precioServicio = turno.Precio_Base || 0; 
@@ -1890,13 +1897,15 @@ async function cargarTurnosAgenda() {
                 celdaDestino.style.position = 'relative'; 
                 const alturaPixeles = duracionMin * 2; 
 
+                const esRolEmpleada = (rolUsuario === 'Empleada');
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'turno-card';
                 tarjeta.style.height = `${alturaPixeles}px`;
-                tarjeta.style.cursor = 'pointer';
+                tarjeta.style.cursor = esRolEmpleada ? 'default' : 'pointer';
 
                 tarjeta.onclick = (e) => {
                     e.stopPropagation();
+                    if (localStorage.getItem('emme_rol') === 'Empleada') return;
                     const precioServicio = turno.Precio_Base || 0; 
                     const senaPagada = turno.Sena_Monto || 0; 
                     abrirModalDetalleTurno(
@@ -2170,6 +2179,9 @@ if (modalDetalleTurno) {
 }
 
 function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0, comentarioAdmin = '', nombreArea = '', nombreEmpleada = '', idClienta = null) {
+    if (localStorage.getItem('emme_rol') === 'Empleada') {
+        return;
+    }
     precioBaseActual = parseFloat(precioBase) || 0;
     clientaActualCobro = nombreClienta || 'No especificada';
     servicioActualCobro = nombreServicio || 'No especificado';
@@ -2590,6 +2602,10 @@ async function cancelarTurnoDesdeModal() {
 }
 
 async function guardarDetallesTurno() {
+    if (localStorage.getItem('emme_rol') === 'Empleada') {
+        mostrarNotificacion("No tienes permisos para guardar notas ni detalles.", "error");
+        return;
+    }
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
 
     // Si el usuario escribió un color en el input y no presionó Enter, agregarlo como chip
@@ -2608,9 +2624,13 @@ async function guardarDetallesTurno() {
     }
     
     try {
+        const token = localStorage.getItem('emme_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const respuesta = await fetch(`/api/turnos/${idTurno}/detalles`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({ 
                 Color: coloresFinales,
                 Comentario_Admin: comentario 
@@ -2743,6 +2763,10 @@ if (inputSenaDetalle) {
 }
 
 async function confirmarCobroTurno() {
+    if (localStorage.getItem('emme_rol') === 'Empleada') {
+        mostrarNotificacion("No tienes permisos para cobrar turnos.", "error");
+        return;
+    }
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const medioPago = document.getElementById('selectMedioPago').value;
     
@@ -2837,9 +2861,13 @@ async function confirmarCobroTurno() {
     };
 
     try {
+        const token = localStorage.getItem('emme_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const respuesta = await fetch('/api/cobrar-turno', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(datosCobro)
         });
 
@@ -2851,7 +2879,12 @@ async function confirmarCobroTurno() {
                 window.location.reload();
             }, 1500);
         } else {
-            mostrarNotificacion("Hubo un error al intentar cobrar.", "error");
+            let errorMsg = "Hubo un error al intentar cobrar.";
+            try {
+                const resErr = await respuesta.json();
+                if (resErr && resErr.error) errorMsg = resErr.error;
+            } catch (e) {}
+            mostrarNotificacion(errorMsg, "error");
         }
     } catch (error) {
         console.error("Error conectando con el servidor:", error);
@@ -2860,6 +2893,10 @@ async function confirmarCobroTurno() {
 }
 
 async function guardarSenaIndependiente() {
+    if (localStorage.getItem('emme_rol') === 'Empleada') {
+        mostrarNotificacion("No tienes permisos para modificar señas.", "error");
+        return;
+    }
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const inputSena = document.getElementById('senaDetalleInput');
     const nuevaSena = parseFloat(inputSena.value) || 0;
@@ -2870,9 +2907,13 @@ async function guardarSenaIndependiente() {
     if (!idTurno) return;
 
     try {
+        const token = localStorage.getItem('emme_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const respuesta = await fetch(`/api/turnos/${idTurno}/sena`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({ 
                 Sena_Monto: nuevaSena, 
                 Nombre_Clienta: nombreClienta 
@@ -2886,7 +2927,12 @@ async function guardarSenaIndependiente() {
             if(textoSena) textoSena.textContent = `Seña abonada: -$${nuevaSena.toLocaleString('es-AR')}`;
             
         } else {
-            mostrarNotificacion("Error al guardar la seña.", "error");
+            let errorMsg = "Error al guardar la seña.";
+            try {
+                const resErr = await respuesta.json();
+                if (resErr && resErr.error) errorMsg = resErr.error;
+            } catch (e) {}
+            mostrarNotificacion(errorMsg, "error");
         }
     } catch (error) {
         console.error("Error guardando la seña:", error);

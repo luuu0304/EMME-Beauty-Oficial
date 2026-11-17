@@ -776,6 +776,13 @@ body.is-empleada .agenda-celda {
     margin-top: 2px;
 }
 
+/* Restricción de interacción para rol Empleada (las tarjetas son puramente informativas) */
+body.is-empleada .turno-card,
+body.is-empleada .turno-card-sem,
+body.is-empleada #contenidoModalTurnos > div {
+    cursor: default !important;
+}
+
 /* ==========================================================================
    7. SISTEMA DE NOTIFICACIONES (Toasts)
    ========================================================================== */
